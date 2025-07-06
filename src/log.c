@@ -4,6 +4,8 @@
 #include <stdio.h>
 
 void log_info(int rank, char *message,...) {
+  va_list args;
+  va_start(args, message);
   char hostname[256];
   gethostname(hostname, sizeof(hostname));
   char worker_type[12] = {0};
@@ -12,10 +14,9 @@ void log_info(int rank, char *message,...) {
   } else {
     snprintf(worker_type, sizeof(worker_type), "Worker %d", rank);
   }
-  va_list args;
-  va_start(args, message);
   printf("[INFO] %s - %s: ", hostname, worker_type);
-  printf(message, args);
+  vfprintf(stdout, message, args);
+  va_end(args);
   printf("\n");
 }
 
@@ -31,7 +32,6 @@ void log_error(int rank, char *message, ...) {
   va_list args;
   va_start(args, message);
   fprintf(stderr, "[ERROR] %s - %s: ", hostname, worker_type);
-  fprintf(stderr, message, args);
+  vfprintf(stderr, message, args);
   fprintf(stderr, "\n");
-
 }

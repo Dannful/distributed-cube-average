@@ -45,7 +45,7 @@ unsigned int min(unsigned int a, unsigned int b) {
   return (a < b) ? a : b;
 }
 
-void partition_cube(float **workers, size_t *total_size_x, size_t *total_size_y, size_t *total_size_z, unsigned int num_workers, float *cube, size_t size_x, size_t size_y, size_t size_z) {
+void partition_cube(float **workers, size_t *worker_count, size_t *total_size_x, size_t *total_size_y, size_t *total_size_z, unsigned int num_workers, float *cube, size_t size_x, size_t size_y, size_t size_z) {
   unsigned int partition_size_x = greatest_common_divisor(size_x, num_workers);
   unsigned int partition_size_y = greatest_common_divisor(size_y, num_workers);
   unsigned int partition_size_z = greatest_common_divisor(size_z, num_workers);
@@ -53,7 +53,6 @@ void partition_cube(float **workers, size_t *total_size_x, size_t *total_size_y,
   *total_size_y = ceil((float) size_y / partition_size_y);
   *total_size_z = ceil((float) size_z / partition_size_z);
   size_t total_size = *total_size_x * *total_size_y * *total_size_z;
-  size_t *worker_count = calloc(num_workers, sizeof(size_t));
   for(size_t i = 0; i < size_x * size_y * size_z; i++) {
     size_t position_x = i % size_x;
     size_t position_y = (i / size_x) % size_y;
@@ -74,5 +73,4 @@ void partition_cube(float **workers, size_t *total_size_x, size_t *total_size_y,
       workers[worker] = realloc(workers[worker], worker_count[worker] * sizeof(float));
     }
   }
-  free(worker_count);
 }

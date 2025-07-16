@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
   const size_t size_y = 100;
   const size_t size_z = 100;
 
-  const unsigned int iterations = 6;
+  const unsigned int iterations = 6, stencil_size = 3;
 
   size_t total_size_x;
   size_t total_size_y;
@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
     float *partition = (float *)malloc(count * sizeof(float));
     MPI_Safe_Recv(partition, count, MPI_FLOAT, 0, MPI_ANY_TAG, MPI_COMM_WORLD);
     log_info(rank, "Received %lu values from coordinator.", count);
-    worker_process(iterations, partition, count, indices);
+    worker_process(iterations, stencil_size, partition, count, indices);
     free(partition);
     free(indices);
   }

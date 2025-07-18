@@ -1,49 +1,72 @@
 #include "../include/coordinator.h"
 #include "../include/utils.h"
 #include "../include/worker.h"
-#include <math.h>
+#include "../include/log.h"
+#include "../include/setup.h"
+#include "mpi.h"
 #include <string.h>
 
-void initialize_cube(float *cube, size_t size_x, size_t size_y, size_t size_z) {
-  for (float *current = cube; current < cube + size_x * size_y * size_z; current++) {
-    *current = current - cube;
+problem_data_t init_problem_data(MPI_Comm comm, unsigned int topology[DIMENSIONS], unsigned int workers, unsigned int iterations, unsigned int stencil_size, size_t size_x, size_t size_y, size_t size_z) {
+  problem_data_t result;
+  result.communicator = comm;
+  result.num_workers = workers;
+  result.iterations = iterations;
+  result.stencil_size = stencil_size;
+  result.size_x = size_x;
+  result.size_y = size_y;
+  result.size_z = size_z;
+  result.cube = (float *)malloc(size_x * size_y * size_z * sizeof(float));
+  memcpy(result.topology, topology, DIMENSIONS * sizeof(unsigned int));
+  if(result.cube == NULL) {
+    log_error(0, "Failed to allocate memory for cube data.");
+    exit(EXIT_FAILURE);
   }
+  for(size_t i = 0; i < size_x * size_y * size_z; i++)
+    result.cube[i] = (float)i;
+  result.worker_count = calloc(workers, sizeof(size_t));
+  if(result.worker_count == NULL) {
+    log_error(0, "Failed to allocate memory for worker counts.");
+    free(result.cube);
+    exit(EXIT_FAILURE);
+  }
+  result.worker_indices = calloc(workers, sizeof(size_t *));
+  if(result.worker_indices == NULL) {
+    log_error(0, "Failed to allocate memory for worker indices.");
+    free(result.cube);
+    free(result.worker_count);
+    exit(EXIT_FAILURE);
+  }
+  return result;
 }
 
-unsigned int min(unsigned int a, unsigned int b) {
-  return (a < b) ? a : b;
-}
-
-void partition_cube(float **workers, size_t **worker_indices, size_t *worker_count, size_t *partition_size_x, size_t *partition_size_y, size_t *partition_size_z, unsigned int num_workers, float *cube, size_t size_x, size_t size_y, size_t size_z) {
-  unsigned int partition_count_x = greatest_common_divisor(size_x, num_workers);
-  unsigned int partition_count_y = greatest_common_divisor(size_y, num_workers);
-  unsigned int partition_count_z = greatest_common_divisor(size_z, num_workers);
-  *partition_size_x = ceil((float) size_x / partition_count_x);
-  *partition_size_y = ceil((float) size_y / partition_count_y);
-  *partition_size_z = ceil((float) size_z / partition_count_z);
-  size_t total_partition_size = *partition_size_x * *partition_size_y * *partition_size_z;
-  for(size_t i = 0; i < size_x * size_y * size_z; i++) {
-    size_t position_x, position_y, position_z;
-    extract_coordinates(&position_x, &position_y, &position_z, size_x, size_y, size_z, i);
-    unsigned char reversed = position_z / size_z % 2;
-    unsigned int worker = get_assigned_worker(position_x, position_y, position_z, size_x, size_y, size_y, num_workers);
-    if(worker_count[worker] == 0) {
-      workers[worker] = malloc(total_partition_size * sizeof(float));
-      worker_indices[worker] = malloc(total_partition_size * sizeof(size_t));
-    } else {
-      if(worker_count[worker] % total_partition_size == 0) {
-        size_t new_size = (size_t) (((float) worker_count[worker] / total_partition_size + 1) * total_partition_size * sizeof(float));
-        size_t new_size_indices = (size_t) (((float) worker_count[worker] / total_partition_size + 1) * total_partition_size * sizeof(size_t));
-        workers[worker] = realloc(workers[worker], new_size);
-        worker_indices[worker] = realloc(worker_indices[worker], new_size_indices);
+void partition_cube(problem_data_t problem_data) {
+  float ***unflattened_cube = unflatten_cube(problem_data.cube, problem_data.size_x, problem_data.size_y, problem_data.size_z);
+  for(size_t worker = 0; worker < problem_data.num_workers; worker++) {
+    mpi_process_t process = mpi_process_init(problem_data.communicator, worker, problem_data.topology);
+    size_t partition_size_x = problem_data.size_x / problem_data.topology[0];
+    size_t partition_size_y = problem_data.size_y / problem_data.topology[1];
+    size_t partition_size_z = problem_data.size_z / problem_data.topology[2];
+    problem_data.workers[worker] = malloc(sizeof(float) * partition_size_x * partition_size_y * partition_size_z);
+    problem_data.worker_indices[worker] = malloc(sizeof(size_t) * partition_size_x * partition_size_y * partition_size_z);
+    for(size_t x = process.coordinates[0] * partition_size_x; x < (process.coordinates[0] + 1) * partition_size_x && x < problem_data.size_x; x++) {
+      for(size_t y = process.coordinates[1] * partition_size_y; y < (process.coordinates[1] + 1) * partition_size_y && y < problem_data.size_y; y++) {
+        for(size_t z = process.coordinates[2] * partition_size_z; z < (process.coordinates[2] + 1) * partition_size_z && z < problem_data.size_z; z++) {
+          problem_data.workers[worker][problem_data.worker_count[worker]] = unflattened_cube[x][y][z];
+          problem_data.worker_indices[worker][problem_data.worker_count[worker]++] = get_index_for_coordinates(x, y, z, problem_data.size_x, problem_data.size_y, problem_data.size_z);
+        }
       }
     }
-    workers[worker][worker_count[worker]] = cube[i];
-    worker_indices[worker][worker_count[worker]] = i;
-    worker_count[worker] += 1;
-    if(worker_count[worker] % total_partition_size == total_partition_size - 1 && position_x == size_x - 1) {
-      workers[worker] = realloc(workers[worker], worker_count[worker] * sizeof(float));
-      worker_indices[worker] = realloc(worker_indices[worker], worker_count[worker] * sizeof(size_t));
-    }
   }
+  free_unflattened_cube(unflattened_cube, problem_data.size_x, problem_data.size_y, problem_data.size_z);
+}
+
+void free_problem_data(problem_data_t problem_data) {
+  free(problem_data.cube);
+  for(size_t i = 0; i < problem_data.num_workers; i++) {
+    free(problem_data.workers[i]);
+    free(problem_data.worker_indices[i]);
+  }
+  free(problem_data.workers);
+  free(problem_data.worker_indices);
+  free(problem_data.worker_count);
 }

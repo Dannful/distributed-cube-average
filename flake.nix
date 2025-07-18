@@ -23,7 +23,7 @@
         };
         packages.default =
           pkgs.writeShellScriptBin "run-distributed-cube-average" ''
-            ${pkgs.openmpi}/bin/mpirun -np 4 ${distributed-cube-average}/bin/distributed-cube-average
+            ${pkgs.openmpi}/bin/mpirun --map-by :OVERSUBSCRIBE -np 27 ${distributed-cube-average}/bin/distributed-cube-average
           '';
         apps.default = {
           type = "app";

@@ -6,18 +6,18 @@
 
 typedef enum {
   LEFT = 0,
-  UP = 0,
-  FRONT = 0,
-  RIGHT = 1,
-  DOWN = 1,
-  BACK = 1
+  UP = 1,
+  FRONT = 2,
+  RIGHT = 3,
+  DOWN = 4,
+  BACK = 5
 } neighbour_direction_t;
 
 typedef struct {
   MPI_Comm communicator;
   int rank;
   int coordinates[DIMENSIONS];
-  int neighbours[DIMENSIONS][2];
+  int neighbours[DIMENSIONS * 2];
 } mpi_process_t;
 
 void mpi_world_init(MPI_Comm *communicator, const int topology[DIMENSIONS]);

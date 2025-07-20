@@ -41,11 +41,12 @@ problem_data_t init_problem_data(MPI_Comm comm, unsigned int topology[DIMENSIONS
 
 void partition_cube(problem_data_t problem_data) {
   float ***unflattened_cube = unflatten_cube(problem_data.cube, problem_data.size_x, problem_data.size_y, problem_data.size_z);
+  size_t partition_size_x = problem_data.size_x / problem_data.topology[0];
+  size_t partition_size_y = problem_data.size_y / problem_data.topology[1];
+  size_t partition_size_z = problem_data.size_z / problem_data.topology[2];
+  size_t cell_size = (problem_data.stencil_size - 1) / 2;
   for(size_t worker = 0; worker < problem_data.num_workers; worker++) {
     mpi_process_t process = mpi_process_init(problem_data.communicator, worker, problem_data.topology);
-    size_t partition_size_x = problem_data.size_x / problem_data.topology[0];
-    size_t partition_size_y = problem_data.size_y / problem_data.topology[1];
-    size_t partition_size_z = problem_data.size_z / problem_data.topology[2];
     problem_data.workers[worker] = malloc(sizeof(float) * partition_size_x * partition_size_y * partition_size_z);
     problem_data.worker_indices[worker] = malloc(sizeof(size_t) * partition_size_x * partition_size_y * partition_size_z);
     for(size_t x = process.coordinates[0] * partition_size_x; x < (process.coordinates[0] + 1) * partition_size_x && x < problem_data.size_x; x++) {
@@ -53,6 +54,18 @@ void partition_cube(problem_data_t problem_data) {
         for(size_t z = process.coordinates[2] * partition_size_z; z < (process.coordinates[2] + 1) * partition_size_z && z < problem_data.size_z; z++) {
           problem_data.workers[worker][problem_data.worker_count[worker]] = unflattened_cube[x][y][z];
           problem_data.worker_indices[worker][problem_data.worker_count[worker]++] = get_index_for_coordinates(x, y, z, problem_data.size_x, problem_data.size_y, problem_data.size_z);
+        }
+      }
+    }
+    if(process.neighbours[LEFT] >= 0) {
+      size_t initial_target_x = process.coordinates[0] * partition_size_x - 1;
+      for(size_t x = initial_target_x; x > initial_target_x - cell_size; x--) {
+        for(size_t y = process.coordinates[1] * partition_size_y; y < (process.coordinates[1] + 1) * partition_size_y && y < problem_data.size_y; y++) {
+          for(size_t z = process.coordinates[2] * partition_size_z; z < (process.coordinates[2] + 1) * partition_size_z && z < problem_data.size_z; z++) {
+            size_t index = get_index_for_coordinates(x, y, z, problem_data.size_x, problem_data.size_y, problem_data.size_z);
+            problem_data.workers[worker][problem_data.worker_count[worker]] = unflattened_cube[x][y][z];
+            problem_data.worker_indices[worker][problem_data.worker_count[worker]++] = index;
+          }
         }
       }
     }

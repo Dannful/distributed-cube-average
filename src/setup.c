@@ -13,7 +13,7 @@ mpi_process_t mpi_process_init(MPI_Comm communicator, int rank, unsigned int top
   MPI_Cart_coords(communicator, rank, DIMENSIONS, process.coordinates);
 
   for (int i = 0; i < DIMENSIONS; i++) {
-    MPI_Cart_shift(communicator, i, 1, process.neighbours[i], process.neighbours[i] + 1);
+    MPI_Cart_shift(communicator, i, 1, process.neighbours + 2 * i, process.neighbours + 2 * i + 1);
   }
 
   return process;

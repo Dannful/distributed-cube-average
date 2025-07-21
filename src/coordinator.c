@@ -1,8 +1,8 @@
 #include "../include/coordinator.h"
 #include "../include/utils.h"
-#include "../include/worker.h"
 #include "../include/log.h"
 #include "../include/setup.h"
+#include "../include/worker.h"
 #include "mpi.h"
 #include <string.h>
 
@@ -36,6 +36,14 @@ problem_data_t init_problem_data(MPI_Comm comm, unsigned int topology[DIMENSIONS
     free(result.worker_count);
     exit(EXIT_FAILURE);
   }
+  result.workers = calloc(workers, sizeof(float *));
+  if(result.workers == NULL) {
+    log_error(0, "Failed to allocate memory for worker data.");
+    free(result.cube);
+    free(result.worker_count);
+    free(result.worker_indices);
+    exit(EXIT_FAILURE);
+  }
   return result;
 }
 
@@ -46,31 +54,35 @@ void partition_cube(problem_data_t problem_data) {
   size_t partition_size_z = problem_data.size_z / problem_data.topology[2];
   size_t cell_size = (problem_data.stencil_size - 1) / 2;
   for(size_t worker = 0; worker < problem_data.num_workers; worker++) {
-    mpi_process_t process = mpi_process_init(problem_data.communicator, worker, problem_data.topology);
+    int process_coordinates[DIMENSIONS];
+    log_info(0, "%d %d %d", partition_size_x, partition_size_y, partition_size_z);
+    MPI_Cart_coords(problem_data.communicator, worker, DIMENSIONS, process_coordinates);
     problem_data.workers[worker] = malloc(sizeof(float) * partition_size_x * partition_size_y * partition_size_z);
     problem_data.worker_indices[worker] = malloc(sizeof(size_t) * partition_size_x * partition_size_y * partition_size_z);
-    for(size_t x = process.coordinates[0] * partition_size_x; x < (process.coordinates[0] + 1) * partition_size_x && x < problem_data.size_x; x++) {
-      for(size_t y = process.coordinates[1] * partition_size_y; y < (process.coordinates[1] + 1) * partition_size_y && y < problem_data.size_y; y++) {
-        for(size_t z = process.coordinates[2] * partition_size_z; z < (process.coordinates[2] + 1) * partition_size_z && z < problem_data.size_z; z++) {
+    for(size_t x =  process_coordinates[0] * partition_size_x; x < (process_coordinates[0] + 1) * partition_size_x && x < problem_data.size_x; x++) {
+      for(size_t y = process_coordinates[1] * partition_size_y; y < (process_coordinates[1] + 1) * partition_size_y && y < problem_data.size_y; y++) {
+        for(size_t z = process_coordinates[2] * partition_size_z; z < (process_coordinates[2] + 1) * partition_size_z && z < problem_data.size_z; z++) {
           problem_data.workers[worker][problem_data.worker_count[worker]] = unflattened_cube[x][y][z];
           problem_data.worker_indices[worker][problem_data.worker_count[worker]++] = get_index_for_coordinates(x, y, z, problem_data.size_x, problem_data.size_y, problem_data.size_z);
         }
       }
     }
-    if(process.neighbours[LEFT] >= 0) {
-      size_t initial_target_x = process.coordinates[0] * partition_size_x - 1;
-      for(size_t x = initial_target_x; x > initial_target_x - cell_size; x--) {
-        for(size_t y = process.coordinates[1] * partition_size_y; y < (process.coordinates[1] + 1) * partition_size_y && y < problem_data.size_y; y++) {
-          for(size_t z = process.coordinates[2] * partition_size_z; z < (process.coordinates[2] + 1) * partition_size_z && z < problem_data.size_z; z++) {
-            size_t index = get_index_for_coordinates(x, y, z, problem_data.size_x, problem_data.size_y, problem_data.size_z);
-            problem_data.workers[worker][problem_data.worker_count[worker]] = unflattened_cube[x][y][z];
-            problem_data.worker_indices[worker][problem_data.worker_count[worker]++] = index;
-          }
-        }
-      }
+    if(problem_data.worker_count[worker] % partition_size_x * partition_size_y * partition_size_z != 0) {
+      problem_data.workers[worker] = realloc(problem_data.workers[worker], sizeof(float) * problem_data.worker_count[worker]);
+      problem_data.worker_indices[worker] = realloc(problem_data.worker_indices[worker], sizeof(float) * problem_data.worker_count[worker]);
     }
   }
   free_unflattened_cube(unflattened_cube, problem_data.size_x, problem_data.size_y, problem_data.size_z);
+}
+
+void send_data_to_workers(problem_data_t problem_data) {
+  for(size_t worker = 0; worker < problem_data.num_workers; worker++) {
+    MPI_Send(&problem_data.stencil_size, 1, MPI_UINT32_T, worker, 0, problem_data.communicator);
+    MPI_Send(&problem_data.iterations, 1, MPI_UINT32_T, worker, 0, problem_data.communicator);
+    MPI_Send(problem_data.worker_count + worker, 1, MPI_UNSIGNED_LONG, worker, 0, problem_data.communicator);
+    MPI_Send(problem_data.worker_indices[worker], problem_data.worker_count[worker], MPI_UNSIGNED_LONG, worker, 0, problem_data.communicator);
+    MPI_Send(problem_data.workers[worker], problem_data.worker_count[worker], MPI_FLOAT, worker, 0, problem_data.communicator);
+  }
 }
 
 void free_problem_data(problem_data_t problem_data) {

@@ -7,14 +7,14 @@ void mpi_world_init(MPI_Comm *communicator, const int topology[DIMENSIONS]) {
   MPI_Cart_create(MPI_COMM_WORLD, DIMENSIONS, topology, periods, reorder, communicator);
 }
 
-mpi_process_t mpi_process_init(MPI_Comm communicator, int rank, unsigned int topology[DIMENSIONS]) {
+mpi_process_t mpi_process_init(MPI_Comm communicator, int rank, int topology[DIMENSIONS]) {
   mpi_process_t process;
   process.communicator = communicator;
   MPI_Cart_coords(communicator, rank, DIMENSIONS, process.coordinates);
 
-  for (int i = 0; i < DIMENSIONS; i++) {
-    MPI_Cart_shift(communicator, i, 1, process.neighbours + 2 * i, process.neighbours + 2 * i + 1);
-  }
+  MPI_Cart_shift(communicator, 0, 1, process.neighbours + LEFT, process.neighbours + RIGHT);
+  MPI_Cart_shift(communicator, 1, 1, process.neighbours + UP, process.neighbours + DOWN);
+  MPI_Cart_shift(communicator, 2, 1, process.neighbours + FRONT, process.neighbours + BACK);
 
   return process;
 }

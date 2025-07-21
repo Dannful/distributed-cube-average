@@ -18,7 +18,12 @@ typedef struct {
   int rank;
   int coordinates[DIMENSIONS];
   int neighbours[DIMENSIONS * 2];
+  unsigned int iterations;
+  size_t count;
+  unsigned int stencil_size;
+  size_t *indices;
+  float *data;
 } mpi_process_t;
 
 void mpi_world_init(MPI_Comm *communicator, const int topology[DIMENSIONS]);
-mpi_process_t mpi_process_init(MPI_Comm communicator, int rank, unsigned int topology[DIMENSIONS]);
+mpi_process_t mpi_process_init(MPI_Comm communicator, int rank, int topology[DIMENSIONS]);

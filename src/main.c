@@ -35,7 +35,10 @@ int main(int argc, char **argv) {
     send_data_to_workers(problem_data);
     free_problem_data(problem_data);
   } else {
+    log_info(rank, "Awaiting data from coordinator...");
     mpi_process_t process = receive_worker_data(communicator, rank, topology);
+    log_info(rank, "Data received from coordinator. Starting worker process...");
+    worker_process(process);
     worker_free(process);
   }
   MPI_Finalize();

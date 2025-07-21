@@ -38,16 +38,7 @@ mpi_process_t receive_worker_data(MPI_Comm communicator, int rank, int topology[
   return process;
 }
 
-void worker_process(unsigned int iterations, unsigned int stencil_size, float *data, size_t count, size_t *indices) {
-  size_t *partition_sizes = calloc(sizeof(size_t), count);
-  for(int i = 0; i < iterations; i++) {
-    for(size_t j = 0; j < count; j++) {
-      size_t position_x, position_y, position_z;
-      extract_coordinates(&position_x, &position_y, &position_z, indices[0], indices[1], indices[2], j);
-      unsigned int worker = get_assigned_worker(position_x, position_y, position_z, indices[0], indices[1], indices[2], indices[3]);
-    }
-  }
-  free(partition_sizes);
+void worker_process(mpi_process_t process) {
 }
 
 void worker_free(mpi_process_t process) {

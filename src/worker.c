@@ -31,6 +31,7 @@ mpi_process_t receive_worker_data(MPI_Comm communicator, int rank, int topology[
   MPI_Safe_Recv(&process.stencil_size, 1, MPI_UINT32_T, COORDINATOR, MPI_ANY_TAG, communicator);
   MPI_Safe_Recv(&process.iterations, 1, MPI_UINT32_T, COORDINATOR, MPI_ANY_TAG, communicator);
   MPI_Safe_Recv(&process.count, 1, MPI_UNSIGNED_LONG, COORDINATOR, MPI_ANY_TAG, communicator);
+  MPI_Safe_Recv(process.sizes, DIMENSIONS, MPI_UNSIGNED_LONG, COORDINATOR, MPI_ANY_TAG, communicator);
   process.indices = malloc(process.count * sizeof(size_t));
   process.data = malloc(process.count * sizeof(float));
   MPI_Safe_Recv(process.indices, process.count, MPI_UNSIGNED_LONG, COORDINATOR, MPI_ANY_TAG, communicator);
@@ -39,6 +40,12 @@ mpi_process_t receive_worker_data(MPI_Comm communicator, int rank, int topology[
 }
 
 void worker_process(mpi_process_t process) {
+  size_t cell_size = (process.stencil_size - 1) / 2;
+  float ***unflattened_cube = unflatten_cube(process.data, process.sizes[0], process.sizes[1], process.sizes[2]);
+  if(process.neighbours[LEFT] >= 0) {
+    // MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm, MPI_Request *request);
+  }
+  free_unflattened_cube(unflattened_cube, process.sizes[0], process.sizes[1], process.sizes[2]);
 }
 
 void worker_free(mpi_process_t process) {

@@ -44,6 +44,15 @@ problem_data_t init_problem_data(MPI_Comm comm, unsigned int topology[DIMENSIONS
     free(result.worker_indices);
     exit(EXIT_FAILURE);
   }
+  result.worker_sizes = calloc(workers, sizeof(size_t*));
+  if(result.worker_sizes == NULL) {
+    log_error(0, "Failed to allocate memory for worker sizes.");
+    free(result.cube);
+    free(result.worker_count);
+    free(result.worker_indices);
+    free(result.workers);
+    exit(EXIT_FAILURE);
+  }
   return result;
 }
 
@@ -62,6 +71,10 @@ void partition_cube(problem_data_t problem_data) {
     size_t worker_size_x = process_coordinates[0] == problem_data.topology[0] - 1 ? partition_size_x + remainder_x : partition_size_x;
     size_t worker_size_y = process_coordinates[1] == problem_data.topology[1] - 1 ? partition_size_y + remainder_y : partition_size_y;
     size_t worker_size_z = process_coordinates[2] == problem_data.topology[2] - 1 ? partition_size_z + remainder_z : partition_size_z;
+    problem_data.worker_sizes[worker] = malloc(sizeof(size_t) * 3);
+    problem_data.worker_sizes[worker][0] = worker_size_x;
+    problem_data.worker_sizes[worker][1] = worker_size_y;
+    problem_data.worker_sizes[worker][2] = worker_size_z;
     problem_data.workers[worker] = malloc(sizeof(float) * worker_size_x * worker_size_y * worker_size_z);
     problem_data.worker_indices[worker] = malloc(sizeof(size_t) * worker_size_x * worker_size_y * worker_size_z);
     for(size_t x =  process_coordinates[0] * partition_size_x; x < process_coordinates[0] * partition_size_x + worker_size_x; x++) {
@@ -82,6 +95,7 @@ void send_data_to_workers(problem_data_t problem_data) {
     MPI_Send(&problem_data.stencil_size, 1, MPI_UINT32_T, worker, 0, problem_data.communicator);
     MPI_Send(&problem_data.iterations, 1, MPI_UINT32_T, worker, 0, problem_data.communicator);
     MPI_Send(problem_data.worker_count + worker, 1, MPI_UNSIGNED_LONG, worker, 0, problem_data.communicator);
+    MPI_Send(problem_data.worker_sizes[worker], DIMENSIONS, MPI_UNSIGNED_LONG, worker, 0, problem_data.communicator);
     MPI_Send(problem_data.worker_indices[worker], problem_data.worker_count[worker], MPI_UNSIGNED_LONG, worker, 0, problem_data.communicator);
     MPI_Send(problem_data.workers[worker], problem_data.worker_count[worker], MPI_FLOAT, worker, 0, problem_data.communicator);
   }
@@ -92,8 +106,10 @@ void free_problem_data(problem_data_t problem_data) {
   for(size_t i = 0; i < problem_data.num_workers; i++) {
     free(problem_data.workers[i]);
     free(problem_data.worker_indices[i]);
+    free(problem_data.worker_sizes[i]);
   }
   free(problem_data.workers);
   free(problem_data.worker_indices);
   free(problem_data.worker_count);
+  free(problem_data.worker_sizes);
 }

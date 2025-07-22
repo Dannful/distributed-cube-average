@@ -16,6 +16,7 @@ typedef struct {
   size_t num_workers;
   float *cube;
   float **workers;
+  size_t **worker_sizes;
   size_t **worker_indices;
   size_t *worker_count;
   unsigned int topology[DIMENSIONS];

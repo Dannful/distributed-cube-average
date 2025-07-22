@@ -22,6 +22,7 @@ typedef struct {
   size_t count;
   unsigned int stencil_size;
   size_t *indices;
+  size_t sizes[DIMENSIONS];
   float *data;
 } mpi_process_t;
 

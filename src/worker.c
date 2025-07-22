@@ -42,8 +42,25 @@ mpi_process_t receive_worker_data(MPI_Comm communicator, int rank, int topology[
 void worker_process(mpi_process_t process) {
   size_t cell_size = (process.stencil_size - 1) / 2;
   float ***unflattened_cube = unflatten_cube(process.data, process.sizes[0], process.sizes[1], process.sizes[2]);
-  if(process.neighbours[LEFT] >= 0) {
-    // MPI_Isend(const void *buf, int count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm, MPI_Request *request);
+  for(unsigned int dimension = 0; dimension < DIMENSIONS; dimension++) {
+    for(unsigned int direction = 0; direction < 2; direction++) {
+      size_t data_size = cell_size;
+      for(unsigned int other_dimension = 0; other_dimension < DIMENSIONS; other_dimension++)
+        if(other_dimension != dimension)
+          data_size *= process.sizes[other_dimension];
+      float *data = malloc(sizeof(float) * data_size);
+      for(size_t x = dimension != 0 || direction == 0 ? 0 : (process.sizes[dimension] - cell_size); x < (dimension != 0 || direction == 1 ? process.sizes[0] : cell_size); x++) {
+        for(size_t y = dimension != 1 || direction == 0 ? 0 : (process.sizes[dimension] - cell_size); y < (dimension != 1 || direction == 1 ? process.sizes[1] : cell_size); y++) {
+          for(size_t z = dimension != 2 || direction == 0 ? 0 : (process.sizes[dimension] - cell_size); z < (dimension != 2 || direction == 1 ? process.sizes[2] : cell_size); z++) {
+            size_t index = get_index_for_coordinates(x, y, z, dimension == 0 ? cell_size : process.sizes[0], dimension == 1 ? cell_size : process.sizes[1], dimension == 2 ? cell_size : process.sizes[2]);
+            data[index] = unflattened_cube[x][y][z];
+          }
+        }
+      }
+      MPI_Request request;
+      MPI_Isend(data, data_size, MPI_FLOAT, process.neighbours[2 * dimension + direction], 0, process.communicator, &request);
+      free(data);
+    }
   }
   free_unflattened_cube(unflattened_cube, process.sizes[0], process.sizes[1], process.sizes[2]);
 }

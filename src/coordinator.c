@@ -57,7 +57,6 @@ problem_data_t init_problem_data(MPI_Comm comm, unsigned int topology[DIMENSIONS
 }
 
 void partition_cube(problem_data_t problem_data) {
-  float ***unflattened_cube = unflatten_cube(problem_data.cube, problem_data.size_x, problem_data.size_y, problem_data.size_z);
   size_t partition_size_x = problem_data.size_x / problem_data.topology[0];
   size_t partition_size_y = problem_data.size_y / problem_data.topology[1];
   size_t partition_size_z = problem_data.size_z / problem_data.topology[2];
@@ -80,13 +79,13 @@ void partition_cube(problem_data_t problem_data) {
     for(size_t x =  process_coordinates[0] * partition_size_x; x < process_coordinates[0] * partition_size_x + worker_size_x; x++) {
       for(size_t y = process_coordinates[1] * partition_size_y; y < process_coordinates[1] * partition_size_y + worker_size_y; y++) {
         for(size_t z = process_coordinates[2] * partition_size_z; z < process_coordinates[2] * partition_size_z + worker_size_z; z++) {
-          problem_data.workers[worker][problem_data.worker_count[worker]] = unflattened_cube[x][y][z];
+          size_t index = get_index_for_coordinates(x, y, z, problem_data.size_x, problem_data.size_y, problem_data.size_z);
+          problem_data.workers[worker][problem_data.worker_count[worker]] = problem_data.cube[index];
           problem_data.worker_indices[worker][problem_data.worker_count[worker]++] = get_index_for_coordinates(x, y, z, problem_data.size_x, problem_data.size_y, problem_data.size_z);
         }
       }
     }
   }
-  free_unflattened_cube(unflattened_cube, problem_data.size_x, problem_data.size_y, problem_data.size_z);
 }
 
 void send_data_to_workers(problem_data_t problem_data) {

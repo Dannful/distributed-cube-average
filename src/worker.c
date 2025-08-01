@@ -49,33 +49,31 @@ void worker_process(mpi_process_t process) {
         if(other_dimension != dimension)
           data_size *= process.sizes[other_dimension];
       float *data = malloc(sizeof(float) * data_size);
+      size_t *indices = malloc(sizeof(size_t) * data_size);
       log_info(process.rank, "Sending %zu bytes of data in dimension %d, direction %d to worker %d", sizeof(float) * data_size, dimension, direction, neighbour_rank);
       size_t data_index = 0;
       for(size_t x = dimension != 0 || direction == 0 ? 0 : (process.sizes[dimension] - cell_size); x < (dimension != 0 || direction == 1 ? process.sizes[0] : cell_size); x++) {
         for(size_t y = dimension != 1 || direction == 0 ? 0 : (process.sizes[dimension] - cell_size); y < (dimension != 1 || direction == 1 ? process.sizes[1] : cell_size); y++) {
           for(size_t z = dimension != 2 || direction == 0 ? 0 : (process.sizes[dimension] - cell_size); z < (dimension != 2 || direction == 1 ? process.sizes[2] : cell_size); z++) {
             size_t index = get_index_for_coordinates(x, y, z, process.sizes[0], process.sizes[1], process.sizes[2]);
+            indices[data_index] = index;
             data[data_index++] = process.data[index];
           }
         }
       }
       MPI_Request request;
       MPI_Status status;
-      float *received = NULL;
-      if(direction == 0) {
-        MPI_Send(&data_size, 1, MPI_UNSIGNED_LONG, neighbour_rank, 0, process.communicator);
-        MPI_Send(data, data_size, MPI_FLOAT, neighbour_rank, 0, process.communicator);
-        MPI_Recv(&data_size, 1, MPI_UNSIGNED_LONG, neighbour_rank, MPI_ANY_TAG, process.communicator, MPI_STATUS_IGNORE);
-        received = malloc(data_size * sizeof(float));
-        MPI_Recv(received, data_size, MPI_FLOAT, neighbour_rank, MPI_ANY_TAG, process.communicator, MPI_STATUS_IGNORE);
-      } else {
-        MPI_Recv(&data_size, 1, MPI_UNSIGNED_LONG, neighbour_rank, MPI_ANY_TAG, process.communicator, MPI_STATUS_IGNORE);
-        received = malloc(data_size * sizeof(float));
-        MPI_Recv(received, data_size, MPI_FLOAT, neighbour_rank, MPI_ANY_TAG, process.communicator, MPI_STATUS_IGNORE);
-        MPI_Send(&data_size, 1, MPI_UNSIGNED_LONG, neighbour_rank, 0, process.communicator);
-        MPI_Send(data, data_size, MPI_FLOAT, neighbour_rank, 0, process.communicator);
-      }
-      free(received);
+      MPI_Isend(&data_size, 1, MPI_UNSIGNED_LONG, neighbour_rank, 0, process.communicator, &request);
+      MPI_Isend(indices, data_size, MPI_UNSIGNED_LONG, neighbour_rank, 0, process.communicator, &request);
+      MPI_Isend(data, data_size, MPI_FLOAT, neighbour_rank, 0, process.communicator, &request);
+      free(indices);
+      free(data);
+      MPI_Recv(&data_size, 1, MPI_UNSIGNED_LONG, neighbour_rank, MPI_ANY_TAG, process.communicator, &status);
+      data = malloc(data_size * sizeof(float));
+      indices = malloc(data_size * sizeof(size_t));
+      MPI_Recv(indices, data_size, MPI_UNSIGNED_LONG, neighbour_rank, MPI_ANY_TAG, process.communicator, &status);
+      MPI_Recv(data, data_size, MPI_FLOAT, neighbour_rank, MPI_ANY_TAG, process.communicator, &status);
+      free(indices);
       free(data);
     }
   }

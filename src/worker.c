@@ -3,7 +3,6 @@
 #include "../include/worker.h"
 #include "../include/utils.h"
 #include "../include/setup.h"
-#include "../include/io.h"
 #include "../include/coordinator.h"
 #include "../include/log.h"
 #include "mpi.h"
@@ -40,41 +39,81 @@ void receive_worker_data(mpi_process_t *process) {
 
 void worker_process(mpi_process_t process) {
   size_t cell_size = (process.stencil_size - 1) / 2;
-  for(unsigned int dimension = 0; dimension < DIMENSIONS; dimension++) {
-    for(unsigned int direction = 0; direction < 2; direction++) {
-      int neighbour_rank = process.neighbours[2 * dimension + direction];
-      if(neighbour_rank < 0) continue;
-      size_t data_size = cell_size;
-      for(unsigned int other_dimension = 0; other_dimension < DIMENSIONS; other_dimension++)
-        if(other_dimension != dimension)
-          data_size *= process.sizes[other_dimension];
-      float *data = malloc(sizeof(float) * data_size);
-      size_t *indices = malloc(sizeof(size_t) * data_size);
-      log_info(process.rank, "Sending %zu bytes of data in dimension %d, direction %d to worker %d", sizeof(float) * data_size, dimension, direction, neighbour_rank);
-      size_t data_index = 0;
-      for(size_t x = dimension != 0 || direction == 0 ? 0 : (process.sizes[dimension] - cell_size); x < (dimension != 0 || direction == 1 ? process.sizes[0] : cell_size); x++) {
-        for(size_t y = dimension != 1 || direction == 0 ? 0 : (process.sizes[dimension] - cell_size); y < (dimension != 1 || direction == 1 ? process.sizes[1] : cell_size); y++) {
-          for(size_t z = dimension != 2 || direction == 0 ? 0 : (process.sizes[dimension] - cell_size); z < (dimension != 2 || direction == 1 ? process.sizes[2] : cell_size); z++) {
-            size_t index = get_index_for_coordinates(x, y, z, process.sizes[0], process.sizes[1], process.sizes[2]);
-            indices[data_index] = index;
-            data[data_index++] = process.data[index];
+  if (cell_size == 0) return;
+
+  for (int dx = -1; dx <= 1; dx++) {
+    for (int dy = -1; dy <= 1; dy++) {
+      for (int dz = -1; dz <= 1; dz++) {
+        if (dx == 0 && dy == 0 && dz == 0) continue;
+
+        int displacement[DIMENSIONS] = {dx, dy, dz};
+        int target_coords[DIMENSIONS];
+        unsigned char is_displacement_valid = 1;
+        for(unsigned int i = 0; i < DIMENSIONS; i++) {
+          if(process.coordinates[i] + displacement[i] < 0 || process.coordinates[i] + displacement[i] >= process.topology[i]) {
+            is_displacement_valid = 0;
+            break;
+          }
+          target_coords[i] = process.coordinates[i] + displacement[i];
+        }
+        if(!is_displacement_valid) continue;
+
+        int neighbour_rank;
+        MPI_Cart_rank(process.communicator, target_coords, &neighbour_rank);
+
+        if (neighbour_rank < 0) continue;
+
+        size_t data_size = 1;
+        size_t data_dims[DIMENSIONS];
+        for(unsigned int i = 0; i < DIMENSIONS; i++) {
+          data_dims[i] = (displacement[i] == 0) ? process.sizes[i] : cell_size;
+          data_size *= data_dims[i];
+        }
+
+        float *send_data = malloc(sizeof(float) * data_size);
+        size_t *send_indices = malloc(sizeof(size_t) * data_size);
+
+        log_info(process.rank, "Preparing %zu elements for neighbor %d at displacement (%d,%d,%d)",
+                 data_size, neighbour_rank, dx, dy, dz);
+
+        size_t start_coords[DIMENSIONS], end_coords[DIMENSIONS];
+        for(unsigned int i = 0; i < DIMENSIONS; i++) {
+            start_coords[i] = (displacement[i] > 0) ? (process.sizes[i] - cell_size) : 0;
+            end_coords[i]   = (displacement[i] < 0) ? cell_size : process.sizes[i];
+        }
+
+        size_t data_index = 0;
+        for (size_t x = start_coords[0]; x < end_coords[0]; x++) {
+          for (size_t y = start_coords[1]; y < end_coords[1]; y++) {
+            for (size_t z = start_coords[2]; z < end_coords[2]; z++) {
+              size_t index = get_index_for_coordinates(x, y, z, process.sizes[0], process.sizes[1], process.sizes[2]);
+              send_indices[data_index] = index;
+              send_data[data_index++] = process.data[index];
+            }
           }
         }
+
+        MPI_Request request;
+        MPI_Status status;
+
+        MPI_Isend(&data_size, 1, MPI_UNSIGNED_LONG, neighbour_rank, 0, process.communicator, &request);
+        MPI_Isend(send_indices, data_size, MPI_UNSIGNED_LONG, neighbour_rank, 0, process.communicator, &request);
+        MPI_Isend(send_data, data_size, MPI_FLOAT, neighbour_rank, 0, process.communicator, &request);
+        free(send_indices);
+        free(send_data);
+
+        size_t recv_data_size;
+        MPI_Recv(&recv_data_size, 1, MPI_UNSIGNED_LONG, neighbour_rank, 0, process.communicator, &status);
+
+        float *recv_data = malloc(recv_data_size * sizeof(float));
+        size_t *recv_indices = malloc(recv_data_size * sizeof(size_t));
+
+        MPI_Recv(recv_indices, recv_data_size, MPI_UNSIGNED_LONG, neighbour_rank, 0, process.communicator, &status);
+        MPI_Recv(recv_data, recv_data_size, MPI_FLOAT, neighbour_rank, 0, process.communicator, &status);
+
+        free(recv_indices);
+        free(recv_data);
       }
-      MPI_Request request;
-      MPI_Status status;
-      MPI_Isend(&data_size, 1, MPI_UNSIGNED_LONG, neighbour_rank, 0, process.communicator, &request);
-      MPI_Isend(indices, data_size, MPI_UNSIGNED_LONG, neighbour_rank, 0, process.communicator, &request);
-      MPI_Isend(data, data_size, MPI_FLOAT, neighbour_rank, 0, process.communicator, &request);
-      free(indices);
-      free(data);
-      MPI_Recv(&data_size, 1, MPI_UNSIGNED_LONG, neighbour_rank, MPI_ANY_TAG, process.communicator, &status);
-      data = malloc(data_size * sizeof(float));
-      indices = malloc(data_size * sizeof(size_t));
-      MPI_Recv(indices, data_size, MPI_UNSIGNED_LONG, neighbour_rank, MPI_ANY_TAG, process.communicator, &status);
-      MPI_Recv(data, data_size, MPI_FLOAT, neighbour_rank, MPI_ANY_TAG, process.communicator, &status);
-      free(indices);
-      free(data);
     }
   }
 }

@@ -1,5 +1,6 @@
 #include "../include/setup.h"
 #include "mpi.h"
+#include "string.h"
 
 void mpi_world_init(MPI_Comm *communicator, const int topology[DIMENSIONS]) {
   const int periods[DIMENSIONS] = {0, 0, 0};
@@ -11,6 +12,7 @@ mpi_process_t mpi_process_init(MPI_Comm communicator, int rank, int topology[DIM
   mpi_process_t process;
   process.communicator = communicator;
   process.rank = rank;
+  memccpy(process.topology, topology, sizeof(int), DIMENSIONS);
   MPI_Cart_coords(communicator, rank, DIMENSIONS, process.coordinates);
 
   MPI_Cart_shift(communicator, 0, 1, process.neighbours + LEFT, process.neighbours + RIGHT);

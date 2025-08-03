@@ -18,6 +18,7 @@ typedef struct {
   int rank;
   int coordinates[DIMENSIONS];
   int neighbours[DIMENSIONS * 2];
+  int topology[DIMENSIONS];
   unsigned int iterations;
   size_t count;
   unsigned int stencil_size;

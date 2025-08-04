@@ -5,7 +5,7 @@
 #include "../include/setup.h"
 #include "../include/coordinator.h"
 #include "../include/log.h"
-#include "mpi.h"
+#include <mpi.h>
 
 void extract_coordinates(size_t *position_x, size_t *position_y, size_t *position_z, size_t size_x, size_t size_y, size_t size_z, int index) {
   *position_x = index % size_x;

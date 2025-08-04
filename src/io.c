@@ -1,5 +1,5 @@
 #include "../include/io.h"
-#include "mpi.h"
+#include <mpi.h>
 
 void MPI_Safe_Recv(void *buffer, size_t count, MPI_Datatype data_type, unsigned int source, int tag, MPI_Comm channel) {
   MPI_Status status;

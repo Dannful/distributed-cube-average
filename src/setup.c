@@ -1,6 +1,6 @@
 #include "../include/setup.h"
-#include "mpi.h"
-#include "string.h"
+#include <mpi.h>
+#include <string.h>
 
 void mpi_world_init(MPI_Comm *communicator, const int topology[DIMENSIONS]) {
   const int periods[DIMENSIONS] = {0, 0, 0};

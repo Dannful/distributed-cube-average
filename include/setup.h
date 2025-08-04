@@ -25,7 +25,7 @@ typedef struct {
   size_t *indices;
   size_t sizes[DIMENSIONS];
   float *data;
-} mpi_process_t;
+} dc_process_t;
 
-void mpi_world_init(MPI_Comm *communicator, const int topology[DIMENSIONS]);
-mpi_process_t mpi_process_init(MPI_Comm communicator, int rank, int topology[DIMENSIONS]);
+void dc_mpi_world_init(MPI_Comm *communicator, const int topology[DIMENSIONS]);
+dc_process_t dc_process_init(MPI_Comm communicator, int rank, int topology[DIMENSIONS]);

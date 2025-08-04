@@ -8,10 +8,11 @@
           pname = "distributed-cube-average";
           version = "0.1.0";
           src = ./.;
-          nativeBuildInputs = with pkgs; [ openmpi ];
-          buildPhase = ''
+          nativeBuildInputs = with pkgs; [ gnumake openmpi ];
+          buildPhase = "make all";
+          installPhase = ''
             mkdir -p $out/bin
-            mpicc -o $out/bin/distributed-cube-average src/*.c
+            cp bin/distributed-cube-average $out/bin/
           '';
         };
       in {

@@ -1,9 +1,10 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include "../include/log.h"
 
-void log_info(int rank, char *message,...) {
+#include "log.h"
+
+void dc_log_info(int rank, char *message,...) {
   va_list args;
   va_start(args, message);
   char hostname[256];
@@ -20,7 +21,7 @@ void log_info(int rank, char *message,...) {
   printf("\n");
 }
 
-void log_error(int rank, char *message, ...) {
+void dc_log_error(int rank, char *message, ...) {
   char hostname[256];
   gethostname(hostname, sizeof(hostname));
   char worker_type[12] = {0};

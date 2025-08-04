@@ -22,7 +22,7 @@ typedef struct {
   unsigned int topology[DIMENSIONS];
 } problem_data_t;
 
-problem_data_t init_problem_data(MPI_Comm comm, unsigned int topology[DIMENSIONS], unsigned int workers, unsigned int iterations, unsigned int stencil_size, size_t size_x, size_t size_y, size_t size_z);
-void send_data_to_workers(problem_data_t problem_data);
-void partition_cube(problem_data_t problem_data);
-void free_problem_data(problem_data_t problem_data);
+problem_data_t dc_initialize_problem(MPI_Comm comm, unsigned int topology[DIMENSIONS], unsigned int workers, unsigned int iterations, unsigned int stencil_size, size_t size_x, size_t size_y, size_t size_z);
+void dc_send_data_to_workers(problem_data_t problem_data);
+void dc_partition_cube(problem_data_t problem_data);
+void dc_free_problem_data_mem(problem_data_t problem_data);

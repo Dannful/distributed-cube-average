@@ -1,15 +1,16 @@
 #include <mpi.h>
 #include <string.h>
-#include "../include/setup.h"
 
-void mpi_world_init(MPI_Comm *communicator, const int topology[DIMENSIONS]) {
+#include "setup.h"
+
+void dc_mpi_world_init(MPI_Comm *communicator, const int topology[DIMENSIONS]) {
   const int periods[DIMENSIONS] = {0, 0, 0};
   int reorder = 0;
   MPI_Cart_create(MPI_COMM_WORLD, DIMENSIONS, topology, periods, reorder, communicator);
 }
 
-mpi_process_t mpi_process_init(MPI_Comm communicator, int rank, int topology[DIMENSIONS]) {
-  mpi_process_t process;
+dc_process_t dc_process_init(MPI_Comm communicator, int rank, int topology[DIMENSIONS]) {
+  dc_process_t process;
   process.communicator = communicator;
   process.rank = rank;
   memccpy(process.topology, topology, sizeof(int), DIMENSIONS);

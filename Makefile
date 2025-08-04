@@ -24,7 +24,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	@echo "Limpando arquivos de compilação..."
+	@echo "Cleaning compilation files..."
 	rm -rf $(BUILDDIR)
 
 .PHONY: all clean

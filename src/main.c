@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "../include/coordinator.h"
 #include "../include/setup.h"
 #include "../include/log.h"

@@ -1,7 +1,7 @@
-#include "../include/log.h"
 #include <unistd.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include "../include/log.h"
 
 void log_info(int rank, char *message,...) {
   va_list args;

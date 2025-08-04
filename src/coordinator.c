@@ -1,10 +1,10 @@
+#include <mpi.h>
+#include <string.h>
 #include "../include/coordinator.h"
 #include "../include/utils.h"
 #include "../include/log.h"
 #include "../include/setup.h"
 #include "../include/worker.h"
-#include <mpi.h>
-#include <string.h>
 
 problem_data_t init_problem_data(MPI_Comm comm, unsigned int topology[DIMENSIONS], unsigned int workers, unsigned int iterations, unsigned int stencil_size, size_t size_x, size_t size_y, size_t size_z) {
   problem_data_t result;

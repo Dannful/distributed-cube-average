@@ -1,5 +1,5 @@
-#include "../include/utils.h"
 #include <stdlib.h>
+#include "../include/utils.h"
 
 unsigned int greatest_common_divisor(unsigned int a, unsigned int b) {
   unsigned int d = 0;

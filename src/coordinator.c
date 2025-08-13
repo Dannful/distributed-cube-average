@@ -21,8 +21,9 @@ problem_data_t dc_initialize_problem(MPI_Comm comm, unsigned int topology[DIMENS
     dc_log_error(0, "Failed to allocate memory for cube data.");
     exit(EXIT_FAILURE);
   }
-  for(size_t i = 0; i < size_x * size_y * size_z; i++)
+  for(size_t i = 0; i < size_x * size_y * size_z; i++) {
     result.cube[i] = (float)i;
+  }
   result.worker_count = calloc(workers, sizeof(size_t));
   if(result.worker_count == NULL) {
     dc_log_error(0, "Failed to allocate memory for worker counts.");

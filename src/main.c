@@ -20,9 +20,9 @@ int main(int argc, char **argv) {
 
   dc_process_t mpi_process = dc_process_init(communicator, rank, topology);
 
-  const size_t size_x = 100;
-  const size_t size_y = 100;
-  const size_t size_z = 100;
+  const size_t size_x = 3;
+  const size_t size_y = 3;
+  const size_t size_z = 3;
   const unsigned int iterations = 6, stencil_size = 3;
 
   if(rank == COORDINATOR) {

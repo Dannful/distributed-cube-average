@@ -13,7 +13,7 @@ dc_process_t dc_process_init(MPI_Comm communicator, int rank, int topology[DIMEN
   dc_process_t process;
   process.communicator = communicator;
   process.rank = rank;
-  memccpy(process.topology, topology, sizeof(int), DIMENSIONS);
+  memcpy(process.topology, topology, sizeof(int) * DIMENSIONS);
   MPI_Cart_coords(communicator, rank, DIMENSIONS, process.coordinates);
 
   MPI_Cart_shift(communicator, 0, 1, process.neighbours + LEFT, process.neighbours + RIGHT);

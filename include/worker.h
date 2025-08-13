@@ -7,14 +7,14 @@
 typedef struct {
   size_t count;
   MPI_Request *requests;
+  void **buffers_to_free;
 } worker_requests_t;
 
 typedef struct {
   worker_requests_t requests;
   size_t halo_count;
   size_t *halo_sizes;
-  size_t **halo_indices;
-  size_t **halo_data;
+  float **halo_data;
 } worker_halos_t;
 
 void dc_extract_coordinates(size_t *position_x, size_t *position_y, size_t *position_z, size_t size_x, size_t size_y, size_t size_z, int index);

@@ -22,7 +22,7 @@ problem_data_t dc_initialize_problem(MPI_Comm comm, unsigned int topology[DIMENS
     exit(EXIT_FAILURE);
   }
   for(size_t i = 0; i < size_x * size_y * size_z; i++) {
-    result.cube[i] = (float)i;
+    result.cube[i] = 1.0f;
   }
   result.worker_count = calloc(workers, sizeof(size_t));
   if(result.worker_count == NULL) {
@@ -95,7 +95,6 @@ void dc_send_data_to_workers(problem_data_t problem_data) {
     MPI_Send(&problem_data.iterations, 1, MPI_UINT32_T, worker, 0, problem_data.communicator);
     MPI_Send(problem_data.worker_count + worker, 1, MPI_UNSIGNED_LONG, worker, 0, problem_data.communicator);
     MPI_Send(problem_data.worker_sizes[worker], DIMENSIONS, MPI_UNSIGNED_LONG, worker, 0, problem_data.communicator);
-    MPI_Send(problem_data.worker_indices[worker], problem_data.worker_count[worker], MPI_UNSIGNED_LONG, worker, 0, problem_data.communicator);
     MPI_Send(problem_data.workers[worker], problem_data.worker_count[worker], MPI_FLOAT, worker, 0, problem_data.communicator);
   }
 }

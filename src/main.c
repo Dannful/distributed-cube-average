@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
   const size_t size_x = 3;
   const size_t size_y = 3;
   const size_t size_z = 3;
-  const unsigned int iterations = 6, stencil_size = 3;
+  const unsigned int iterations = 1, stencil_size = 3;
 
   if(rank == COORDINATOR) {
     dc_log_info(rank, "Initializing problem data...");
@@ -34,9 +34,7 @@ int main(int argc, char **argv) {
     dc_send_data_to_workers(problem_data);
     mpi_process.data = malloc(sizeof(float) * problem_data.worker_count[0]);
     mpi_process.count = problem_data.worker_count[0];
-    mpi_process.indices = malloc(sizeof(size_t) * problem_data.worker_count[0]);
     memmove(mpi_process.data, problem_data.workers[0], sizeof(float) * problem_data.worker_count[0]);
-    memmove(mpi_process.indices, problem_data.worker_indices[0], sizeof(size_t) * problem_data.worker_count[0]);
     memmove(mpi_process.sizes, problem_data.worker_sizes[0], sizeof(size_t) * DIMENSIONS);
     mpi_process.stencil_size = problem_data.stencil_size;
     mpi_process.iterations = problem_data.iterations;

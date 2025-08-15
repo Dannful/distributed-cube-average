@@ -22,7 +22,6 @@ typedef struct {
   unsigned int iterations;
   size_t count;
   unsigned int stencil_size;
-  size_t *indices;
   size_t sizes[DIMENSIONS];
   float *data;
 } dc_process_t;

@@ -17,8 +17,6 @@ typedef struct {
   float *cube;
   float **workers;
   size_t **worker_sizes;
-  size_t **worker_indices;
-  size_t *worker_count;
   unsigned int topology[DIMENSIONS];
 } problem_data_t;
 
@@ -26,3 +24,4 @@ problem_data_t dc_initialize_problem(MPI_Comm comm, unsigned int topology[DIMENS
 void dc_send_data_to_workers(problem_data_t problem_data);
 void dc_partition_cube(problem_data_t problem_data);
 void dc_free_problem_data_mem(problem_data_t problem_data);
+float *dc_receive_data_from_workers(dc_process_t coordinator_process, size_t cube_size_x, size_t cube_size_y, size_t cube_size_z);

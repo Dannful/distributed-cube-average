@@ -27,14 +27,12 @@ void dc_worker_receive_data(dc_process_t *process) {
            process->communicator, MPI_STATUS_IGNORE);
   MPI_Recv(&process->iterations, 1, MPI_UINT32_T, COORDINATOR, MPI_ANY_TAG,
            process->communicator, MPI_STATUS_IGNORE);
-  MPI_Recv(&process->count, 1, MPI_UNSIGNED_LONG, COORDINATOR, MPI_ANY_TAG,
-           process->communicator, MPI_STATUS_IGNORE);
   MPI_Recv(process->sizes, DIMENSIONS, MPI_UNSIGNED_LONG, COORDINATOR,
            MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
 
-  process->data = malloc(process->count * sizeof(float));
+  process->data = malloc(dc_compute_count_from_sizes(process->sizes) * sizeof(float));
 
-  MPI_Recv(process->data, process->count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG,
+  MPI_Recv(process->data, dc_compute_count_from_sizes(process->sizes), MPI_FLOAT, COORDINATOR, MPI_ANY_TAG,
            process->communicator, MPI_STATUS_IGNORE);
 }
 
@@ -339,10 +337,18 @@ void dc_compute_interior(const dc_process_t *process, float *output_data,
   }
 }
 
+void dc_send_data_to_coordinator(dc_process_t process) {
+  if(process.rank == COORDINATOR)
+    return;
+  MPI_Send(process.sizes, DIMENSIONS, MPI_UNSIGNED_LONG, COORDINATOR, 0, process.communicator);
+  MPI_Send(process.data, dc_compute_count_from_sizes(process.sizes), MPI_FLOAT, COORDINATOR, 0, process.communicator);
+}
+
 void dc_worker_process(dc_process_t process) {
-  float *current_data = malloc(process.count * sizeof(float));
-  memcpy(current_data, process.data, process.count * sizeof(float));
-  float *next_data = malloc(process.count * sizeof(float));
+  size_t count = dc_compute_count_from_sizes(process.sizes);
+  float *current_data = malloc(count * sizeof(float));
+  memcpy(current_data, process.data, count * sizeof(float));
+  float *next_data = malloc(count * sizeof(float));
   float *temp_ptr;
 
   worker_halos_t current_halos, future_halos;
@@ -377,7 +383,7 @@ void dc_worker_process(dc_process_t process) {
   }
 
   dc_free_worker_halos(&current_halos);
-  memcpy(process.data, current_data, process.count * sizeof(float));
+  memcpy(process.data, current_data, count * sizeof(float));
   free(current_data);
   free(next_data);
   dc_log_info(process.rank, "Processing complete.");
@@ -447,4 +453,12 @@ void dc_concatenate_worker_requests(worker_requests_t *target,
            source->count * sizeof(void *));
   }
   target->count = new_count;
+}
+
+size_t dc_compute_count_from_sizes(size_t sizes[DIMENSIONS]) {
+  size_t count = 1;
+  for(int i = 0; i < DIMENSIONS; i++) {
+    count *= sizes[i];
+  }
+  return count;
 }

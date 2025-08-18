@@ -30,6 +30,7 @@ void dc_worker_free(dc_process_t process);
 
 worker_requests_t dc_send_halo_to_neighbours(dc_process_t process, float *from);
 worker_halos_t dc_receive_halos(dc_process_t process);
+void dc_send_data_to_coordinator(dc_process_t process);
 
 void dc_compute_boundaries(const dc_process_t *process, float *output_data,
                            const float *input_data,
@@ -41,3 +42,5 @@ void dc_free_worker_halos(worker_halos_t *halos);
 void dc_free_worker_requests(worker_requests_t *requests);
 void dc_concatenate_worker_requests(worker_requests_t *target,
                                     worker_requests_t *source);
+
+size_t dc_compute_count_from_sizes(size_t sizes[DIMENSIONS]);

@@ -380,9 +380,10 @@ void dc_worker_process(dc_process_t process) {
     worker_requests_t send_reqs =
         dc_send_halo_to_neighbours(process, next_data);
     dc_compute_interior(&process, next_data, current_data);
-    dc_concatenate_worker_requests(&send_reqs, &future_halos.requests);
-    MPI_Waitall(send_reqs.count, send_reqs.requests, MPI_STATUS_IGNORE);
+    //    dc_concatenate_worker_requests(/* &send_reqs */, &future_halos.requests);
+    MPI_Waitall(future_halos.count, future_halos.requests, MPI_STATUS_IGNORE);
 
+    //free dos send_reqs.requests (todos os requests que foram feitos)
     dc_free_worker_requests(&send_reqs);
     dc_free_worker_halos(&current_halos);
     current_halos = future_halos;

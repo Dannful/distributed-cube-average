@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
   const size_t size_x = 3;
   const size_t size_y = 3;
   const size_t size_z = 3;
-  const unsigned int iterations = 6, stencil_size = 3;
+  const unsigned int iterations = 1, stencil_size = 1;
 
   if (rank == COORDINATOR) {
     dc_log_info(rank, "Initializing problem data...");
@@ -53,10 +53,16 @@ int main(int argc, char **argv) {
   }
   dc_log_info(rank, "Starting worker process...");
   dc_worker_process(mpi_process);
+ for(int i = 0; i < mpi_process.sizes[0] * mpi_process.sizes[1] * mpi_process.sizes[2]; i++) {
+    dc_log_info(mpi_process.rank, "testando %f", mpi_process.data[i]);
+  }
   dc_send_data_to_coordinator(mpi_process);
   if (rank == COORDINATOR) {
     float *cube =
         dc_receive_data_from_workers(mpi_process, size_x, size_y, size_z);
+    for(int i = 0; i < size_x * size_y * size_z; i++) {
+      dc_log_info(COORDINATOR, "Index: %d, Value: %f", i, cube[i]);
+    }
     // TODO: Export data somewhere
     free(cube);
   }

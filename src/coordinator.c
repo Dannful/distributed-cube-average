@@ -27,7 +27,7 @@ problem_data_t dc_initialize_problem(MPI_Comm comm,
     exit(EXIT_FAILURE);
   }
   for (size_t i = 0; i < size_x * size_y * size_z; i++) {
-    result.cube[i] = (float)1;
+    result.cube[i] = (float) (i + 1);
   }
   result.workers = calloc(workers, sizeof(float *));
   if (result.workers == NULL) {
@@ -68,13 +68,14 @@ void dc_partition_cube(problem_data_t problem_data) {
         process_coordinates[2] == problem_data.topology[2] - 1
             ? partition_size_z + remainder_z
             : partition_size_z;
-    problem_data.worker_sizes[worker] = malloc(sizeof(size_t) * 3);
+    problem_data.worker_sizes[worker] = malloc(sizeof(size_t) * DIMENSIONS);
     problem_data.worker_sizes[worker][0] = worker_size_x;
     problem_data.worker_sizes[worker][1] = worker_size_y;
     problem_data.worker_sizes[worker][2] = worker_size_z;
     problem_data.workers[worker] =
         malloc(sizeof(float) * worker_size_x * worker_size_y * worker_size_z);
     size_t count = 0;
+    dc_log_info(0, "Sizes: %zu %zu %zu", worker_size_x, worker_size_y, worker_size_z);
     for (size_t x = process_coordinates[0] * partition_size_x;
          x < process_coordinates[0] * partition_size_x + worker_size_x; x++) {
       for (size_t y = process_coordinates[1] * partition_size_y;
@@ -141,9 +142,7 @@ float *dc_receive_data_from_workers(dc_process_t coordinator_process,
             for (size_t z = 0; z < worker_sizes[2]; z++) {
               size_t worker_index = dc_get_index_for_coordinates(
                   x, y, z, worker_sizes[0], worker_sizes[1], worker_sizes[2]);
-              size_t global_index = worker_index + worker_x * worker_sizes[0] +
-                                    worker_y * worker_sizes[1] +
-                                    worker_z * worker_sizes[2];
+              size_t global_index = dc_get_index_for_coordinates(worker_x * worker_sizes[0] + x, worker_y * worker_sizes[1] + y, worker_z * worker_sizes[2] + z, cube_size_x, cube_size_y, cube_size_z);
               cube[global_index] = worker_data[worker_index];
             }
           }

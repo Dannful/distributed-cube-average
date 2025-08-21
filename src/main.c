@@ -17,13 +17,14 @@ int main(int argc, char **argv) {
   MPI_Dims_create(size, DIMENSIONS, topology);
   dc_mpi_world_init(&communicator, topology);
   MPI_Comm_rank(communicator, &rank);
+  dc_log_info(rank, "topology %d %d %d", topology[0], topology[1], topology[2]);
 
   dc_process_t mpi_process = dc_process_init(communicator, rank, topology);
 
-  const size_t size_x = 3;
-  const size_t size_y = 3;
-  const size_t size_z = 3;
-  const unsigned int iterations = 1, stencil_size = 1;
+  const size_t size_x = 100;
+  const size_t size_y = 100;
+  const size_t size_z = 100;
+  const unsigned int iterations = 1, stencil_size = 3;
 
   if (rank == COORDINATOR) {
     dc_log_info(rank, "Initializing problem data...");
@@ -53,17 +54,16 @@ int main(int argc, char **argv) {
   }
   dc_log_info(rank, "Starting worker process...");
   dc_worker_process(mpi_process);
- for(int i = 0; i < mpi_process.sizes[0] * mpi_process.sizes[1] * mpi_process.sizes[2]; i++) {
-    dc_log_info(mpi_process.rank, "testando %f", mpi_process.data[i]);
-  }
   dc_send_data_to_coordinator(mpi_process);
   if (rank == COORDINATOR) {
+    size_t total_size = size_x * size_y * size_z;
     float *cube =
         dc_receive_data_from_workers(mpi_process, size_x, size_y, size_z);
-    for(int i = 0; i < size_x * size_y * size_z; i++) {
-      dc_log_info(COORDINATOR, "Index: %d, Value: %f", i, cube[i]);
+    for(int i = 0; i < total_size; i++) {
+      dc_log_info(0, "Value: %f", cube[i]);
     }
-    // TODO: Export data somewhere
+    FILE *output = fopen("./predicted.dc", "w");
+    fwrite(cube, sizeof(float), total_size, output);
     free(cube);
   }
   dc_worker_free(mpi_process);

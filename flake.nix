@@ -15,16 +15,19 @@
             cp bin/distributed-cube-average $out/bin/
           '';
         };
+        rEnv = pkgs.rWrapper.override {
+          packages = with pkgs.rPackages; [ languageserver lintr here digest ];
+        };
       in {
         devShell = pkgs.mkShell {
-          buildInputs = with pkgs; [ openmpi clang-tools ];
+          buildInputs = [ pkgs.openmpi pkgs.clang-tools rEnv ];
           shellHook = ''
             export PATH=${pkgs.clang-tools}/bin/clangd:$PATH
           '';
         };
         packages.default =
           pkgs.writeShellScriptBin "run-distributed-cube-average" ''
-            ${pkgs.openmpi}/bin/mpirun --map-by :OVERSUBSCRIBE -np 27 ${distributed-cube-average}/bin/distributed-cube-average
+            ${pkgs.openmpi}/bin/mpirun --map-by :OVERSUBSCRIBE -np 25 ${distributed-cube-average}/bin/distributed-cube-average
           '';
         apps.default = {
           type = "app";

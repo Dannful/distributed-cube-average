@@ -58,6 +58,9 @@ int main(int argc, char **argv) {
     size_t total_size = size_x * size_y * size_z;
     float *cube =
         dc_receive_data_from_workers(mpi_process, size_x, size_y, size_z);
+    for(int i = 0; i < total_size; i++) {
+      dc_log_info(0, "%d: %f", i, cube[i]);
+    }
     FILE *output = fopen(argv[6], "wb");
     fwrite(cube, sizeof(float), total_size, output);
     fclose(output);

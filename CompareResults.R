@@ -7,4 +7,5 @@ predicted_path <- here::here("predicted.dc")
 ground_truth_hash <- digest::digest(file = ground_truth_path, algo = "sha256")
 predicted_hash <- digest::digest(file = predicted_path, algo = "sha256")
 
-print(predicted_hash == ground_truth_hash)
+output <- if (predicted_hash == ground_truth_hash) "✅ Validation successful!" else "✖️ Validation error: the outputs differ."
+output

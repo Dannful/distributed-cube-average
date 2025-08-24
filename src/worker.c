@@ -59,10 +59,6 @@ worker_requests_t dc_send_halo_to_neighbours(dc_process_t process,
         continue;
       }
       MPI_Cart_rank(process.communicator, target_coords, &neighbour_rank);
-      if (process.coordinates[0] == 1 && process.coordinates[1] == 1 &&
-          process.coordinates[2] == 0) {
-        dc_log_info(process.rank, "jirmio %f", process.data[1]);
-      }
 
       int displacement[DIMENSIONS] = {0};
       displacement[dim] = dir;
@@ -231,13 +227,19 @@ static void dc_compute_stencil_for_point(size_t x, size_t y, size_t z,
                                          const float *input_data,
                                          const worker_halos_t *halos) {
   const int radius = process->stencil_size;
-  size_t current_index = dc_get_index_for_coordinates(
-      x, y, z, process->sizes[0], process->sizes[1], process->sizes[2]);
-  double sum = input_data[current_index];
-  int count = 1;
+  double sum = 0.0;
+  int count = 0;
+  float neighbour_value;
 
-  for (int displacement = 1; displacement <= radius; displacement++) {
-    float neighbour_value;
+  for (int displacement = 0; displacement <= radius; displacement++) {
+    if (displacement == 0) {
+      if (get_value_at_coord(x, y, z, process, input_data, halos,
+                             &neighbour_value)) {
+        sum += neighbour_value;
+        count++;
+      }
+      continue;
+    }
     if (get_value_at_coord(x + displacement, y, z, process, input_data, halos,
                            &neighbour_value)) {
       sum += neighbour_value;
@@ -269,13 +271,16 @@ static void dc_compute_stencil_for_point(size_t x, size_t y, size_t z,
       count++;
     }
   }
-
   size_t local_idx = dc_get_index_for_coordinates(
       x, y, z, process->sizes[0], process->sizes[1], process->sizes[2]);
   if (count > 0) {
     output_data[local_idx] = sum / count;
   } else {
-    output_data[local_idx] = input_data[local_idx];
+    float original_value;
+    if (get_value_at_coord(x, y, z, process, input_data, halos,
+                           &original_value)) {
+      output_data[local_idx] = original_value;
+    }
   }
 }
 
@@ -286,13 +291,6 @@ void dc_compute_boundaries(const dc_process_t *process, float *output_data,
   const size_t size_x = process->sizes[0];
   const size_t size_y = process->sizes[1];
   const size_t size_z = process->sizes[2];
-
-  if (process->coordinates[0] == 1 && process->coordinates[1] == 0 &&
-      process->coordinates[2] == 0) {
-    for (int i = 0; i < 6; i++) {
-      dc_log_info(process->rank, "Halo: %zu", halos->halo_sizes[i]);
-    }
-  }
 
   for (size_t x_layer = 0; x_layer < radius; x_layer++) {
     size_t x_left = x_layer;
@@ -343,25 +341,39 @@ void dc_compute_interior(const dc_process_t *process, float *output_data,
   const size_t size_x = process->sizes[0];
   const size_t size_y = process->sizes[1];
   const size_t size_z = process->sizes[2];
-  const int stencil_point_count =
-      (2 * radius + 1) * (2 * radius + 1) * (2 * radius + 1);
 
-  for (size_t x = radius; x < size_x - radius; x++) {
+  for (size_t z = radius; z < size_z - radius; z++) {
     for (size_t y = radius; y < size_y - radius; y++) {
-      for (size_t z = radius; z < size_z - radius; z++) {
+      for (size_t x = radius; x < size_x - radius; x++) {
+
         double sum = 0.0;
-        for (int dx = -radius; dx <= radius; dx++) {
-          for (int dy = -radius; dy <= radius; dy++) {
-            for (int dz = -radius; dz <= radius; dz++) {
-              size_t neighbor_idx = dc_get_index_for_coordinates(
-                  x + dx, y + dy, z + dz, size_x, size_y, size_z);
-              sum += input_data[neighbor_idx];
-            }
+        int count = 0;
+
+        for (int displacement = 0; displacement <= radius; displacement++) {
+          if (displacement == 0) {
+            sum += input_data[dc_get_index_for_coordinates(x, y, z, size_x,
+                                                           size_y, size_z)];
+            count++;
+            continue;
           }
+          sum += input_data[dc_get_index_for_coordinates(
+              x + displacement, y, z, size_x, size_y, size_z)];
+          sum += input_data[dc_get_index_for_coordinates(
+              x - displacement, y, z, size_x, size_y, size_z)];
+          sum += input_data[dc_get_index_for_coordinates(
+              x, y + displacement, z, size_x, size_y, size_z)];
+          sum += input_data[dc_get_index_for_coordinates(
+              x, y - displacement, z, size_x, size_y, size_z)];
+          sum += input_data[dc_get_index_for_coordinates(
+              x, y, z + displacement, size_x, size_y, size_z)];
+          sum += input_data[dc_get_index_for_coordinates(
+              x, y, z - displacement, size_x, size_y, size_z)];
+          count += 6;
         }
-        size_t local_idx =
+
+        size_t current_index =
             dc_get_index_for_coordinates(x, y, z, size_x, size_y, size_z);
-        output_data[local_idx] = sum / stencil_point_count;
+        output_data[current_index] = sum / count;
       }
     }
   }
@@ -408,6 +420,7 @@ void dc_worker_process(dc_process_t process) {
     dc_compute_interior(&process, next_data, current_data);
 
     dc_concatenate_worker_requests(&all_send_requests, &send_reqs);
+
     MPI_Waitall(future_halos.requests.count, future_halos.requests.requests,
                 MPI_STATUS_IGNORE);
 
@@ -421,6 +434,7 @@ void dc_worker_process(dc_process_t process) {
   MPI_Waitall(all_send_requests.count, all_send_requests.requests,
               MPI_STATUS_IGNORE);
   dc_free_worker_requests(&all_send_requests);
+
   dc_free_worker_halos(&current_halos);
   memcpy(process.data, current_data, count * sizeof(float));
   free(current_data);
@@ -492,6 +506,12 @@ void dc_concatenate_worker_requests(worker_requests_t *target,
            source->count * sizeof(void *));
   }
   target->count = new_count;
+
+  free(source->requests);
+  free(source->buffers_to_free);
+  source->requests = NULL;
+  source->buffers_to_free = NULL;
+  source->count = 0;
 }
 
 size_t dc_compute_count_from_sizes(size_t sizes[DIMENSIONS]) {

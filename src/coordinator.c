@@ -52,47 +52,44 @@ void dc_partition_cube(problem_data_t problem_data) {
   size_t remainder_x = problem_data.size_x % problem_data.topology[0];
   size_t remainder_y = problem_data.size_y % problem_data.topology[1];
   size_t remainder_z = problem_data.size_z % problem_data.topology[2];
-  for (size_t worker = 0; worker < problem_data.num_workers; worker++) {
-    int process_coordinates[DIMENSIONS];
-    MPI_Cart_coords(problem_data.communicator, worker, DIMENSIONS,
-                    process_coordinates);
-    size_t worker_size_x =
-        process_coordinates[0] == problem_data.topology[0] - 1
-            ? partition_size_x + remainder_x
-            : partition_size_x;
-    size_t worker_size_y =
-        process_coordinates[1] == problem_data.topology[1] - 1
-            ? partition_size_y + remainder_y
-            : partition_size_y;
-    size_t worker_size_z =
-        process_coordinates[2] == problem_data.topology[2] - 1
-            ? partition_size_z + remainder_z
-            : partition_size_z;
-    problem_data.worker_sizes[worker] = malloc(sizeof(size_t) * DIMENSIONS);
-    problem_data.worker_sizes[worker][0] = worker_size_x;
-    problem_data.worker_sizes[worker][1] = worker_size_y;
-    problem_data.worker_sizes[worker][2] = worker_size_z;
-    problem_data.workers[worker] =
-        malloc(sizeof(float) * worker_size_x * worker_size_y * worker_size_z);
-    size_t count = 0;
-    dc_log_info(0, "Sizes: %zu %zu %zu %zu %zu %zu", process_coordinates[0],
-                process_coordinates[1], process_coordinates[2], worker_size_x,
-                worker_size_y, worker_size_z);
-    for (size_t z = process_coordinates[2] * partition_size_z;
-         z < process_coordinates[2] * partition_size_z + worker_size_z; z++) {
-      for (size_t y = process_coordinates[1] * partition_size_y;
-           y < process_coordinates[1] * partition_size_y + worker_size_y; y++) {
-        for (size_t x = process_coordinates[0] * partition_size_x;
-             x < process_coordinates[0] * partition_size_x + worker_size_x;
-             x++) {
-          if (process_coordinates[0] == 1 && process_coordinates[1] == 1 &&
-              process_coordinates[2] == 0) {
-            dc_log_info(0, "brocio %zu %zu %zu", x, y, z);
+  for (size_t worker_z = 0; worker_z < problem_data.topology[2]; worker_z++) {
+    for (size_t worker_y = 0; worker_y < problem_data.topology[1]; worker_y++) {
+      for (size_t worker_x = 0; worker_x < problem_data.topology[0];
+           worker_x++) {
+        int process_coordinates[DIMENSIONS] = {worker_x, worker_y, worker_z};
+        int worker;
+        MPI_Cart_rank(problem_data.communicator, process_coordinates, &worker);
+        size_t worker_size_x = worker_x == problem_data.topology[0] - 1
+                                   ? partition_size_x + remainder_x
+                                   : partition_size_x;
+        size_t worker_size_y = worker_y == problem_data.topology[1] - 1
+                                   ? partition_size_y + remainder_y
+                                   : partition_size_y;
+        size_t worker_size_z = worker_z == problem_data.topology[2] - 1
+                                   ? partition_size_z + remainder_z
+                                   : partition_size_z;
+        problem_data.worker_sizes[worker] = malloc(sizeof(size_t) * DIMENSIONS);
+        problem_data.worker_sizes[worker][0] = worker_size_x;
+        problem_data.worker_sizes[worker][1] = worker_size_y;
+        problem_data.worker_sizes[worker][2] = worker_size_z;
+        problem_data.workers[worker] = malloc(sizeof(float) * worker_size_x *
+                                              worker_size_y * worker_size_z);
+        size_t count = 0;
+        for (size_t z = process_coordinates[2] * partition_size_z;
+             z < process_coordinates[2] * partition_size_z + worker_size_z;
+             z++) {
+          for (size_t y = process_coordinates[1] * partition_size_y;
+               y < process_coordinates[1] * partition_size_y + worker_size_y;
+               y++) {
+            for (size_t x = process_coordinates[0] * partition_size_x;
+                 x < process_coordinates[0] * partition_size_x + worker_size_x;
+                 x++) {
+              size_t index = dc_get_index_for_coordinates(
+                  x, y, z, problem_data.size_x, problem_data.size_y,
+                  problem_data.size_z);
+              problem_data.workers[worker][count++] = problem_data.cube[index];
+            }
           }
-          size_t index = dc_get_index_for_coordinates(
-              x, y, z, problem_data.size_x, problem_data.size_y,
-              problem_data.size_z);
-          problem_data.workers[worker][count++] = problem_data.cube[index];
         }
       }
     }

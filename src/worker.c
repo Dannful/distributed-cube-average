@@ -6,7 +6,6 @@
 #include "coordinator.h"
 #include "log.h"
 #include "setup.h"
-#include "sys/types.h"
 #include "worker.h"
 
 void dc_extract_coordinates(size_t *position_x, size_t *position_y,
@@ -111,7 +110,7 @@ worker_halos_t dc_receive_halos(dc_process_t process) {
   result.requests.buffers_to_free = NULL;
 
   result.halo_sizes = calloc(2 * DIMENSIONS, sizeof(size_t));
-  result.halo_data = malloc(2 * DIMENSIONS * sizeof(float *));
+  result.halo_data = calloc(2 * DIMENSIONS, sizeof(float *));
 
   for (int dim = 0; dim < DIMENSIONS; dim++) {
     for (int dir = -1; dir <= 1; dir += 2) {
@@ -344,33 +343,25 @@ void dc_compute_interior(const dc_process_t *process, float *output_data,
   const size_t size_x = process->sizes[0];
   const size_t size_y = process->sizes[1];
   const size_t size_z = process->sizes[2];
+  const int stencil_point_count =
+      (2 * radius + 1) * (2 * radius + 1) * (2 * radius + 1);
 
   for (size_t x = radius; x < size_x - radius; x++) {
     for (size_t y = radius; y < size_y - radius; y++) {
       for (size_t z = radius; z < size_z - radius; z++) {
-
-        size_t current_index =
-            dc_get_index_for_coordinates(x, y, z, size_x, size_y, size_z);
-        double sum = input_data[current_index];
-        int count = 1;
-
-        for (int displacement = 1; displacement <= radius; displacement++) {
-          sum += input_data[dc_get_index_for_coordinates(
-              x + displacement, y, z, size_x, size_y, size_z)];
-          sum += input_data[dc_get_index_for_coordinates(
-              x - displacement, y, z, size_x, size_y, size_z)];
-          sum += input_data[dc_get_index_for_coordinates(
-              x, y + displacement, z, size_x, size_y, size_z)];
-          sum += input_data[dc_get_index_for_coordinates(
-              x, y - displacement, z, size_x, size_y, size_z)];
-          sum += input_data[dc_get_index_for_coordinates(
-              x, y, z + displacement, size_x, size_y, size_z)];
-          sum += input_data[dc_get_index_for_coordinates(
-              x, y, z - displacement, size_x, size_y, size_z)];
-          count += 2 * DIMENSIONS;
+        double sum = 0.0;
+        for (int dx = -radius; dx <= radius; dx++) {
+          for (int dy = -radius; dy <= radius; dy++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+              size_t neighbor_idx = dc_get_index_for_coordinates(
+                  x + dx, y + dy, z + dz, size_x, size_y, size_z);
+              sum += input_data[neighbor_idx];
+            }
+          }
         }
-
-        output_data[current_index] = sum / count;
+        size_t local_idx =
+            dc_get_index_for_coordinates(x, y, z, size_x, size_y, size_z);
+        output_data[local_idx] = sum / stencil_point_count;
       }
     }
   }
@@ -392,6 +383,10 @@ void dc_worker_process(dc_process_t process) {
   float *next_data = malloc(count * sizeof(float));
   float *temp_ptr;
 
+  worker_requests_t all_send_requests;
+  all_send_requests.buffers_to_free = NULL;
+  all_send_requests.requests = NULL;
+  all_send_requests.count = 0;
   worker_halos_t current_halos, future_halos;
   dc_log_info(process.rank, "Starting %u iterations", process.iterations);
 
@@ -404,17 +399,6 @@ void dc_worker_process(dc_process_t process) {
                 MPI_STATUS_IGNORE);
     dc_free_worker_requests(&initial_send_reqs);
   }
-  if (process.coordinates[0] == 1 && process.coordinates[1] == 0 &&
-      process.coordinates[2] == 0) {
-    for (int i = 0; i < 6; i++) {
-      if (current_halos.halo_sizes[i] > 0) {
-        for (int j = 0; j < current_halos.halo_sizes[i]; j++) {
-          dc_log_info(process.rank, "another forastero %d %f", i,
-                      current_halos.halo_data[i][j]);
-        }
-      }
-    }
-  }
 
   for (unsigned int i = 0; i < process.iterations; i++) {
     future_halos = dc_receive_halos(process);
@@ -423,23 +407,10 @@ void dc_worker_process(dc_process_t process) {
         dc_send_halo_to_neighbours(process, next_data);
     dc_compute_interior(&process, next_data, current_data);
 
+    dc_concatenate_worker_requests(&all_send_requests, &send_reqs);
     MPI_Waitall(future_halos.requests.count, future_halos.requests.requests,
                 MPI_STATUS_IGNORE);
-    if (process.coordinates[0] == 1 && process.coordinates[1] == 0 &&
-        process.coordinates[2] == 0) {
-      for (int i = 0; i < 6; i++) {
-        if (future_halos.halo_sizes[i] > 0) {
-          for (int j = 0; j < future_halos.halo_sizes[i]; j++) {
-            dc_log_info(process.rank, "un forastero %d %f", i,
-                        future_halos.halo_data[i][j]);
-          }
-        }
-      }
-    }
 
-    for (int request = 0; request < send_reqs.count; request++)
-      MPI_Request_free(send_reqs.requests + request);
-    dc_free_worker_requests(&send_reqs);
     dc_free_worker_halos(&current_halos);
     current_halos = future_halos;
     temp_ptr = current_data;
@@ -447,6 +418,9 @@ void dc_worker_process(dc_process_t process) {
     next_data = temp_ptr;
   }
 
+  MPI_Waitall(all_send_requests.count, all_send_requests.requests,
+              MPI_STATUS_IGNORE);
+  dc_free_worker_requests(&all_send_requests);
   dc_free_worker_halos(&current_halos);
   memcpy(process.data, current_data, count * sizeof(float));
   free(current_data);
@@ -473,8 +447,8 @@ void dc_free_worker_requests(worker_requests_t *requests) {
 
 void dc_free_worker_halos(worker_halos_t *halos) {
   if (halos->halo_data != NULL) {
-    for (size_t i = 0; i < halos->halo_count; i++) {
-      if (halos->halo_sizes[i] > 0) {
+    for (size_t i = 0; i < DIMENSIONS * 2; i++) {
+      if (halos->halo_data[i] != NULL) {
         free(halos->halo_data[i]);
       }
     }

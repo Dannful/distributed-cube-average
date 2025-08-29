@@ -71,14 +71,15 @@
             export PATH=${pkgs.clang-tools}/bin/clangd:$PATH
           '';
         };
-        packages.default =
+        packages.script =
           pkgs.writeShellScriptBin "run-distributed-cube-average" ''
             ${pkgs.openmpi}/bin/mpirun --map-by :OVERSUBSCRIBE -np 8 ${distributed-cube-average}/bin/distributed-cube-average 4 4 4 2 1 ./predicted.dc
           '';
+        packages.default = distributed-cube-average;
         apps.default = {
           type = "app";
           program = "${
-              self.packages.${system}.default
+              self.packages.${system}.script
             }/bin/run-distributed-cube-average";
         };
       });

@@ -1,0 +1,19 @@
+#!/bin/bash
+#SBATCH --job-name=distributed-cube-distributed
+#SBATCH --partition=draco
+#SBATCH --nodes=4
+#SBATCH --ntasks=8
+#SBATCH --time=00:15:00
+#SBATCH --output=%x_%j.out
+#SBATCH --error=%x_%j.err
+
+MACHINEFILE="nodes.$SLURM_JOB_ID"
+srun -l hostname | sort -n | awk '{print $2}' > $MACHINEFILE
+
+nix build .#default
+mpirun -np $SLURM_NTASKS \
+	-machinefile $MACHINEFILE \
+	--mca btl ^openib \
+	--mca btl_tcp_if_include eno2 \
+	--bind-to none \
+	nix shell -c ./result/bin/distributed-cube-average 1000 1000 1000 15 5 ./validation/predicted.dc

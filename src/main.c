@@ -25,6 +25,8 @@ int main(int argc, char **argv) {
   const size_t size_z = atoi(argv[3]);
   const unsigned int iterations = atoi(argv[4]), stencil_size = atoi(argv[5]);
 
+  double start_time = MPI_Wtime();
+
   if (rank == COORDINATOR) {
     dc_log_info(rank, "Initializing problem data...");
     problem_data_t problem_data =
@@ -64,6 +66,11 @@ int main(int argc, char **argv) {
     free(cube);
   }
   dc_worker_free(mpi_process);
+
+  double end_time = MPI_Wtime();
+
+  dc_log_info(rank, "Elapsed time: %lf seconds", end_time - start_time);
+
   MPI_Finalize();
   return 0;
 }

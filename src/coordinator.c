@@ -1,3 +1,4 @@
+#include <math.h>
 #include <mpi.h>
 #include <string.h>
 
@@ -9,24 +10,22 @@
 problem_data_t dc_initialize_problem(MPI_Comm comm,
                                      unsigned int topology[DIMENSIONS],
                                      unsigned int workers,
-                                     unsigned int iterations,
-                                     unsigned int stencil_size, size_t size_x,
-                                     size_t size_y, size_t size_z) {
+                                     dc_arguments_t arguments) {
   problem_data_t result;
   result.communicator = comm;
   result.num_workers = workers;
-  result.iterations = iterations;
-  result.stencil_size = stencil_size;
-  result.size_x = size_x;
-  result.size_y = size_y;
-  result.size_z = size_z;
-  result.cube = (float *)malloc(size_x * size_y * size_z * sizeof(float));
+  result.iterations = ceil(arguments.time_max / arguments.dt);
+  result.stencil_size = arguments.stencil_size;
+  result.size_x = arguments.size_x;
+  result.size_y = arguments.size_y;
+  result.size_z = arguments.size_z;
+  result.cube = (float *)malloc(arguments.size_x * arguments.size_y * arguments.size_z * sizeof(float));
   memcpy(result.topology, topology, DIMENSIONS * sizeof(unsigned int));
   if (result.cube == NULL) {
     dc_log_error(0, "Failed to allocate memory for cube data.");
     exit(EXIT_FAILURE);
   }
-  for (size_t i = 0; i < size_x * size_y * size_z; i++) {
+  for (size_t i = 0; i < result.size_x * result.size_y * result.size_z; i++) {
     result.cube[i] = (float)(i + 1);
   }
   result.workers = calloc(workers, sizeof(float *));

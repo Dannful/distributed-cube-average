@@ -37,10 +37,16 @@ typedef struct {
   float time_max;
   size_t stencil_size;
   size_t absorption_size;
+  char *output_file;
 } dc_arguments_t;
 
-problem_data_t dc_initialize_problem(MPI_Comm comm, unsigned int topology[DIMENSIONS], unsigned int workers, dc_arguments_t arguments);
+problem_data_t dc_initialize_problem(MPI_Comm comm,
+                                     unsigned int topology[DIMENSIONS],
+                                     unsigned int workers,
+                                     dc_arguments_t arguments);
 void dc_send_data_to_workers(problem_data_t problem_data);
 void dc_partition_cube(problem_data_t problem_data);
 void dc_free_problem_data_mem(problem_data_t problem_data);
-float *dc_receive_data_from_workers(dc_process_t coordinator_process, size_t cube_size_x, size_t cube_size_y, size_t cube_size_z);
+float *dc_receive_data_from_workers(dc_process_t coordinator_process,
+                                    size_t cube_size_x, size_t cube_size_y,
+                                    size_t cube_size_z);

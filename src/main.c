@@ -55,11 +55,14 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
   case 'a':
     arguments->absorption_size = atoi(arg);
     break;
+  case 'o':
+    strcpy(arguments->output_file, arg);
+    break;
   case ARGP_KEY_END:
     if (arguments->size_x == 0 || arguments->size_y == 0 ||
         arguments->size_z == 0 || arguments->dx == 0 || arguments->dy == 0 ||
         arguments->dz == 0 || arguments->time_max == 0 || arguments->dt == 0 ||
-        arguments->absorption_size == 0) {
+        arguments->absorption_size == 0 || arguments->output_file == NULL) {
       argp_usage(state);
     }
     break;
@@ -129,7 +132,7 @@ int main(int argc, char **argv) {
     size_t total_size = arguments.size_x * arguments.size_y * arguments.size_z;
     float *cube = dc_receive_data_from_workers(
         mpi_process, arguments.size_x, arguments.size_y, arguments.size_z);
-    FILE *output = fopen(argv[6], "wb");
+    FILE *output = fopen(arguments.output_file, "wb");
     fwrite(cube, sizeof(float), total_size, output);
     fclose(output);
     free(cube);

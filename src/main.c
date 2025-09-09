@@ -4,47 +4,50 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "boundary.h"
 #include "coordinator.h"
 #include "log.h"
+#include "precomp.h"
 #include "setup.h"
 #include "worker.h"
-#include "precomp.h"
-#include "boundary.h"
 
 static struct argp_option options[] = {
-    {"size_x", 128, "INTEGER", 0, "Grid size in X"},
-    {"size_y", 129, "INTEGER", 0, "Grid size in Y"},
-    {"size_z", 130, "INTEGER", 0, "Grid size in Z"},
+    {"size-x", 128, "INTEGER", 0, "Grid size in X"},
+    {"size-y", 129, "INTEGER", 0, "Grid size in Y"},
+    {"size-z", 130, "INTEGER", 0, "Grid size in Z"},
     {"dx", 131, "FLOAT", 0, "Step size in X"},
     {"dy", 132, "FLOAT", 0, "Step size in Y"},
     {"dz", 133, "FLOAT", 0, "Step size in Z"},
     {"dt", 134, "FLOAT", 0, "Step size in time"},
-    {"time_max", 't', "FLOAT", 0, "Max time"},
-    {"stencil_size", 's', "INTEGER", 0, "Stencil size"},
-    {"absorption", 'a', "INTEGER", 0, "Absorption zone size"}};
+    {"time-max", 't', "FLOAT", 0, "Max time"},
+    {"stencil-size", 's', "INTEGER", 0, "Stencil size"},
+    {"absorption", 'a', "INTEGER", 0, "Absorption zone size"},
+    {"output-file", 'o', "PATH", 0,
+     "Path to the file to output the results to"},
+};
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state) {
   dc_arguments_t *arguments = state->input;
   switch (key) {
-  case 130:
+  case 128:
     arguments->size_x = atoi(arg);
     break;
-  case 131:
+  case 129:
     arguments->size_y = atoi(arg);
     break;
-  case 132:
+  case 130:
     arguments->size_z = atoi(arg);
     break;
-  case 133:
+  case 131:
     arguments->dx = atof(arg);
     break;
-  case 134:
+  case 132:
     arguments->dy = atof(arg);
     break;
-  case 135:
+  case 133:
     arguments->dz = atof(arg);
     break;
-  case 136:
+  case 134:
     arguments->dt = atof(arg);
     break;
   case 't':
@@ -57,7 +60,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     arguments->absorption_size = atoi(arg);
     break;
   case 'o':
-    strcpy(arguments->output_file, arg);
+    arguments->output_file = strdup(arg);
     break;
   case ARGP_KEY_END:
     if (arguments->size_x == 0 || arguments->size_y == 0 ||
@@ -94,31 +97,40 @@ int main(int argc, char **argv) {
   double start_time = MPI_Wtime();
 
   const size_t border = 4;
-  const size_t sx = arguments.size_x + 2 * arguments.absorption_size + 2 * border;
-  const size_t sy = arguments.size_y + 2 * arguments.absorption_size + 2 * border;
-  const size_t sz = arguments.size_z + 2 * arguments.absorption_size + 2 * border;
+  const size_t sx =
+      arguments.size_x + 2 * arguments.absorption_size + 2 * border;
+  const size_t sy =
+      arguments.size_y + 2 * arguments.absorption_size + 2 * border;
+  const size_t sz =
+      arguments.size_z + 2 * arguments.absorption_size + 2 * border;
 
   dc_anisotropy_t anisotropy_vars = dc_compute_anisotropy_vars(sx, sy, sz);
-  dc_precomp_vars precomp_vars = dc_compute_precomp_vars(sx, sy, sz, anisotropy_vars, border);
+  dc_precomp_vars precomp_vars =
+      dc_compute_precomp_vars(sx, sy, sz, anisotropy_vars, border);
 
-  randomVelocityBoundary(sx, sy, sz, arguments.size_x, arguments.size_y, arguments.size_z, border, arguments.absorption_size, anisotropy_vars.vpz, anisotropy_vars.vsv);
+  randomVelocityBoundary(sx, sy, sz, arguments.size_x, arguments.size_y,
+                         arguments.size_z, border, arguments.absorption_size,
+                         anisotropy_vars.vpz, anisotropy_vars.vsv);
 
   if (rank == COORDINATOR) {
     dc_log_info(rank, "Initializing problem data...");
     problem_data_t problem_data = dc_initialize_problem(
-        communicator, (unsigned int *)topology, size, arguments);
+        communicator, (unsigned int *)topology, border, size, arguments);
     dc_log_info(rank, "Partitioning cube...");
     dc_partition_cube(problem_data);
     dc_log_info(rank, "Partition completed. Sending data to workers...");
     dc_send_data_to_workers(problem_data);
     memmove(mpi_process.sizes, problem_data.worker_sizes[0],
             sizeof(size_t) * DIMENSIONS);
-    mpi_process.data =
-        malloc(sizeof(float) *
-               dc_compute_count_from_sizes(problem_data.worker_sizes[0]));
+    size_t coordinator_size =
+        dc_compute_count_from_sizes(problem_data.worker_sizes[0]);
+    mpi_process.data = malloc(sizeof(float) * coordinator_size);
+    mpi_process.pp = (float *)malloc(sizeof(float) * coordinator_size);
+    mpi_process.pc = (float *)malloc(sizeof(float) * coordinator_size);
+    mpi_process.qp = (float *)malloc(sizeof(float) * coordinator_size);
+    mpi_process.qc = (float *)malloc(sizeof(float) * coordinator_size);
     memmove(mpi_process.data, problem_data.workers[0],
-            sizeof(float) *
-                dc_compute_count_from_sizes(problem_data.worker_sizes[0]));
+            sizeof(float) * coordinator_size);
     mpi_process.stencil_size = problem_data.stencil_size;
     mpi_process.iterations = problem_data.iterations;
     mpi_process.rank = rank;
@@ -144,6 +156,7 @@ int main(int argc, char **argv) {
 
   double end_time = MPI_Wtime();
 
+  free(arguments.output_file);
   free_anisotropy_vars(&anisotropy_vars);
   free_precomp_vars(&precomp_vars);
 

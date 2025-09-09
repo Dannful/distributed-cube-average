@@ -30,12 +30,23 @@ void dc_worker_receive_data(dc_process_t *process) {
   MPI_Recv(process->sizes, DIMENSIONS, MPI_UNSIGNED_LONG, COORDINATOR,
            MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
 
-  process->data =
-      malloc(dc_compute_count_from_sizes(process->sizes) * sizeof(float));
+  size_t count = dc_compute_count_from_sizes(process->sizes);
+  process->data = malloc(count * sizeof(float));
+  process->pp = (float *)malloc(count * sizeof(float));
+  process->pc = (float *)malloc(count * sizeof(float));
+  process->qp = (float *)malloc(count * sizeof(float));
+  process->qc = (float *)malloc(count * sizeof(float));
 
-  MPI_Recv(process->data, dc_compute_count_from_sizes(process->sizes),
-           MPI_FLOAT, COORDINATOR, MPI_ANY_TAG, process->communicator,
-           MPI_STATUS_IGNORE);
+  MPI_Recv(process->data, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG,
+           process->communicator, MPI_STATUS_IGNORE);
+  MPI_Recv(process->pp, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG,
+           process->communicator, MPI_STATUS_IGNORE);
+  MPI_Recv(process->pc, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG,
+           process->communicator, MPI_STATUS_IGNORE);
+  MPI_Recv(process->qp, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG,
+           process->communicator, MPI_STATUS_IGNORE);
+  MPI_Recv(process->qc, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG,
+           process->communicator, MPI_STATUS_IGNORE);
 }
 
 worker_requests_t dc_send_halo_to_neighbours(dc_process_t process,
@@ -44,8 +55,8 @@ worker_requests_t dc_send_halo_to_neighbours(dc_process_t process,
   size_t radius = process.stencil_size;
 
   reqs.count = 0;
-  reqs.requests = malloc(6 * sizeof(MPI_Request));
-  reqs.buffers_to_free = malloc(6 * sizeof(void *));
+  reqs.requests = malloc(2 * DIMENSIONS * sizeof(MPI_Request));
+  reqs.buffers_to_free = malloc(2 * DIMENSIONS * sizeof(void *));
 
   for (int dim = 0; dim < DIMENSIONS; dim++) {
     for (int dir = -1; dir <= 1; dir += 2) {
@@ -368,7 +379,7 @@ void dc_compute_interior(const dc_process_t *process, float *output_data,
               x, y, z + displacement, size_x, size_y, size_z)];
           sum += input_data[dc_get_index_for_coordinates(
               x, y, z - displacement, size_x, size_y, size_z)];
-          count += 6;
+          count += 2 * DIMENSIONS;
         }
 
         size_t current_index =
@@ -477,7 +488,13 @@ void dc_free_worker_halos(worker_halos_t *halos) {
   halos->halo_count = 0;
 }
 
-void dc_worker_free(dc_process_t process) { free(process.data); }
+void dc_worker_free(dc_process_t process) {
+  free(process.data);
+  free(process.pp);
+  free(process.pc);
+  free(process.qp);
+  free(process.qc);
+}
 
 void dc_concatenate_worker_requests(worker_requests_t *target,
                                     worker_requests_t *source) {

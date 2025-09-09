@@ -5,7 +5,7 @@ INCDIR = include
 BUILDDIR = bin
 OBJDIR = $(BUILDDIR)/obj
 
-CFLAGS = -I$(INCDIR) -Wall -g -laky
+CFLAGS = -I$(INCDIR) -Wall -g -lm -laky
 
 SOURCES = $(wildcard $(SRCDIR)/*.c)
 

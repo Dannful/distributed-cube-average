@@ -23,6 +23,7 @@ typedef struct {
   unsigned int stencil_size;
   size_t sizes[DIMENSIONS];
   float *data;
+  float *pp, *pc, *qp, *qc;
 } dc_process_t;
 
 void dc_mpi_world_init(MPI_Comm *communicator, const int topology[DIMENSIONS]);

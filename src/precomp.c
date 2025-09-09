@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 dc_precomp_vars dc_compute_precomp_vars(int sx, int sy, int sz,
-                                     dc_anisotropy_t anisotropy, int bord) {
+                                        dc_anisotropy_t anisotropy, int bord) {
   dc_precomp_vars vars = {0};
   int n = sx * sy * sz;
 
@@ -84,4 +84,28 @@ void free_anisotropy_vars(dc_anisotropy_t *anisotropy) {
   anisotropy->vpz = NULL;
   anisotropy->epsilon = NULL;
   anisotropy->delta = NULL;
+}
+
+void free_precomp_vars(dc_precomp_vars *precomp) {
+  free(precomp->ch1dxx);
+  free(precomp->ch1dyy);
+  free(precomp->ch1dzz);
+  free(precomp->ch1dxy);
+  free(precomp->ch1dyz);
+  free(precomp->ch1dxz);
+  free(precomp->v2px);
+  free(precomp->v2pz);
+  free(precomp->v2sz);
+  free(precomp->v2pn);
+
+  precomp->ch1dxx = NULL;
+  precomp->ch1dyy = NULL;
+  precomp->ch1dzz = NULL;
+  precomp->ch1dxy = NULL;
+  precomp->ch1dyz = NULL;
+  precomp->ch1dxz = NULL;
+  precomp->v2px = NULL;
+  precomp->v2pz = NULL;
+  precomp->v2sz = NULL;
+  precomp->v2pn = NULL;
 }

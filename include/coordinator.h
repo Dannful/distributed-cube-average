@@ -14,13 +14,12 @@ typedef struct {
   size_t size_y;
   size_t size_z;
   size_t num_workers;
-  float *vpz;
-  float *vsv;
-  float *epsilon;
-  float *delta;
-  float *phi;
-  float *theta;
   float *cube;
+  float *pp, *pc, *qp, *qc;
+  float **pp_workers;
+  float **pc_workers;
+  float **qp_workers;
+  float **qc_workers;
   float **workers;
   size_t **worker_sizes;
   unsigned int topology[DIMENSIONS];
@@ -42,6 +41,7 @@ typedef struct {
 
 problem_data_t dc_initialize_problem(MPI_Comm comm,
                                      unsigned int topology[DIMENSIONS],
+                                     unsigned int border,
                                      unsigned int workers,
                                      dc_arguments_t arguments);
 void dc_send_data_to_workers(problem_data_t problem_data);

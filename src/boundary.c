@@ -4,7 +4,7 @@
 #include "boundary.h"
 #include "worker.h"
 
-void RandomVelocityBoundary(int sx, int sy, int sz, int nx, int ny, int nz,
+void randomVelocityBoundary(int sx, int sy, int sz, int nx, int ny, int nz,
                             int bord, int absorb, float *vpz, float *vsv) {
   int i, ix, iy, iz;
   int distx, disty, distz, dist;

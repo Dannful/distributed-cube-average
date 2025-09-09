@@ -9,6 +9,7 @@
 #include "setup.h"
 #include "worker.h"
 #include "precomp.h"
+#include "boundary.h"
 
 static struct argp_option options[] = {
     {"size_x", 128, "INTEGER", 0, "Grid size in X"},
@@ -100,6 +101,8 @@ int main(int argc, char **argv) {
   dc_anisotropy_t anisotropy_vars = dc_compute_anisotropy_vars(sx, sy, sz);
   dc_precomp_vars precomp_vars = dc_compute_precomp_vars(sx, sy, sz, anisotropy_vars, border);
 
+  randomVelocityBoundary(sx, sy, sz, arguments.size_x, arguments.size_y, arguments.size_z, border, arguments.absorption_size, anisotropy_vars.vpz, anisotropy_vars.vsv);
+
   if (rank == COORDINATOR) {
     dc_log_info(rank, "Initializing problem data...");
     problem_data_t problem_data = dc_initialize_problem(
@@ -142,6 +145,7 @@ int main(int argc, char **argv) {
   double end_time = MPI_Wtime();
 
   free_anisotropy_vars(&anisotropy_vars);
+  free_precomp_vars(&precomp_vars);
 
   dc_log_info(rank, "Elapsed time: %lf seconds", end_time - start_time);
 

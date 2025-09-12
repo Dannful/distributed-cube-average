@@ -49,6 +49,55 @@
           };
         };
 
+        pajeng = pkgs.stdenv.mkDerivation rec {
+          pname = "pajeng";
+          version = "1.3.10";
+
+          src = pkgs.fetchFromGitHub {
+            owner = "schnorr";
+            repo = "pajeng";
+            rev = "87d2d263020339defddeeaf6586723d0f840f5a4";
+            sha256 = "sha256-g3aT5SNwrhk7d/f5ElJfSqXQ6MFnsuVQ0fSpbiH94Y0=";
+          };
+
+          nativeBuildInputs = with pkgs; [
+            cmake
+            gnumake
+            gcc
+            flex
+            bison
+            asciidoc
+            boost
+            fmt
+          ];
+
+          installPhase = ''
+            runHook preInstall
+
+            mkdir -p $out/bin
+            mkdir -p $out/lib
+
+            cp pj_dump $out/bin/
+            cp pj_equals $out/bin/
+            cp src/libpaje/libpaje.so.2 $out/lib
+
+            local RPATH="${pkgs.lib.makeLibraryPath buildInputs}:$out/lib"
+
+            patchelf --set-rpath "$RPATH" $out/bin/pj_dump
+            patchelf --set-rpath "$RPATH" $out/bin/pj_equals
+
+            runHook postInstall
+          '';
+
+          buildInputs = with pkgs; [ openmpi gcc ];
+
+          meta = with pkgs.lib; {
+            description = "A Nix derivation for ${pname}";
+            homepage = "https://github.com/${src.owner}/${src.repo}";
+            license = licenses.gpl3;
+          };
+        };
+
         distributed-cube-average = pkgs.stdenv.mkDerivation {
           pname = "distributed-cube-average";
           version = "0.1.0";
@@ -66,7 +115,7 @@
 
       in {
         devShell = pkgs.mkShell {
-          buildInputs = [ pkgs.openmpi pkgs.clang-tools rEnv akypuera ];
+          buildInputs = [ pkgs.openmpi pkgs.clang-tools rEnv akypuera pajeng ];
           shellHook = ''
             export PATH=${pkgs.clang-tools}/bin/clangd:$PATH
           '';

@@ -20,7 +20,6 @@ static struct argp_option options[] = {
     {"dz", 133, "FLOAT", 0, "Step size in Z"},
     {"dt", 134, "FLOAT", 0, "Step size in time"},
     {"time-max", 't', "FLOAT", 0, "Max time"},
-    {"stencil-size", 's', "INTEGER", 0, "Stencil size"},
     {"absorption", 'a', "INTEGER", 0, "Absorption zone size"},
     {"output-file", 'o', "PATH", 0,
      "Path to the file to output the results to"},
@@ -52,9 +51,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     break;
   case 't':
     arguments->time_max = atof(arg);
-    break;
-  case 's':
-    arguments->stencil_size = atoi(arg);
     break;
   case 'a':
     arguments->absorption_size = atoi(arg);
@@ -92,49 +88,48 @@ int main(int argc, char **argv) {
   dc_mpi_world_init(&communicator, topology);
   MPI_Comm_rank(communicator, &rank);
 
-  dc_process_t mpi_process = dc_process_init(communicator, rank, topology);
+  const size_t sx =
+      arguments.size_x + 2 * arguments.absorption_size + 2 * STENCIL;
+  const size_t sy =
+      arguments.size_y + 2 * arguments.absorption_size + 2 * STENCIL;
+  const size_t sz =
+      arguments.size_z + 2 * arguments.absorption_size + 2 * STENCIL;
+
+  dc_process_t mpi_process =
+      dc_process_init(communicator, rank, topology, sx, sy, sz, arguments.dx,
+                      arguments.dy, arguments.dz, arguments.dt);
 
   double start_time = MPI_Wtime();
 
-  const size_t border = 4;
-  const size_t sx =
-      arguments.size_x + 2 * arguments.absorption_size + 2 * border;
-  const size_t sy =
-      arguments.size_y + 2 * arguments.absorption_size + 2 * border;
-  const size_t sz =
-      arguments.size_z + 2 * arguments.absorption_size + 2 * border;
-
-  dc_anisotropy_t anisotropy_vars = dc_compute_anisotropy_vars(sx, sy, sz);
-  dc_precomp_vars precomp_vars =
-      dc_compute_precomp_vars(sx, sy, sz, anisotropy_vars, border);
-
   randomVelocityBoundary(sx, sy, sz, arguments.size_x, arguments.size_y,
-                         arguments.size_z, border, arguments.absorption_size,
-                         anisotropy_vars.vpz, anisotropy_vars.vsv);
+                         arguments.size_z, STENCIL, arguments.absorption_size,
+                         mpi_process.anisotropy_vars.vpz,
+                         mpi_process.anisotropy_vars.vsv);
 
   if (rank == COORDINATOR) {
     dc_log_info(rank, "Initializing problem data...");
     problem_data_t problem_data = dc_initialize_problem(
-        communicator, (unsigned int *)topology, border, size, arguments);
+        communicator, (unsigned int *)topology, STENCIL, size, arguments);
     dc_log_info(rank, "Partitioning cube...");
-    dc_partition_cube(problem_data);
+    dc_partition_cube(&problem_data);
     dc_log_info(rank, "Partition completed. Sending data to workers...");
     dc_send_data_to_workers(problem_data);
-    memmove(mpi_process.sizes, problem_data.worker_sizes[0],
+    memcpy(mpi_process.sizes, problem_data.worker_sizes[0],
             sizeof(size_t) * DIMENSIONS);
     size_t coordinator_size =
         dc_compute_count_from_sizes(problem_data.worker_sizes[0]);
-    mpi_process.data = malloc(sizeof(float) * coordinator_size);
     mpi_process.pp = (float *)malloc(sizeof(float) * coordinator_size);
     mpi_process.pc = (float *)malloc(sizeof(float) * coordinator_size);
     mpi_process.qp = (float *)malloc(sizeof(float) * coordinator_size);
     mpi_process.qc = (float *)malloc(sizeof(float) * coordinator_size);
-    memmove(mpi_process.data, problem_data.workers[0],
-            sizeof(float) * coordinator_size);
-    mpi_process.stencil_size = problem_data.stencil_size;
+    mpi_process.source_index = problem_data.source_index[0];
+    memcpy(mpi_process.pp, problem_data.pp_workers[0], sizeof(float) * coordinator_size);
+    memcpy(mpi_process.qp, problem_data.qp_workers[0], sizeof(float) * coordinator_size);
+    memcpy(mpi_process.pc, problem_data.pc_workers[0], sizeof(float) * coordinator_size);
+    memcpy(mpi_process.qc, problem_data.qc_workers[0], sizeof(float) * coordinator_size);
     mpi_process.iterations = problem_data.iterations;
     mpi_process.rank = rank;
-    dc_free_problem_data_mem(problem_data);
+    dc_free_problem_data_mem(&problem_data);
   } else {
     dc_log_info(rank, "Awaiting data from coordinator...");
     dc_worker_receive_data(&mpi_process);
@@ -144,21 +139,23 @@ int main(int argc, char **argv) {
   dc_worker_process(mpi_process);
   dc_send_data_to_coordinator(mpi_process);
   if (rank == COORDINATOR) {
-    size_t total_size = arguments.size_x * arguments.size_y * arguments.size_z;
-    float *cube = dc_receive_data_from_workers(
-        mpi_process, arguments.size_x, arguments.size_y, arguments.size_z);
+    size_t total_size = sx * sy * sz;
+    dc_result_t result = dc_receive_data_from_workers(
+        mpi_process, sx, sy, sz);
     FILE *output = fopen(arguments.output_file, "wb");
-    fwrite(cube, sizeof(float), total_size, output);
+    fwrite(result.pc, sizeof(float), total_size, output);
+    fwrite(result.qc, sizeof(float), total_size, output);
     fclose(output);
-    free(cube);
+    free(result.pc);
+    free(result.qc);
   }
   dc_worker_free(mpi_process);
 
   double end_time = MPI_Wtime();
 
   free(arguments.output_file);
-  free_anisotropy_vars(&anisotropy_vars);
-  free_precomp_vars(&precomp_vars);
+  free_anisotropy_vars(&mpi_process.anisotropy_vars);
+  free_precomp_vars(&mpi_process.precomp_vars);
 
   dc_log_info(rank, "Elapsed time: %lf seconds", end_time - start_time);
 

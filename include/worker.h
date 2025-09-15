@@ -4,6 +4,10 @@
 #include "setup.h"
 #include <stddef.h>
 
+#define STENCIL 4
+#define PP_TAG 3
+#define QP_TAG 6
+
 typedef struct {
   size_t count;
   MPI_Request *requests;
@@ -28,15 +32,14 @@ void dc_worker_receive_data(dc_process_t *process);
 void dc_worker_process(dc_process_t process);
 void dc_worker_free(dc_process_t process);
 
-worker_requests_t dc_send_halo_to_neighbours(dc_process_t process, float *from);
-worker_halos_t dc_receive_halos(dc_process_t process);
+void dc_send_halo_to_neighbours(dc_process_t process, int tag, float *from,
+                                worker_requests_t *requests);
+worker_halos_t dc_receive_halos(dc_process_t process, int tag);
 void dc_send_data_to_coordinator(dc_process_t process);
 
-void dc_compute_boundaries(const dc_process_t *process, float *output_data,
-                           const float *input_data,
-                           const worker_halos_t *halos);
-void dc_compute_interior(const dc_process_t *process, float *output_data,
-                         const float *input_data);
+float source(float dt, int iteration);
+void dc_compute_boundaries(const dc_process_t *process);
+void dc_compute_interior(const dc_process_t *process);
 
 void dc_free_worker_halos(worker_halos_t *halos);
 void dc_free_worker_requests(worker_requests_t *requests);
@@ -44,3 +47,8 @@ void dc_concatenate_worker_requests(worker_requests_t *target,
                                     worker_requests_t *source);
 
 size_t dc_compute_count_from_sizes(size_t sizes[DIMENSIONS]);
+
+void dc_worker_swap_arrays(dc_process_t *process);
+
+void dc_worker_insert_halos(const dc_process_t *process,
+                            const worker_halos_t *halos, float *data);

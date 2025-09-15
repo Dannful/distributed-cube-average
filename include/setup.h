@@ -1,5 +1,6 @@
 #pragma once
 
+#include "precomp.h"
 #include <mpi.h>
 
 #define DIMENSIONS 3
@@ -20,11 +21,15 @@ typedef struct {
   int neighbours[DIMENSIONS * 2];
   int topology[DIMENSIONS];
   unsigned int iterations;
-  unsigned int stencil_size;
+  int source_index;
+  float dx, dy, dz, dt;
   size_t sizes[DIMENSIONS];
-  float *data;
+  dc_anisotropy_t anisotropy_vars;
+  dc_precomp_vars precomp_vars;
   float *pp, *pc, *qp, *qc;
 } dc_process_t;
 
 void dc_mpi_world_init(MPI_Comm *communicator, const int topology[DIMENSIONS]);
-dc_process_t dc_process_init(MPI_Comm communicator, int rank, int topology[DIMENSIONS]);
+dc_process_t dc_process_init(MPI_Comm communicator, int rank,
+                             int topology[DIMENSIONS], size_t sx, size_t sy,
+                             size_t sz, float dx, float dy, float dz, float dt);

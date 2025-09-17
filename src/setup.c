@@ -19,12 +19,12 @@ dc_process_t dc_process_init(MPI_Comm communicator, int rank,
   dc_process_t process;
   process.communicator = communicator;
   process.rank = rank;
-  process.anisotropy_vars = dc_compute_anisotropy_vars(sx, sy, sz);
   process.dx = dx;
   process.dy = dy;
   process.dz = dz;
   process.dt = dt;
   process.source_index = -1;
+  process.anisotropy_vars = dc_compute_anisotropy_vars(sx, sy, sz);
   process.precomp_vars =
       dc_compute_precomp_vars(sx, sy, sz, process.anisotropy_vars, STENCIL);
   memcpy(process.topology, topology, sizeof(int) * DIMENSIONS);

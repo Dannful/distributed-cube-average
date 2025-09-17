@@ -106,6 +106,24 @@ int main(int argc, char **argv) {
                          mpi_process.anisotropy_vars.vpz,
                          mpi_process.anisotropy_vars.vsv);
 
+  FILE *f = fopen("./precomp_vars.dc", "wb");
+  fwrite(mpi_process.precomp_vars.ch1dxx, sizeof(float), sx * sy * sz, f);
+  fwrite(mpi_process.precomp_vars.ch1dxy, sizeof(float), sx * sy * sz, f);
+  fwrite(mpi_process.precomp_vars.ch1dxz, sizeof(float), sx * sy * sz, f);
+  fwrite(mpi_process.precomp_vars.ch1dyz, sizeof(float), sx * sy * sz, f);
+  fwrite(mpi_process.precomp_vars.ch1dyy, sizeof(float), sx * sy * sz, f);
+  fwrite(mpi_process.precomp_vars.ch1dzz, sizeof(float), sx * sy * sz, f);
+  fwrite(mpi_process.precomp_vars.v2pn, sizeof(float), sx * sy * sz, f);
+  fwrite(mpi_process.precomp_vars.v2px, sizeof(float), sx * sy * sz, f);
+  fwrite(mpi_process.precomp_vars.v2pz, sizeof(float), sx * sy * sz, f);
+  fwrite(mpi_process.anisotropy_vars.delta, sizeof(float), sx * sy * sz, f);
+  fwrite(mpi_process.anisotropy_vars.epsilon, sizeof(float), sx * sy * sz, f);
+  fwrite(mpi_process.anisotropy_vars.phi, sizeof(float), sx * sy * sz, f);
+  fwrite(mpi_process.anisotropy_vars.theta, sizeof(float), sx * sy * sz, f);
+  fwrite(mpi_process.anisotropy_vars.vpz, sizeof(float), sx * sy * sz, f);
+  fwrite(mpi_process.anisotropy_vars.vsv, sizeof(float), sx * sy * sz, f);
+  fclose(f);
+
   if (rank == COORDINATOR) {
     dc_log_info(rank, "Initializing problem data...");
     problem_data_t problem_data = dc_initialize_problem(

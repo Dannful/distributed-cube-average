@@ -240,7 +240,14 @@ void dc_worker_process(dc_process_t process) {
   all_send_requests.buffers_to_free = NULL;
   all_send_requests.requests = NULL;
   all_send_requests.count = 0;
-  dc_log_info(process.rank, "Starting %u iterations", process.iterations);
+  dc_log_info(process.rank, "Starting %u iterations with sizes %d %d %d", process.iterations, process.sizes[0], process.sizes[1], process.sizes[2]);
+
+  FILE *f = fopen("./validation/predicted.dc", "wb");
+  fwrite(process.pc, sizeof(float), process.sizes[0] * process.sizes[1] * process.sizes[2], f);
+  fwrite(process.pp, sizeof(float), process.sizes[0] * process.sizes[1] * process.sizes[2], f);
+  fwrite(process.qc, sizeof(float), process.sizes[0] * process.sizes[1] * process.sizes[2], f);
+  fwrite(process.qp, sizeof(float), process.sizes[0] * process.sizes[1] * process.sizes[2], f);
+  fclose(f);
 
   for (unsigned int i = 0; i < process.iterations; i++) {
     if (process.source_index != -1) {
@@ -263,6 +270,13 @@ void dc_worker_process(dc_process_t process) {
     dc_free_worker_halos(&new_pp_halos);
     dc_free_worker_halos(&new_qp_halos);
     dc_worker_swap_arrays(&process);
+
+    char fname[25] = {0};
+    sprintf(fname, "./validation/it_pred%d", i);
+    FILE *f = fopen(fname, "wb");
+    fwrite(process.pc, sizeof(float), process.sizes[0] * process.sizes[1] * process.sizes[2], f);
+    fwrite(process.qc, sizeof(float), process.sizes[0] * process.sizes[1] * process.sizes[2], f);
+    fclose(f);
   }
 
   MPI_Waitall(all_send_requests.count, all_send_requests.requests,

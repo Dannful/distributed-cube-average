@@ -26,8 +26,7 @@ typedef struct {
 } dc_anisotropy_t;
 
 dc_precomp_vars dc_compute_precomp_vars(int sx, int sy, int sz,
-                                     dc_anisotropy_t anisotropy,
-                                     int bord);
+                                        dc_anisotropy_t anisotropy);
 dc_anisotropy_t dc_compute_anisotropy_vars(int sx, int sy, int sz);
 void free_precomp_vars(dc_precomp_vars *vars);
 void free_anisotropy_vars(dc_anisotropy_t *anisotropy);

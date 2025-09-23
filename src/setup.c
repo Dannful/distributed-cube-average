@@ -1,9 +1,7 @@
 #include <mpi.h>
 #include <string.h>
 
-#include "precomp.h"
 #include "setup.h"
-#include "worker.h"
 
 void dc_mpi_world_init(MPI_Comm *communicator, const int topology[DIMENSIONS]) {
   const int periods[DIMENSIONS] = {0, 0, 0};
@@ -24,9 +22,6 @@ dc_process_t dc_process_init(MPI_Comm communicator, int rank,
   process.dz = dz;
   process.dt = dt;
   process.source_index = -1;
-  process.anisotropy_vars = dc_compute_anisotropy_vars(sx, sy, sz);
-  process.precomp_vars =
-      dc_compute_precomp_vars(sx, sy, sz, process.anisotropy_vars, STENCIL);
   memcpy(process.topology, topology, sizeof(int) * DIMENSIONS);
   MPI_Cart_coords(communicator, rank, DIMENSIONS, process.coordinates);
 

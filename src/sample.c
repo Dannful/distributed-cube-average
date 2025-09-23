@@ -3,6 +3,7 @@
 #include "worker.h"
 #include "precomp.h"
 #include <stddef.h>
+#include <stdio.h>
 
 void sample_compute(float* pc, float* qc, float* pp, float* qp,
                    dc_precomp_vars precomp_vars,

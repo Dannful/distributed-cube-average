@@ -98,31 +98,17 @@ int main(int argc, char **argv) {
   dc_process_t mpi_process =
       dc_process_init(communicator, rank, topology, sx, sy, sz, arguments.dx,
                       arguments.dy, arguments.dz, arguments.dt);
+  mpi_process.anisotropy_vars = dc_compute_anisotropy_vars(sx, sy, sz);
 
   double start_time = MPI_Wtime();
 
+  unsigned int seed = 0;
   randomVelocityBoundary(sx, sy, sz, arguments.size_x, arguments.size_y,
                          arguments.size_z, STENCIL, arguments.absorption_size,
                          mpi_process.anisotropy_vars.vpz,
-                         mpi_process.anisotropy_vars.vsv);
-
-  FILE *f = fopen("./precomp_vars.dc", "wb");
-  fwrite(mpi_process.precomp_vars.ch1dxx, sizeof(float), sx * sy * sz, f);
-  fwrite(mpi_process.precomp_vars.ch1dxy, sizeof(float), sx * sy * sz, f);
-  fwrite(mpi_process.precomp_vars.ch1dxz, sizeof(float), sx * sy * sz, f);
-  fwrite(mpi_process.precomp_vars.ch1dyz, sizeof(float), sx * sy * sz, f);
-  fwrite(mpi_process.precomp_vars.ch1dyy, sizeof(float), sx * sy * sz, f);
-  fwrite(mpi_process.precomp_vars.ch1dzz, sizeof(float), sx * sy * sz, f);
-  fwrite(mpi_process.precomp_vars.v2pn, sizeof(float), sx * sy * sz, f);
-  fwrite(mpi_process.precomp_vars.v2px, sizeof(float), sx * sy * sz, f);
-  fwrite(mpi_process.precomp_vars.v2pz, sizeof(float), sx * sy * sz, f);
-  fwrite(mpi_process.anisotropy_vars.delta, sizeof(float), sx * sy * sz, f);
-  fwrite(mpi_process.anisotropy_vars.epsilon, sizeof(float), sx * sy * sz, f);
-  fwrite(mpi_process.anisotropy_vars.phi, sizeof(float), sx * sy * sz, f);
-  fwrite(mpi_process.anisotropy_vars.theta, sizeof(float), sx * sy * sz, f);
-  fwrite(mpi_process.anisotropy_vars.vpz, sizeof(float), sx * sy * sz, f);
-  fwrite(mpi_process.anisotropy_vars.vsv, sizeof(float), sx * sy * sz, f);
-  fclose(f);
+                         mpi_process.anisotropy_vars.vsv, &seed);
+  mpi_process.precomp_vars =
+      dc_compute_precomp_vars(sx, sy, sz, mpi_process.anisotropy_vars);
 
   if (rank == COORDINATOR) {
     dc_log_info(rank, "Initializing problem data...");
@@ -133,18 +119,23 @@ int main(int argc, char **argv) {
     dc_log_info(rank, "Partition completed. Sending data to workers...");
     dc_send_data_to_workers(problem_data);
     memcpy(mpi_process.sizes, problem_data.worker_sizes[0],
-            sizeof(size_t) * DIMENSIONS);
+           sizeof(size_t) * DIMENSIONS);
     size_t coordinator_size =
         dc_compute_count_from_sizes(problem_data.worker_sizes[0]);
     mpi_process.pp = (float *)malloc(sizeof(float) * coordinator_size);
     mpi_process.pc = (float *)malloc(sizeof(float) * coordinator_size);
     mpi_process.qp = (float *)malloc(sizeof(float) * coordinator_size);
     mpi_process.qc = (float *)malloc(sizeof(float) * coordinator_size);
+    dc_log_info(0, "SIZE BRUH %d", coordinator_size);
     mpi_process.source_index = problem_data.source_index[0];
-    memcpy(mpi_process.pp, problem_data.pp_workers[0], sizeof(float) * coordinator_size);
-    memcpy(mpi_process.qp, problem_data.qp_workers[0], sizeof(float) * coordinator_size);
-    memcpy(mpi_process.pc, problem_data.pc_workers[0], sizeof(float) * coordinator_size);
-    memcpy(mpi_process.qc, problem_data.qc_workers[0], sizeof(float) * coordinator_size);
+    memcpy(mpi_process.pp, problem_data.pp_workers[0],
+           sizeof(float) * coordinator_size);
+    memcpy(mpi_process.qp, problem_data.qp_workers[0],
+           sizeof(float) * coordinator_size);
+    memcpy(mpi_process.pc, problem_data.pc_workers[0],
+           sizeof(float) * coordinator_size);
+    memcpy(mpi_process.qc, problem_data.qc_workers[0],
+           sizeof(float) * coordinator_size);
     mpi_process.iterations = problem_data.iterations;
     mpi_process.rank = rank;
     dc_free_problem_data_mem(&problem_data);
@@ -158,11 +149,10 @@ int main(int argc, char **argv) {
   dc_send_data_to_coordinator(mpi_process);
   if (rank == COORDINATOR) {
     size_t total_size = sx * sy * sz;
-    dc_result_t result = dc_receive_data_from_workers(
-        mpi_process, sx, sy, sz);
+    dc_result_t result = dc_receive_data_from_workers(mpi_process, sx, sy, sz);
     FILE *output = fopen(arguments.output_file, "wb");
-    fwrite(result.pc, sizeof(float), total_size, output);
-    fwrite(result.qc, sizeof(float), total_size, output);
+    // fwrite(result.pc, sizeof(float), total_size, output);
+    // fwrite(result.qc, sizeof(float), total_size, output);
     fclose(output);
     free(result.pc);
     free(result.qc);

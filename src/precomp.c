@@ -1,9 +1,10 @@
 #include "precomp.h"
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 dc_precomp_vars dc_compute_precomp_vars(int sx, int sy, int sz,
-                                        dc_anisotropy_t anisotropy, int bord) {
+                                        dc_anisotropy_t anisotropy) {
   dc_precomp_vars vars = {0};
   int n = sx * sy * sz;
 
@@ -36,8 +37,8 @@ dc_precomp_vars dc_compute_precomp_vars(int sx, int sy, int sz,
   for (int i = 0; i < n; i++) {
     vars.v2sz[i] = anisotropy.vsv[i] * anisotropy.vsv[i];
     vars.v2pz[i] = anisotropy.vpz[i] * anisotropy.vpz[i];
-    vars.v2px[i] = vars.v2pz[i] * (1.0f + 2.0f * anisotropy.epsilon[i]);
-    vars.v2pn[i] = vars.v2pz[i] * (1.0f + 2.0f * anisotropy.delta[i]);
+    vars.v2px[i] = vars.v2pz[i] * (1.0 + 2.0 * anisotropy.epsilon[i]);
+    vars.v2pn[i] = vars.v2pz[i] * (1.0 + 2.0 * anisotropy.delta[i]);
   }
 
   return vars;

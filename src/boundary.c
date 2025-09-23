@@ -5,7 +5,8 @@
 #include "worker.h"
 
 void randomVelocityBoundary(int sx, int sy, int sz, int nx, int ny, int nz,
-                            int bord, int absorb, float *vpz, float *vsv) {
+                            int bord, int absorb, float *vpz, float *vsv,
+                            unsigned int *seed) {
   int i, ix, iy, iz;
   int distx, disty, distz, dist;
   int ivelx, ively, ivelz;
@@ -80,7 +81,7 @@ void randomVelocityBoundary(int sx, int sy, int sz, int nx, int ny, int nz,
           dist = (disty > distz) ? disty : distz;
           dist = (dist > distx) ? dist : distx;
           bordDist = (float)(dist)*frac;
-          rfac = (float)rand() / (float)RAND_MAX;
+          rfac = (float)rand_r(seed) / (float)RAND_MAX;
           vpz[i] = vpz[dc_get_index_for_coordinates(ivelx, ively, ivelz, sx, sy,
                                                     sz)] *
                        (1.0 - bordDist) +

@@ -2,7 +2,9 @@
 #include <mpi.h>
 #include <string.h>
 
+#include "calculate_source.h"
 #include "coordinator.h"
+#include "log.h"
 #include "setup.h"
 #include "worker.h"
 
@@ -13,6 +15,7 @@ problem_data_t dc_initialize_problem(MPI_Comm comm,
   problem_data_t result;
   result.communicator = comm;
   result.num_workers = workers;
+  result.dt = arguments.dt;
   result.iterations = ceil(arguments.time_max / arguments.dt);
   result.size_x =
       arguments.size_x + 2 * arguments.absorption_size + 2 * STENCIL;
@@ -20,20 +23,26 @@ problem_data_t dc_initialize_problem(MPI_Comm comm,
       arguments.size_y + 2 * arguments.absorption_size + 2 * STENCIL;
   result.size_z =
       arguments.size_z + 2 * arguments.absorption_size + 2 * STENCIL;
-  result.pp = (float *)calloc(result.size_x * result.size_y * result.size_z,
+  result.pp = (float *)malloc(result.size_x * result.size_y * result.size_z *
                               sizeof(float));
-  result.pc = (float *)calloc(result.size_x * result.size_y * result.size_z,
+  result.pc = (float *)malloc(result.size_x * result.size_y * result.size_z *
                               sizeof(float));
-  result.qp = (float *)calloc(result.size_x * result.size_y * result.size_z,
+  result.qp = (float *)malloc(result.size_x * result.size_y * result.size_z *
                               sizeof(float));
-  result.qc = (float *)calloc(result.size_x * result.size_y * result.size_z,
+  result.qc = (float *)malloc(result.size_x * result.size_y * result.size_z *
                               sizeof(float));
+  for (int i = 0; i < result.size_x * result.size_y * result.size_z; i++) {
+    result.pp[i] = 0.0f;
+    result.pc[i] = 0.0f;
+    result.qp[i] = 0.0f;
+    result.qc[i] = 0.0f;
+  }
   result.pp_workers = (float **)calloc(workers, sizeof(float *));
   result.pc_workers = (float **)calloc(workers, sizeof(float *));
   result.qp_workers = (float **)calloc(workers, sizeof(float *));
   result.qc_workers = (float **)calloc(workers, sizeof(float *));
   result.source_index = (int *)malloc(workers * sizeof(int));
-  for(int i = 0; i < workers; i++) {
+  for (int i = 0; i < workers; i++) {
     result.source_index[i] = -1;
   }
   memcpy(result.topology, topology, DIMENSIONS * sizeof(unsigned int));
@@ -92,32 +101,34 @@ void dc_partition_cube(problem_data_t *problem_data) {
           for (size_t y = process_coordinates[1] * partition_size_y;
                y < process_coordinates[1] * partition_size_y + worker_size_y;
                y++) {
-            for (size_t x =
-                     process_coordinates[0] * partition_size_x;
+            for (size_t x = process_coordinates[0] * partition_size_x;
                  x < process_coordinates[0] * partition_size_x + worker_size_x;
                  x++) {
               size_t index = dc_get_index_for_coordinates(
                   x, y, z, problem_data->size_x, problem_data->size_y,
                   problem_data->size_z);
-              size_t local_x =
-                  x - process_coordinates[0] * partition_size_x;
-              size_t local_y =
-                  y - process_coordinates[1] * partition_size_y;
-              size_t local_z =
-                  z - process_coordinates[2] * partition_size_z;
-              if (x == problem_data->size_x / 2 &&
-                  y == problem_data->size_y / 2 &&
-                  z == problem_data->size_z / 2 && local_x >= STENCIL &&
-                  local_y >= STENCIL && local_z >= STENCIL &&
-                  local_x < worker_size_x - STENCIL &&
-                  local_y < worker_size_y - STENCIL &&
-                  local_z < worker_size_z - STENCIL) {
-                problem_data->source_index[worker] = count;
-              }
+              size_t local_x = x - process_coordinates[0] * partition_size_x;
+              size_t local_y = y - process_coordinates[1] * partition_size_y;
+              size_t local_z = z - process_coordinates[2] * partition_size_z;
               problem_data->pp_workers[worker][count] = problem_data->pp[index];
               problem_data->pc_workers[worker][count] = problem_data->pc[index];
               problem_data->qp_workers[worker][count] = problem_data->qp[index];
               problem_data->qc_workers[worker][count] = problem_data->qc[index];
+              if (x == problem_data->size_x / 2 &&
+                  y == problem_data->size_y / 2 &&
+                  z == problem_data->size_z / 2) {
+                if (local_x >= STENCIL && local_y >= STENCIL &&
+                    local_z >= STENCIL && local_x < worker_size_x - STENCIL &&
+                    local_y < worker_size_y - STENCIL &&
+                    local_z < worker_size_z - STENCIL) {
+                  problem_data->source_index[worker] = count;
+                } else {
+                  problem_data->pc_workers[worker][count] +=
+                      dc_calculate_source(problem_data->dt, 0);
+                  problem_data->qc_workers[worker][count] +=
+                      dc_calculate_source(problem_data->dt, 0);
+                }
+              }
               count++;
             }
           }
@@ -155,9 +166,13 @@ dc_result_t dc_receive_data_from_workers(dc_process_t coordinator_process,
                                          size_t cube_size_z) {
   dc_result_t result;
   result.pc =
-      (float *)malloc(sizeof(float) * cube_size_x * cube_size_y * cube_size_z);
+      (float *)malloc(cube_size_x * cube_size_y * cube_size_z * sizeof(float));
   result.qc =
-      (float *)malloc(sizeof(float) * cube_size_x * cube_size_y * cube_size_z);
+      (float *)malloc(cube_size_x * cube_size_y * cube_size_z * sizeof(float));
+  for (int i = 0; i < cube_size_x * cube_size_y * cube_size_z; i++) {
+    result.pc[i] = 0.0f;
+    result.qc[i] = 0.0f;
+  }
   size_t size_x = cube_size_x / coordinator_process.topology[0];
   size_t size_y = cube_size_y / coordinator_process.topology[1];
   size_t size_z = cube_size_z / coordinator_process.topology[2];

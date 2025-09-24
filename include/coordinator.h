@@ -13,6 +13,7 @@ typedef struct {
   size_t size_y;
   size_t size_z;
   size_t num_workers;
+  float dt;
   float *pp, *pc, *qp, *qc;
   float **pp_workers;
   float **pc_workers;

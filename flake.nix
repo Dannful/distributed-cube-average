@@ -33,7 +33,7 @@
         };
         packages.script =
           pkgs.writeShellScriptBin "run-distributed-cube-average" ''
-            ${pkgs.openmpi}/bin/mpirun -np 1 ${distributed-cube-average}/bin/distributed-cube-average --size-x=100 --size-y=100 --size-z=100 --dx=1 --dy=1 --dz=1 --dt=1 --time-max=6 --absorption=1 --output-file=./validation/predicted.dc
+            ${pkgs.openmpi}/bin/mpirun -np 2 ${distributed-cube-average}/bin/distributed-cube-average --size-x=10 --size-y=10 --size-z=10 --absorption=1 --dx=2 --dy=3 --dz=4 --dt=1 --time-max=2 --output-file=./validation/predicted.dc
           '';
         packages.default = distributed-cube-average;
         apps.default = {

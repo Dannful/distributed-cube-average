@@ -126,7 +126,6 @@ int main(int argc, char **argv) {
     mpi_process.pc = (float *)malloc(sizeof(float) * coordinator_size);
     mpi_process.qp = (float *)malloc(sizeof(float) * coordinator_size);
     mpi_process.qc = (float *)malloc(sizeof(float) * coordinator_size);
-    dc_log_info(0, "SIZE BRUH %d", coordinator_size);
     mpi_process.source_index = problem_data.source_index[0];
     memcpy(mpi_process.pp, problem_data.pp_workers[0],
            sizeof(float) * coordinator_size);
@@ -145,14 +144,36 @@ int main(int argc, char **argv) {
     dc_log_info(rank, "Data received from coordinator.");
   }
   dc_log_info(rank, "Starting worker process...");
-  dc_worker_process(mpi_process);
+  {
+    FILE *t = fopen("/home/dannly/.git/distributed-cube-average/validation/"
+                    "precomp_predicted.dc",
+                    "wb");
+    fwrite(mpi_process.anisotropy_vars.vpz, sizeof(float), sx * sy * sz, t);
+    fwrite(mpi_process.anisotropy_vars.vsv, sizeof(float), sx * sy * sz, t);
+    fwrite(mpi_process.anisotropy_vars.epsilon, sizeof(float), sx * sy * sz, t);
+    fwrite(mpi_process.anisotropy_vars.delta, sizeof(float), sx * sy * sz, t);
+    fwrite(mpi_process.anisotropy_vars.phi, sizeof(float), sx * sy * sz, t);
+    fwrite(mpi_process.anisotropy_vars.theta, sizeof(float), sx * sy * sz, t);
+    fwrite(mpi_process.precomp_vars.ch1dxx, sizeof(float), sx * sy * sz, t);
+    fwrite(mpi_process.precomp_vars.ch1dxy, sizeof(float), sx * sy * sz, t);
+    fwrite(mpi_process.precomp_vars.ch1dxz, sizeof(float), sx * sy * sz, t);
+    fwrite(mpi_process.precomp_vars.ch1dyy, sizeof(float), sx * sy * sz, t);
+    fwrite(mpi_process.precomp_vars.ch1dyz, sizeof(float), sx * sy * sz, t);
+    fwrite(mpi_process.precomp_vars.ch1dzz, sizeof(float), sx * sy * sz, t);
+    fwrite(mpi_process.precomp_vars.v2px, sizeof(float), sx * sy * sz, t);
+    fwrite(mpi_process.precomp_vars.v2pz, sizeof(float), sx * sy * sz, t);
+    fwrite(mpi_process.precomp_vars.v2sz, sizeof(float), sx * sy * sz, t);
+    fwrite(mpi_process.precomp_vars.v2pn, sizeof(float), sx * sy * sz, t);
+    fclose(t);
+  }
+  dc_worker_process(&mpi_process);
   dc_send_data_to_coordinator(mpi_process);
   if (rank == COORDINATOR) {
     size_t total_size = sx * sy * sz;
     dc_result_t result = dc_receive_data_from_workers(mpi_process, sx, sy, sz);
     FILE *output = fopen(arguments.output_file, "wb");
-    // fwrite(result.pc, sizeof(float), total_size, output);
-    // fwrite(result.qc, sizeof(float), total_size, output);
+    fwrite(result.pc, sizeof(float), sx * sy * sz, output);
+    fwrite(result.qc, sizeof(float), sx * sy * sz, output);
     fclose(output);
     free(result.pc);
     free(result.qc);

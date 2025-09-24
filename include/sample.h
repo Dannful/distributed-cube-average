@@ -1,11 +1,11 @@
 #pragma once
 
-#include <stddef.h>
 #include "precomp.h"
+#include <stddef.h>
 
 /**
  * Compute one sample iteration for wave propagation.
- * 
+ *
  * @param pc Current p field
  * @param qc Current q field
  * @param pp Previous p field (will be updated to next)
@@ -22,8 +22,8 @@
  * @param dz Grid spacing in z dimension
  * @param dt Time step
  */
-void sample_compute(float* pc, float* qc, float* pp, float* qp,
-                    dc_precomp_vars precomp_vars,
-                    size_t ix, size_t iy, size_t iz, 
-                    size_t size_x, size_t size_y, size_t size_z,
-                    float dx, float dy, float dz, float dt);
+void sample_compute(float *pc, float *qc, float *pp_out, float *qp_out,
+                    float *pp_in, float *qp_in, dc_precomp_vars precomp_vars,
+                    size_t ix, size_t iy, size_t iz, size_t size_x,
+                    size_t size_y, size_t size_z, float dx, float dy, float dz,
+                    float dt);

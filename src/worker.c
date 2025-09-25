@@ -170,10 +170,6 @@ void dc_compute_boundaries(const dc_process_t *process, float *pp_copy,
         end_coords[i] =
             (displacement[i] < 0) ? 2 * radius : process->sizes[i] - radius;
       }
-      for (int i = 0; i < DIMENSIONS; i++) {
-        dc_log_info(0, "dim: %d, dir: %d, dimension: %d, start: %d, end: %d",
-                    dimension, direction, i, start_coords[i], end_coords[i]);
-      }
       for (size_t z = start_coords[2]; z < end_coords[2]; z++) {
         for (size_t y = start_coords[1]; y < end_coords[1]; y++) {
           for (size_t x = start_coords[0]; x < end_coords[0]; x++) {

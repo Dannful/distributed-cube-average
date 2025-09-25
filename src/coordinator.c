@@ -57,9 +57,9 @@ void dc_partition_cube(problem_data_t *problem_data) {
       (problem_data->size_y - 2 * STENCIL) / problem_data->topology[1];
   size_t partition_size_z =
       (problem_data->size_z - 2 * STENCIL) / problem_data->topology[2];
-  size_t remainder_x = problem_data->size_x % problem_data->topology[0];
-  size_t remainder_y = problem_data->size_y % problem_data->topology[1];
-  size_t remainder_z = problem_data->size_z % problem_data->topology[2];
+  size_t remainder_x = (problem_data->size_x - 2 * STENCIL) % problem_data->topology[0];
+  size_t remainder_y = (problem_data->size_y - 2 * STENCIL) % problem_data->topology[1];
+  size_t remainder_z = (problem_data->size_z - 2 * STENCIL) % problem_data->topology[2];
   for (size_t worker_z = 0; worker_z < problem_data->topology[2]; worker_z++) {
     for (size_t worker_y = 0; worker_y < problem_data->topology[1];
          worker_y++) {
@@ -86,6 +86,8 @@ void dc_partition_cube(problem_data_t *problem_data) {
         problem_data->worker_sizes[worker][0] = worker_size_x;
         problem_data->worker_sizes[worker][1] = worker_size_y;
         problem_data->worker_sizes[worker][2] = worker_size_z;
+        dc_log_info(0, "jirbio %d %d %d %d", worker, worker_size_x,
+                    worker_size_y, worker_size_z);
         problem_data->pp_workers[worker] = (float *)malloc(
             sizeof(float) * worker_size_x * worker_size_y * worker_size_z);
         problem_data->pc_workers[worker] = (float *)malloc(
@@ -122,11 +124,6 @@ void dc_partition_cube(problem_data_t *problem_data) {
                     local_y < worker_size_y - STENCIL &&
                     local_z < worker_size_z - STENCIL) {
                   problem_data->source_index[worker] = count;
-                } else {
-                  problem_data->pc_workers[worker][count] +=
-                      dc_calculate_source(problem_data->dt, 0);
-                  problem_data->qc_workers[worker][count] +=
-                      dc_calculate_source(problem_data->dt, 0);
                 }
               }
               count++;
@@ -186,17 +183,16 @@ dc_result_t dc_receive_data_from_workers(dc_process_t coordinator_process,
         int worker_rank;
         MPI_Cart_rank(coordinator_process.communicator, worker_coordinates,
                       &worker_rank);
-        size_t *worker_sizes = NULL;
+        size_t worker_sizes[DIMENSIONS] = {0};
         float *pc = NULL;
         float *qc = NULL;
         size_t worker_count = 0;
         if (worker_rank == COORDINATOR) {
-          worker_sizes = coordinator_process.sizes;
+          memcpy(worker_sizes, coordinator_process.sizes, DIMENSIONS * sizeof(size_t));
           pc = coordinator_process.pc;
           qc = coordinator_process.qc;
           worker_count = dc_compute_count_from_sizes(worker_sizes);
         } else {
-          worker_sizes = malloc(DIMENSIONS * sizeof(size_t));
           MPI_Recv(worker_sizes, DIMENSIONS, MPI_UNSIGNED_LONG, worker_rank, 0,
                    coordinator_process.communicator, MPI_STATUSES_IGNORE);
           worker_count = dc_compute_count_from_sizes(worker_sizes);
@@ -213,9 +209,9 @@ dc_result_t dc_receive_data_from_workers(dc_process_t coordinator_process,
               size_t worker_index = dc_get_index_for_coordinates(
                   x, y, z, worker_sizes[0], worker_sizes[1], worker_sizes[2]);
               size_t global_index = dc_get_index_for_coordinates(
-                  worker_x * (size_x - 2 * STENCIL) + x,
-                  worker_y * (size_y - 2 * STENCIL) + y,
-                  worker_z * (size_z - 2 * STENCIL) + z, cube_size_x,
+                  worker_x * (size_x - STENCIL) + x,
+                  worker_y * (size_y - STENCIL) + y,
+                  worker_z * (size_z - STENCIL) + z, cube_size_x,
                   cube_size_y, cube_size_z);
               result.pc[global_index] = pc[worker_index];
               result.qc[global_index] = qc[worker_index];
@@ -223,7 +219,6 @@ dc_result_t dc_receive_data_from_workers(dc_process_t coordinator_process,
           }
         }
         if (worker_rank != COORDINATOR) {
-          free(worker_sizes);
           free(pc);
           free(qc);
         }

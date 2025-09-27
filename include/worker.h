@@ -27,6 +27,11 @@ void dc_extract_coordinates(size_t *position_x, size_t *position_y,
 unsigned int dc_get_index_for_coordinates(size_t position_x, size_t position_y,
                                           size_t position_z, size_t size_x,
                                           size_t size_y, size_t size_z);
+unsigned int dc_get_global_coordinates(const int worker_coordinates[DIMENSIONS],
+                                       const size_t worker_sizes[DIMENSIONS],
+                                       const size_t global_sizes[DIMENSIONS],
+                                       const size_t local_coordinates[DIMENSIONS],
+                                       const int topology[DIMENSIONS]);
 
 void dc_worker_receive_data(dc_process_t *process);
 void dc_worker_process(dc_process_t *process);

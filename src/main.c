@@ -88,12 +88,9 @@ int main(int argc, char **argv) {
   dc_mpi_world_init(&communicator, topology);
   MPI_Comm_rank(communicator, &rank);
 
-  const size_t sx =
-      arguments.size_x + 2 * arguments.absorption_size + 2 * STENCIL;
-  const size_t sy =
-      arguments.size_y + 2 * arguments.absorption_size + 2 * STENCIL;
-  const size_t sz =
-      arguments.size_z + 2 * arguments.absorption_size + 2 * STENCIL;
+  const size_t sx = arguments.size_x + 2 * arguments.absorption_size + 2 * STENCIL;
+  const size_t sy = arguments.size_y + 2 * arguments.absorption_size + 2 * STENCIL;
+  const size_t sz = arguments.size_z + 2 * arguments.absorption_size + 2 * STENCIL;
 
   dc_process_t mpi_process =
       dc_process_init(communicator, rank, topology, sx, sy, sz, arguments.dx,

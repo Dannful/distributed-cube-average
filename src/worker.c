@@ -1,4 +1,5 @@
 #include <mpi.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,6 +23,29 @@ unsigned int dc_get_index_for_coordinates(size_t position_x, size_t position_y,
                                           size_t position_z, size_t size_x,
                                           size_t size_y, size_t size_z) {
   return position_x + position_y * size_x + position_z * size_x * size_y;
+}
+
+unsigned int
+dc_get_global_coordinates(const int worker_coordinates[DIMENSIONS],
+                          const size_t worker_sizes[DIMENSIONS],
+                          const size_t global_sizes[DIMENSIONS],
+                          const size_t local_coordinates[DIMENSIONS],
+                          const int topology[DIMENSIONS]) {
+  size_t worker_index = dc_get_index_for_coordinates(
+      local_coordinates[0], local_coordinates[1], local_coordinates[2],
+      worker_sizes[0], worker_sizes[1], worker_sizes[2]);
+  size_t local_x = local_coordinates[0] - STENCIL;
+  size_t local_y = local_coordinates[1] - STENCIL;
+  size_t local_z = local_coordinates[2] - STENCIL;
+  size_t size_x = (worker_sizes[0] - 2 * STENCIL) / topology[0];
+  size_t size_y = (worker_sizes[1] - 2 * STENCIL) / topology[1];
+  size_t size_z = (worker_sizes[2] - 2 * STENCIL) / topology[2];
+  size_t global_index = dc_get_index_for_coordinates(
+      STENCIL + worker_coordinates[0] * size_x + local_x,
+      STENCIL + worker_coordinates[1] * size_y + local_y,
+      STENCIL + worker_coordinates[2] * size_z + local_z, global_sizes[0],
+      global_sizes[1], global_sizes[2]);
+  return global_index;
 }
 
 void dc_worker_receive_data(dc_process_t *process) {
@@ -159,6 +183,11 @@ void dc_compute_boundaries(const dc_process_t *process) {
   const size_t size_y = process->sizes[1];
   const size_t size_z = process->sizes[2];
 
+  float *pp_copy = malloc(size_x * size_y * size_z * sizeof(float));
+  float *qp_copy = malloc(size_x * size_y * size_z * sizeof(float));
+  memcpy(pp_copy, process->pp, size_x * size_y * size_z * sizeof(float));
+  memcpy(qp_copy, process->qp, size_x * size_y * size_z * sizeof(float));
+
   for (unsigned int dimension = 0; dimension < DIMENSIONS; dimension++) {
     for (int direction = -1; direction <= 1; direction += 2) {
       int displacement[DIMENSIONS] = {0};
@@ -173,15 +202,21 @@ void dc_compute_boundaries(const dc_process_t *process) {
       for (size_t z = start_coords[2]; z < end_coords[2]; z++) {
         for (size_t y = start_coords[1]; y < end_coords[1]; y++) {
           for (size_t x = start_coords[0]; x < end_coords[0]; x++) {
-            sample_compute(process->pc, process->qc, process->pp, process->qp,
-                           process->precomp_vars, x, y, z, size_x, size_y,
-                           size_z, process->dx, process->dy, process->dz,
-                           process->dt);
+            size_t index =
+                dc_get_index_for_coordinates(x, y, z, size_x, size_y, size_z);
+            if(index == 3048 && process->rank == 7) {
+              for (unsigned int i = 0; i < DIMENSIONS; i++) {
+                dc_log_info(7, "im here (%d %d %d) %d %d (%d %d)", x, y, z, dimension, i, start_coords[i], end_coords[i]);
+              }
+            }
+            sample_compute(process, pp_copy, qp_copy, x, y, z);
           }
         }
       }
     }
   }
+  free(pp_copy);
+  free(qp_copy);
 }
 
 void dc_compute_interior(const dc_process_t *process) {
@@ -193,9 +228,7 @@ void dc_compute_interior(const dc_process_t *process) {
   for (size_t z = 2 * radius; z < size_z - 2 * radius; z++) {
     for (size_t y = 2 * radius; y < size_y - 2 * radius; y++) {
       for (size_t x = 2 * radius; x < size_x - 2 * radius; x++) {
-        sample_compute(process->pc, process->qc, process->pp, process->qp,
-                       process->precomp_vars, x, y, z, size_x, size_y, size_z,
-                       process->dx, process->dy, process->dz, process->dt);
+        sample_compute(process, process->pp, process->qp, x, y, z);
       }
     }
   }
@@ -225,8 +258,11 @@ void dc_worker_process(dc_process_t *process) {
 
   for (unsigned int i = 0; i < process->iterations; i++) {
     if (process->source_index != -1) {
-      process->pc[process->source_index] += dc_calculate_source(process->dt, i);
-      process->qc[process->source_index] += dc_calculate_source(process->dt, i);
+      float source = dc_calculate_source(process->dt, i);
+      process->pc[process->source_index] += source;
+      process->qc[process->source_index] += source;
+      dc_log_info(process->rank, "Inserting source %f at %d", source,
+                  process->source_index);
     }
 
     worker_halos_t new_pp_halos = dc_receive_halos(*process, PP_TAG);
@@ -250,6 +286,9 @@ void dc_worker_process(dc_process_t *process) {
     dc_worker_swap_arrays(process);
   }
 
+  if (process->rank == 7) {
+    dc_log_info(7, "result: %f", process->pc[3048]);
+  }
   MPI_Waitall(all_send_requests.count, all_send_requests.requests,
               MPI_STATUS_IGNORE);
   dc_free_worker_requests(&all_send_requests);

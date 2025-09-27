@@ -23,6 +23,7 @@ typedef struct {
   unsigned int iterations;
   int source_index;
   float dx, dy, dz, dt;
+  size_t global_sizes[DIMENSIONS];
   size_t sizes[DIMENSIONS];
   dc_anisotropy_t anisotropy_vars;
   dc_precomp_vars precomp_vars;

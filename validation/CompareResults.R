@@ -33,7 +33,12 @@ if (length(ground_truth_floats) != length(predicted_floats)) {
   abs_differences <- abs(differences)
 
   if (all(abs_differences == 0)) {
-    output <- "✅ Validation successful! The files are numerically identical."
+    output <- paste0(
+      "Min: ", min(ground_truth_floats), "\n",
+      "Max: ", max(ground_truth_floats), "\n",
+      "Standard deviation: ", sd(ground_truth_floats), "\n",
+      "✅ Validation successful! The files are numerically identical."
+    )
   } else {
     max_abs_diff <- max(abs_differences)
     mean_abs_diff <- mean(abs_differences)

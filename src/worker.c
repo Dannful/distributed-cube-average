@@ -74,7 +74,8 @@ void dc_send_halo_to_neighbours(dc_process_t process, int tag, float *from,
       displacement[dim] = dir;
       size_t data_size = 1;
       for (unsigned int i = 0; i < DIMENSIONS; i++) {
-        data_size *= (displacement[i] == 0) ? process.sizes[i] : radius;
+        data_size *=
+            (displacement[i] == 0) ? (process.sizes[i] - 2 * radius) : radius;
       }
       float *send_buffer = malloc(sizeof(float) * data_size);
 
@@ -134,7 +135,7 @@ worker_halos_t dc_receive_halos(dc_process_t process, int tag) {
 
       size_t recv_data_size = 1;
       for (unsigned int i = 0; i < DIMENSIONS; i++) {
-        recv_data_size *= (i == dim) ? radius : process.sizes[i];
+        recv_data_size *= (i == dim) ? radius : (process.sizes[i] - 2 * radius);
       }
 
       size_t face_index = 2 * dim + (dir + 1) / 2;
@@ -152,8 +153,7 @@ worker_halos_t dc_receive_halos(dc_process_t process, int tag) {
   return result;
 }
 
-void dc_compute_boundaries(const dc_process_t *process, float *pp_copy,
-                           float *qp_copy) {
+void dc_compute_boundaries(const dc_process_t *process) {
   const int radius = STENCIL;
   const size_t size_x = process->sizes[0];
   const size_t size_y = process->sizes[1];
@@ -174,9 +174,9 @@ void dc_compute_boundaries(const dc_process_t *process, float *pp_copy,
         for (size_t y = start_coords[1]; y < end_coords[1]; y++) {
           for (size_t x = start_coords[0]; x < end_coords[0]; x++) {
             sample_compute(process->pc, process->qc, process->pp, process->qp,
-                           pp_copy, qp_copy, process->precomp_vars, x, y, z,
-                           size_x, size_y, size_z, process->dx, process->dy,
-                           process->dz, process->dt);
+                           process->precomp_vars, x, y, z, size_x, size_y,
+                           size_z, process->dx, process->dy, process->dz,
+                           process->dt);
           }
         }
       }
@@ -194,9 +194,8 @@ void dc_compute_interior(const dc_process_t *process) {
     for (size_t y = 2 * radius; y < size_y - 2 * radius; y++) {
       for (size_t x = 2 * radius; x < size_x - 2 * radius; x++) {
         sample_compute(process->pc, process->qc, process->pp, process->qp,
-                       process->pp, process->qp, process->precomp_vars, x, y, z,
-                       size_x, size_y, size_z, process->dx, process->dy,
-                       process->dz, process->dt);
+                       process->precomp_vars, x, y, z, size_x, size_y, size_z,
+                       process->dx, process->dy, process->dz, process->dt);
       }
     }
   }
@@ -224,23 +223,16 @@ void dc_worker_process(dc_process_t *process) {
               process->iterations, process->sizes[0], process->sizes[1],
               process->sizes[2]);
 
-  float *pp_copy = malloc(process->sizes[0] * process->sizes[1] *
-                          process->sizes[2] * sizeof(float));
-  float *qp_copy = malloc(process->sizes[0] * process->sizes[1] *
-                          process->sizes[2] * sizeof(float));
-
   for (unsigned int i = 0; i < process->iterations; i++) {
     if (process->source_index != -1) {
       process->pc[process->source_index] += dc_calculate_source(process->dt, i);
       process->qc[process->source_index] += dc_calculate_source(process->dt, i);
     }
-    memcpy(pp_copy, process->pp, count * sizeof(float));
-    memcpy(qp_copy, process->qp, count * sizeof(float));
 
     worker_halos_t new_pp_halos = dc_receive_halos(*process, PP_TAG);
     worker_halos_t new_qp_halos = dc_receive_halos(*process, QP_TAG);
 
-    dc_compute_boundaries(process, pp_copy, qp_copy);
+    dc_compute_boundaries(process);
     dc_send_halo_to_neighbours(*process, PP_TAG, process->pp,
                                &all_send_requests);
     dc_send_halo_to_neighbours(*process, QP_TAG, process->qp,
@@ -257,9 +249,6 @@ void dc_worker_process(dc_process_t *process) {
     dc_free_worker_halos(&new_qp_halos);
     dc_worker_swap_arrays(process);
   }
-
-  free(pp_copy);
-  free(qp_copy);
 
   MPI_Waitall(all_send_requests.count, all_send_requests.requests,
               MPI_STATUS_IGNORE);
@@ -390,16 +379,16 @@ void dc_worker_insert_halos(const dc_process_t *process,
 
       size_t start_coords[DIMENSIONS], end_coords[DIMENSIONS];
       for (unsigned int i = 0; i < DIMENSIONS; i++) {
-        if (i != dim) {
-          start_coords[i] = 2 * radius;
-          end_coords[i] = process->sizes[i] - 2 * radius;
-          continue;
-        }
-        if (dir < 0) {
-          start_coords[i] = radius;
-          end_coords[i] = 2 * radius;
+        if (i == dim) {
+          if (dir < 0) {
+            start_coords[i] = 0;
+            end_coords[i] = radius;
+          } else {
+            start_coords[i] = process->sizes[i] - radius;
+            end_coords[i] = process->sizes[i];
+          }
         } else {
-          start_coords[i] = process->sizes[i] - 2 * radius;
+          start_coords[i] = radius;
           end_coords[i] = process->sizes[i] - radius;
         }
       }

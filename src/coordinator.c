@@ -2,7 +2,6 @@
 #include <mpi.h>
 #include <string.h>
 
-#include "calculate_source.h"
 #include "coordinator.h"
 #include "log.h"
 #include "setup.h"
@@ -50,6 +49,47 @@ problem_data_t dc_initialize_problem(MPI_Comm comm,
   return result;
 }
 
+void dc_determine_source(size_t size_x, size_t size_y, size_t size_z,
+                         unsigned int topology[DIMENSIONS], size_t *source_x,
+                         size_t *source_y, size_t *source_z) {
+  size_t partition_size_x = STENCIL + (size_x - 2 * STENCIL) / topology[0];
+  size_t partition_size_y = STENCIL + (size_y - 2 * STENCIL) / topology[1];
+  size_t partition_size_z = STENCIL + (size_z - 2 * STENCIL) / topology[2];
+
+  *source_x = size_x / 2;
+  *source_y = size_y / 2;
+  *source_z = size_z / 2;
+
+  size_t x = 0, y = 0, z = 0;
+  while (1) {
+    size_t new_source_x = *source_x + x;
+    size_t new_source_y = *source_y + y;
+    size_t new_source_z = *source_z + z;
+    size_t remainder_x = new_source_x % partition_size_x;
+    size_t remainder_y = new_source_y % partition_size_y;
+    size_t remainder_z = new_source_z % partition_size_z;
+    if (remainder_x >= STENCIL && remainder_x < partition_size_x - STENCIL &&
+        remainder_y >= STENCIL && remainder_y < partition_size_y - STENCIL &&
+        remainder_z >= STENCIL && remainder_z < partition_size_z - STENCIL)
+      break;
+    int step_x = remainder_x < STENCIL ? 1 : -1;
+    int step_y = remainder_y < STENCIL ? 1 : -1;
+    int step_z = remainder_z < STENCIL ? 1 : -1;
+    step_x *=
+        remainder_x < STENCIL || remainder_x >= partition_size_x - STENCIL;
+    step_y *=
+        remainder_y < STENCIL || remainder_y >= partition_size_y - STENCIL;
+    step_z *=
+        remainder_z < STENCIL || remainder_z >= partition_size_z - STENCIL;
+    x += step_x;
+    y += step_y;
+    z += step_z;
+  }
+  *source_x += x;
+  *source_y += y;
+  *source_z += z;
+}
+
 void dc_partition_cube(problem_data_t *problem_data) {
   size_t partition_size_x =
       (problem_data->size_x - 2 * STENCIL) / problem_data->topology[0];
@@ -57,9 +97,18 @@ void dc_partition_cube(problem_data_t *problem_data) {
       (problem_data->size_y - 2 * STENCIL) / problem_data->topology[1];
   size_t partition_size_z =
       (problem_data->size_z - 2 * STENCIL) / problem_data->topology[2];
-  size_t remainder_x = (problem_data->size_x - 2 * STENCIL) % problem_data->topology[0];
-  size_t remainder_y = (problem_data->size_y - 2 * STENCIL) % problem_data->topology[1];
-  size_t remainder_z = (problem_data->size_z - 2 * STENCIL) % problem_data->topology[2];
+  size_t remainder_x =
+      (problem_data->size_x - 2 * STENCIL) % problem_data->topology[0];
+  size_t remainder_y =
+      (problem_data->size_y - 2 * STENCIL) % problem_data->topology[1];
+  size_t remainder_z =
+      (problem_data->size_z - 2 * STENCIL) % problem_data->topology[2];
+  size_t source_x, source_y, source_z;
+  dc_log_info(COORDINATOR, "Calculating source...");
+  dc_determine_source(problem_data->size_x, problem_data->size_y,
+                      problem_data->size_z, problem_data->topology, &source_x,
+                      &source_y, &source_z);
+  dc_log_info(COORDINATOR, "Source is located at coordinates X: %d, Y: %d and Z: %d", source_x, source_y, source_z);
   for (size_t worker_z = 0; worker_z < problem_data->topology[2]; worker_z++) {
     for (size_t worker_y = 0; worker_y < problem_data->topology[1];
          worker_y++) {
@@ -86,8 +135,6 @@ void dc_partition_cube(problem_data_t *problem_data) {
         problem_data->worker_sizes[worker][0] = worker_size_x;
         problem_data->worker_sizes[worker][1] = worker_size_y;
         problem_data->worker_sizes[worker][2] = worker_size_z;
-        dc_log_info(0, "jirbio %d %d %d %d", worker, worker_size_x,
-                    worker_size_y, worker_size_z);
         problem_data->pp_workers[worker] = (float *)malloc(
             sizeof(float) * worker_size_x * worker_size_y * worker_size_z);
         problem_data->pc_workers[worker] = (float *)malloc(
@@ -116,15 +163,9 @@ void dc_partition_cube(problem_data_t *problem_data) {
               problem_data->pc_workers[worker][count] = problem_data->pc[index];
               problem_data->qp_workers[worker][count] = problem_data->qp[index];
               problem_data->qc_workers[worker][count] = problem_data->qc[index];
-              if (x == problem_data->size_x / 2 &&
-                  y == problem_data->size_y / 2 &&
-                  z == problem_data->size_z / 2) {
-                if (local_x >= STENCIL && local_y >= STENCIL &&
-                    local_z >= STENCIL && local_x < worker_size_x - STENCIL &&
-                    local_y < worker_size_y - STENCIL &&
-                    local_z < worker_size_z - STENCIL) {
-                  problem_data->source_index[worker] = count;
-                }
+              if (x == source_x && y == source_y && z == source_z) {
+                dc_log_info(COORDINATOR, "birjio");
+                problem_data->source_index[worker] = count;
               }
               count++;
             }
@@ -188,7 +229,8 @@ dc_result_t dc_receive_data_from_workers(dc_process_t coordinator_process,
         float *qc = NULL;
         size_t worker_count = 0;
         if (worker_rank == COORDINATOR) {
-          memcpy(worker_sizes, coordinator_process.sizes, DIMENSIONS * sizeof(size_t));
+          memcpy(worker_sizes, coordinator_process.sizes,
+                 DIMENSIONS * sizeof(size_t));
           pc = coordinator_process.pc;
           qc = coordinator_process.qc;
           worker_count = dc_compute_count_from_sizes(worker_sizes);
@@ -211,8 +253,8 @@ dc_result_t dc_receive_data_from_workers(dc_process_t coordinator_process,
               size_t global_index = dc_get_index_for_coordinates(
                   worker_x * (size_x - STENCIL) + x,
                   worker_y * (size_y - STENCIL) + y,
-                  worker_z * (size_z - STENCIL) + z, cube_size_x,
-                  cube_size_y, cube_size_z);
+                  worker_z * (size_z - STENCIL) + z, cube_size_x, cube_size_y,
+                  cube_size_z);
               result.pc[global_index] = pc[worker_index];
               result.qc[global_index] = qc[worker_index];
             }

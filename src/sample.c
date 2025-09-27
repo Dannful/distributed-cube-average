@@ -1,15 +1,16 @@
 #include "sample.h"
 #include "derivatives.h"
+#include "log.h"
 #include "precomp.h"
 #include "worker.h"
+#include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 
-void sample_compute(float *pc, float *qc, float *pp_out, float *qp_out,
-                    float *pp_in, float *qp_in, dc_precomp_vars precomp_vars,
-                    size_t ix, size_t iy, size_t iz, size_t size_x,
-                    size_t size_y, size_t size_z, float dx, float dy, float dz,
-                    float dt) {
+void sample_compute(float *pc, float *qc, float *pp, float *qp,
+                    dc_precomp_vars precomp_vars, size_t ix, size_t iy,
+                    size_t iz, size_t size_x, size_t size_y, size_t size_z,
+                    float dx, float dy, float dz, float dt) {
   // Calculate strides for each dimension
   const int strideX =
       dc_get_index_for_coordinates(1, 0, 0, size_x, size_y, size_z) -
@@ -78,6 +79,6 @@ void sample_compute(float *pc, float *qc, float *pp_out, float *qp_out,
                      precomp_vars.v2sz[i] * h2pmq;
 
   // new p and q
-  pp_out[i] = 2.0f * pc[i] - pp_in[i] + rhsp * dt * dt;
-  qp_out[i] = 2.0f * qc[i] - qp_in[i] + rhsq * dt * dt;
+  pp[i] = 2.0f * pc[i] - pp[i] + rhsp * dt * dt;
+  qp[i] = 2.0f * qc[i] - qp[i] + rhsq * dt * dt;
 }

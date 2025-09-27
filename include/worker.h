@@ -37,7 +37,7 @@ void dc_send_halo_to_neighbours(dc_process_t process, int tag, float *from,
 worker_halos_t dc_receive_halos(dc_process_t process, int tag);
 void dc_send_data_to_coordinator(dc_process_t process);
 
-void dc_compute_boundaries(const dc_process_t *process, float *pp_copy, float *qp_copy);
+void dc_compute_boundaries(const dc_process_t *process);
 void dc_compute_interior(const dc_process_t *process);
 
 void dc_free_worker_halos(worker_halos_t *halos);

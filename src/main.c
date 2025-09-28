@@ -88,9 +88,12 @@ int main(int argc, char **argv) {
   dc_mpi_world_init(&communicator, topology);
   MPI_Comm_rank(communicator, &rank);
 
-  const size_t sx = arguments.size_x + 2 * arguments.absorption_size + 2 * STENCIL;
-  const size_t sy = arguments.size_y + 2 * arguments.absorption_size + 2 * STENCIL;
-  const size_t sz = arguments.size_z + 2 * arguments.absorption_size + 2 * STENCIL;
+  const size_t sx =
+      arguments.size_x + 2 * arguments.absorption_size + 2 * STENCIL;
+  const size_t sy =
+      arguments.size_y + 2 * arguments.absorption_size + 2 * STENCIL;
+  const size_t sz =
+      arguments.size_z + 2 * arguments.absorption_size + 2 * STENCIL;
 
   dc_process_t mpi_process =
       dc_process_init(communicator, rank, topology, sx, sy, sz, arguments.dx,
@@ -119,11 +122,14 @@ int main(int argc, char **argv) {
            sizeof(size_t) * DIMENSIONS);
     size_t coordinator_size =
         dc_compute_count_from_sizes(problem_data.worker_sizes[0]);
+    mpi_process.indices = (size_t *)malloc(sizeof(size_t) * coordinator_size);
     mpi_process.pp = (float *)malloc(sizeof(float) * coordinator_size);
     mpi_process.pc = (float *)malloc(sizeof(float) * coordinator_size);
     mpi_process.qp = (float *)malloc(sizeof(float) * coordinator_size);
     mpi_process.qc = (float *)malloc(sizeof(float) * coordinator_size);
     mpi_process.source_index = problem_data.source_index[0];
+    memcpy(mpi_process.indices, problem_data.worker_indices[0],
+           sizeof(size_t) * coordinator_size);
     memcpy(mpi_process.pp, problem_data.pp_workers[0],
            sizeof(float) * coordinator_size);
     memcpy(mpi_process.qp, problem_data.qp_workers[0],
@@ -141,28 +147,6 @@ int main(int argc, char **argv) {
     dc_log_info(rank, "Data received from coordinator.");
   }
   dc_log_info(rank, "Starting worker process...");
-  {
-    FILE *t = fopen("/home/dannly/.git/distributed-cube-average/validation/"
-                    "precomp_predicted.dc",
-                    "wb");
-    fwrite(mpi_process.anisotropy_vars.vpz, sizeof(float), sx * sy * sz, t);
-    fwrite(mpi_process.anisotropy_vars.vsv, sizeof(float), sx * sy * sz, t);
-    fwrite(mpi_process.anisotropy_vars.epsilon, sizeof(float), sx * sy * sz, t);
-    fwrite(mpi_process.anisotropy_vars.delta, sizeof(float), sx * sy * sz, t);
-    fwrite(mpi_process.anisotropy_vars.phi, sizeof(float), sx * sy * sz, t);
-    fwrite(mpi_process.anisotropy_vars.theta, sizeof(float), sx * sy * sz, t);
-    fwrite(mpi_process.precomp_vars.ch1dxx, sizeof(float), sx * sy * sz, t);
-    fwrite(mpi_process.precomp_vars.ch1dxy, sizeof(float), sx * sy * sz, t);
-    fwrite(mpi_process.precomp_vars.ch1dxz, sizeof(float), sx * sy * sz, t);
-    fwrite(mpi_process.precomp_vars.ch1dyy, sizeof(float), sx * sy * sz, t);
-    fwrite(mpi_process.precomp_vars.ch1dyz, sizeof(float), sx * sy * sz, t);
-    fwrite(mpi_process.precomp_vars.ch1dzz, sizeof(float), sx * sy * sz, t);
-    fwrite(mpi_process.precomp_vars.v2px, sizeof(float), sx * sy * sz, t);
-    fwrite(mpi_process.precomp_vars.v2pz, sizeof(float), sx * sy * sz, t);
-    fwrite(mpi_process.precomp_vars.v2sz, sizeof(float), sx * sy * sz, t);
-    fwrite(mpi_process.precomp_vars.v2pn, sizeof(float), sx * sy * sz, t);
-    fclose(t);
-  }
   dc_worker_process(&mpi_process);
   dc_send_data_to_coordinator(mpi_process);
   if (rank == COORDINATOR) {

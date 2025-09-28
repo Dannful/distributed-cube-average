@@ -36,6 +36,7 @@ problem_data_t dc_initialize_problem(MPI_Comm comm,
     result.qp[i] = 0.0f;
     result.qc[i] = 0.0f;
   }
+  result.worker_indices = (size_t **)calloc(workers, sizeof(size_t *));
   result.pp_workers = (float **)calloc(workers, sizeof(float *));
   result.pc_workers = (float **)calloc(workers, sizeof(float *));
   result.qp_workers = (float **)calloc(workers, sizeof(float *));
@@ -60,9 +61,9 @@ void dc_determine_source(size_t size_x, size_t size_y, size_t size_z,
               "Initializing source search with partition sizes (%d, %d, %d)...",
               partition_size_x, partition_size_y, partition_size_z);
 
-  *source_x = size_x / 2;
-  *source_y = size_y / 2;
-  *source_z = size_z / 2;
+  *source_x = size_x / 4;
+  *source_y = size_y / 4;
+  *source_z = size_z / 4;
 
   size_t x = 0, y = 0, z = 0;
   while (1) {
@@ -148,6 +149,8 @@ void dc_partition_cube(problem_data_t *problem_data) {
         problem_data->worker_sizes[worker][0] = worker_size_x;
         problem_data->worker_sizes[worker][1] = worker_size_y;
         problem_data->worker_sizes[worker][2] = worker_size_z;
+        problem_data->worker_indices[worker] = (size_t *)malloc(
+            sizeof(size_t) * worker_size_x * worker_size_y * worker_size_z);
         problem_data->pp_workers[worker] = (float *)malloc(
             sizeof(float) * worker_size_x * worker_size_y * worker_size_z);
         problem_data->pc_workers[worker] = (float *)malloc(
@@ -173,6 +176,7 @@ void dc_partition_cube(problem_data_t *problem_data) {
               problem_data->pc_workers[worker][count] = problem_data->pc[index];
               problem_data->qp_workers[worker][count] = problem_data->qp[index];
               problem_data->qc_workers[worker][count] = problem_data->qc[index];
+              problem_data->worker_indices[worker][count] = index;
               if (x == source_x && y == source_y && z == source_z) {
                 problem_data->source_index[worker] = count;
                 dc_log_info(COORDINATOR,
@@ -203,6 +207,8 @@ void dc_send_data_to_workers(problem_data_t problem_data) {
              worker, 0, problem_data.communicator);
     size_t count =
         dc_compute_count_from_sizes(problem_data.worker_sizes[worker]);
+    MPI_Send(problem_data.worker_indices[worker], count, MPI_UNSIGNED_LONG,
+             worker, 0, problem_data.communicator);
     MPI_Send(problem_data.pp_workers[worker], count, MPI_FLOAT, worker, 0,
              problem_data.communicator);
     MPI_Send(problem_data.pc_workers[worker], count, MPI_FLOAT, worker, 0,
@@ -240,12 +246,14 @@ dc_result_t dc_receive_data_from_workers(dc_process_t coordinator_process,
         MPI_Cart_rank(coordinator_process.communicator, worker_coordinates,
                       &worker_rank);
         size_t worker_sizes[DIMENSIONS] = {0};
+        size_t *indices = NULL;
         float *pc = NULL;
         float *qc = NULL;
         size_t worker_count = 0;
         if (worker_rank == COORDINATOR) {
           memcpy(worker_sizes, coordinator_process.sizes,
                  DIMENSIONS * sizeof(size_t));
+          indices = coordinator_process.indices;
           pc = coordinator_process.pc;
           qc = coordinator_process.qc;
           worker_count = dc_compute_count_from_sizes(worker_sizes);
@@ -253,37 +261,46 @@ dc_result_t dc_receive_data_from_workers(dc_process_t coordinator_process,
           MPI_Recv(worker_sizes, DIMENSIONS, MPI_UNSIGNED_LONG, worker_rank, 0,
                    coordinator_process.communicator, MPI_STATUSES_IGNORE);
           worker_count = dc_compute_count_from_sizes(worker_sizes);
+          indices = malloc(sizeof(size_t) * worker_count);
           pc = malloc(sizeof(float) * worker_count);
           qc = malloc(sizeof(float) * worker_count);
+          MPI_Recv(indices, worker_count, MPI_UNSIGNED_LONG, worker_rank, 0,
+                   coordinator_process.communicator, MPI_STATUSES_IGNORE);
           MPI_Recv(pc, worker_count, MPI_FLOAT, worker_rank, 0,
                    coordinator_process.communicator, MPI_STATUSES_IGNORE);
           MPI_Recv(qc, worker_count, MPI_FLOAT, worker_rank, 0,
                    coordinator_process.communicator, MPI_STATUSES_IGNORE);
         }
-        for (size_t z = STENCIL; z < worker_sizes[2] - STENCIL; z++) {
-          for (size_t y = STENCIL; y < worker_sizes[1] - STENCIL; y++) {
-            for (size_t x = STENCIL; x < worker_sizes[0] - STENCIL; x++) {
-              size_t local_x = x - STENCIL;
-              size_t local_y = y - STENCIL;
-              size_t local_z = z - STENCIL;
-              size_t worker_index = dc_get_index_for_coordinates(
-                  x, y, z, worker_sizes[0], worker_sizes[1], worker_sizes[2]);
-              size_t global_sizes[DIMENSIONS] = {cube_size_x, cube_size_y,
-                                                 cube_size_z};
-              size_t local_coordinates[DIMENSIONS] = {x, y, z};
-              size_t global_index = dc_get_global_coordinates(
-                  worker_coordinates, worker_sizes, global_sizes,
-                  local_coordinates, coordinator_process.topology);
-              global_index = dc_get_index_for_coordinates(
-                  STENCIL + worker_coordinates[0] * size_x + local_x,
-                  STENCIL + worker_coordinates[1] * size_y + local_y,
-                  STENCIL + worker_coordinates[2] * size_z + local_z,
-                  global_sizes[0], global_sizes[1], global_sizes[2]);
-              result.pc[global_index] = pc[worker_index];
-              result.qc[global_index] = qc[worker_index];
-            }
-          }
+        for (int i = 0; i < worker_sizes[0] * worker_sizes[1] * worker_sizes[2];
+             i++) {
+          result.pc[indices[i]] = pc[i];
+          result.qc[indices[i]] = qc[i];
         }
+        // for (size_t z = STENCIL; z < worker_sizes[2] - STENCIL; z++) {
+        //   for (size_t y = STENCIL; y < worker_sizes[1] - STENCIL; y++) {
+        //     for (size_t x = STENCIL; x < worker_sizes[0] - STENCIL; x++) {
+        //       size_t local_x = x - STENCIL;
+        //       size_t local_y = y - STENCIL;
+        //       size_t local_z = z - STENCIL;
+        //       size_t worker_index = dc_get_index_for_coordinates(
+        //           x, y, z, worker_sizes[0], worker_sizes[1],
+        //           worker_sizes[2]);
+        //       size_t global_sizes[DIMENSIONS] = {cube_size_x, cube_size_y,
+        //                                          cube_size_z};
+        //       size_t local_coordinates[DIMENSIONS] = {x, y, z};
+        //       size_t global_index = dc_get_global_coordinates(
+        //           worker_coordinates, worker_sizes, global_sizes,
+        //           local_coordinates, coordinator_process.topology);
+        //       global_index = dc_get_index_for_coordinates(
+        //           STENCIL + worker_coordinates[0] * size_x + local_x,
+        //           STENCIL + worker_coordinates[1] * size_y + local_y,
+        //           STENCIL + worker_coordinates[2] * size_z + local_z,
+        //           global_sizes[0], global_sizes[1], global_sizes[2]);
+        //       result.pc[global_index] = pc[worker_index];
+        //       result.qc[global_index] = qc[worker_index];
+        //     }
+        //   }
+        // }
         if (worker_rank != COORDINATOR) {
           free(pc);
           free(qc);
@@ -301,6 +318,7 @@ void dc_free_problem_data_mem(problem_data_t *problem_data) {
     free(problem_data->qp_workers[i]);
     free(problem_data->qc_workers[i]);
     free(problem_data->worker_sizes[i]);
+    free(problem_data->worker_indices[i]);
   }
   free(problem_data->source_index);
   free(problem_data->pp_workers);
@@ -308,10 +326,12 @@ void dc_free_problem_data_mem(problem_data_t *problem_data) {
   free(problem_data->qp_workers);
   free(problem_data->qc_workers);
   free(problem_data->worker_sizes);
+  free(problem_data->worker_indices);
 
   problem_data->pp_workers = NULL;
   problem_data->qp_workers = NULL;
   problem_data->pc_workers = NULL;
   problem_data->qc_workers = NULL;
   problem_data->worker_sizes = NULL;
+  problem_data->worker_indices = NULL;
 }

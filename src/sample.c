@@ -49,6 +49,7 @@ void sample_compute(const dc_process_t *process, float *pp_in, float *qp_in,
   size_t global_coordinates = dc_get_global_coordinates(
       process->coordinates, process->sizes, process->global_sizes,
       local_coordinates, process->topology);
+  global_coordinates = process->indices[i];
 
   // p derivatives, H1(p) and H2(p)
   const float pxx = der2(pc, i, strideX, dxxinv);
@@ -89,10 +90,10 @@ void sample_compute(const dc_process_t *process, float *pp_in, float *qp_in,
   const float h2pmq = h2p - h2q;
 
   // rhs of p and q equations
-  const float rhsp = precomp_vars.v2px[global_coordinates] * h2p +
+  float rhsp = precomp_vars.v2px[global_coordinates] * h2p +
                      precomp_vars.v2pz[global_coordinates] * h1q +
                      precomp_vars.v2sz[global_coordinates] * h1pmq;
-  const float rhsq = precomp_vars.v2pn[global_coordinates] * h2p +
+  float rhsq = precomp_vars.v2pn[global_coordinates] * h2p +
                      precomp_vars.v2pz[global_coordinates] * h1q -
                      precomp_vars.v2sz[global_coordinates] * h2pmq;
 

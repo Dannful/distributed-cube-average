@@ -15,6 +15,7 @@ typedef struct {
   size_t num_workers;
   float dt;
   float *pp, *pc, *qp, *qc;
+  size_t **worker_indices;
   float **pp_workers;
   float **pc_workers;
   float **qp_workers;

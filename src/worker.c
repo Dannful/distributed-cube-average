@@ -37,9 +37,9 @@ dc_get_global_coordinates(const int worker_coordinates[DIMENSIONS],
   size_t local_x = local_coordinates[0] - STENCIL;
   size_t local_y = local_coordinates[1] - STENCIL;
   size_t local_z = local_coordinates[2] - STENCIL;
-  size_t size_x = (worker_sizes[0] - 2 * STENCIL) / topology[0];
-  size_t size_y = (worker_sizes[1] - 2 * STENCIL) / topology[1];
-  size_t size_z = (worker_sizes[2] - 2 * STENCIL) / topology[2];
+  size_t size_x = (global_sizes[0] - 2 * STENCIL) / topology[0];
+  size_t size_y = (global_sizes[1] - 2 * STENCIL) / topology[1];
+  size_t size_z = (global_sizes[2] - 2 * STENCIL) / topology[2];
   size_t global_index = dc_get_index_for_coordinates(
       STENCIL + worker_coordinates[0] * size_x + local_x,
       STENCIL + worker_coordinates[1] * size_y + local_y,
@@ -57,11 +57,14 @@ void dc_worker_receive_data(dc_process_t *process) {
            MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
 
   size_t count = dc_compute_count_from_sizes(process->sizes);
+  process->indices = (size_t *)malloc(count * sizeof(size_t));
   process->pp = (float *)malloc(count * sizeof(float));
   process->pc = (float *)malloc(count * sizeof(float));
   process->qp = (float *)malloc(count * sizeof(float));
   process->qc = (float *)malloc(count * sizeof(float));
 
+  MPI_Recv(process->indices, count, MPI_UNSIGNED_LONG, COORDINATOR, MPI_ANY_TAG,
+           process->communicator, MPI_STATUS_IGNORE);
   MPI_Recv(process->pp, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG,
            process->communicator, MPI_STATUS_IGNORE);
   MPI_Recv(process->pc, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG,
@@ -204,9 +207,10 @@ void dc_compute_boundaries(const dc_process_t *process) {
           for (size_t x = start_coords[0]; x < end_coords[0]; x++) {
             size_t index =
                 dc_get_index_for_coordinates(x, y, z, size_x, size_y, size_z);
-            if(index == 3048 && process->rank == 7) {
+            if (index == 3048 && process->rank == 7) {
               for (unsigned int i = 0; i < DIMENSIONS; i++) {
-                dc_log_info(7, "im here (%d %d %d) %d %d (%d %d)", x, y, z, dimension, i, start_coords[i], end_coords[i]);
+                dc_log_info(7, "im here (%d %d %d) %d %d (%d %d)", x, y, z,
+                            dimension, i, start_coords[i], end_coords[i]);
               }
             }
             sample_compute(process, pp_copy, qp_copy, x, y, z);
@@ -239,6 +243,8 @@ void dc_send_data_to_coordinator(dc_process_t process) {
     return;
   MPI_Send(process.sizes, DIMENSIONS, MPI_UNSIGNED_LONG, COORDINATOR, 0,
            process.communicator);
+  MPI_Send(process.indices, dc_compute_count_from_sizes(process.sizes), MPI_UNSIGNED_LONG,
+           COORDINATOR, 0, process.communicator);
   MPI_Send(process.pc, dc_compute_count_from_sizes(process.sizes), MPI_FLOAT,
            COORDINATOR, 0, process.communicator);
   MPI_Send(process.qc, dc_compute_count_from_sizes(process.sizes), MPI_FLOAT,
@@ -331,6 +337,7 @@ void dc_free_worker_halos(worker_halos_t *halos) {
 }
 
 void dc_worker_free(dc_process_t process) {
+  free(process.indices);
   free(process.pp);
   free(process.pc);
   free(process.qp);

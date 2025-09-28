@@ -27,6 +27,7 @@ typedef struct {
   size_t sizes[DIMENSIONS];
   dc_anisotropy_t anisotropy_vars;
   dc_precomp_vars precomp_vars;
+  size_t *indices;
   float *pp, *pc, *qp, *qc;
 } dc_process_t;
 

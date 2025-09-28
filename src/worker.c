@@ -205,14 +205,6 @@ void dc_compute_boundaries(const dc_process_t *process) {
       for (size_t z = start_coords[2]; z < end_coords[2]; z++) {
         for (size_t y = start_coords[1]; y < end_coords[1]; y++) {
           for (size_t x = start_coords[0]; x < end_coords[0]; x++) {
-            size_t index =
-                dc_get_index_for_coordinates(x, y, z, size_x, size_y, size_z);
-            if (index == 3048 && process->rank == 7) {
-              for (unsigned int i = 0; i < DIMENSIONS; i++) {
-                dc_log_info(7, "im here (%d %d %d) %d %d (%d %d)", x, y, z,
-                            dimension, i, start_coords[i], end_coords[i]);
-              }
-            }
             sample_compute(process, pp_copy, qp_copy, x, y, z);
           }
         }
@@ -282,9 +274,9 @@ void dc_worker_process(dc_process_t *process) {
     dc_compute_interior(process);
 
     MPI_Waitall(new_pp_halos.requests.count, new_pp_halos.requests.requests,
-                MPI_STATUS_IGNORE);
+                MPI_STATUSES_IGNORE);
     MPI_Waitall(new_qp_halos.requests.count, new_qp_halos.requests.requests,
-                MPI_STATUS_IGNORE);
+                MPI_STATUSES_IGNORE);
     dc_worker_insert_halos(process, &new_pp_halos, process->pp);
     dc_worker_insert_halos(process, &new_qp_halos, process->qp);
     dc_free_worker_halos(&new_pp_halos);

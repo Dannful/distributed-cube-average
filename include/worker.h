@@ -7,6 +7,8 @@
 #define STENCIL 4
 #define PP_TAG 3
 #define QP_TAG 6
+#define PC_TAG 9
+#define QC_TAG 12
 
 typedef struct {
   size_t count;

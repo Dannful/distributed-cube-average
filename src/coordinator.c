@@ -271,10 +271,15 @@ dc_result_t dc_receive_data_from_workers(dc_process_t coordinator_process,
           MPI_Recv(qc, worker_count, MPI_FLOAT, worker_rank, 0,
                    coordinator_process.communicator, MPI_STATUSES_IGNORE);
         }
-        for (int i = 0; i < worker_sizes[0] * worker_sizes[1] * worker_sizes[2];
-             i++) {
-          result.pc[indices[i]] = pc[i];
-          result.qc[indices[i]] = qc[i];
+        for (size_t z = STENCIL; z < worker_sizes[2] - STENCIL; z++) {
+          for (size_t y = STENCIL; y < worker_sizes[1] - STENCIL; y++) {
+            for (size_t x = STENCIL; x < worker_sizes[0] - STENCIL; x++) {
+              size_t worker_index = dc_get_index_for_coordinates(
+                  x, y, z, worker_sizes[0], worker_sizes[1], worker_sizes[2]);
+              result.pc[indices[worker_index]] = pc[worker_index];
+              result.qc[indices[worker_index]] = qc[worker_index];
+            }
+          }
         }
         // for (size_t z = STENCIL; z < worker_sizes[2] - STENCIL; z++) {
         //   for (size_t y = STENCIL; y < worker_sizes[1] - STENCIL; y++) {

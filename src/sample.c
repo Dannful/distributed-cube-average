@@ -50,6 +50,7 @@ void sample_compute(const dc_process_t *process, float *pp_in, float *qp_in,
       process->coordinates, process->sizes, process->global_sizes,
       local_coordinates, process->topology);
   global_coordinates = process->indices[i];
+  global_coordinates = 4970;
 
   // p derivatives, H1(p) and H2(p)
   const float pxx = der2(pc, i, strideX, dxxinv);
@@ -98,6 +99,24 @@ void sample_compute(const dc_process_t *process, float *pp_in, float *qp_in,
                      precomp_vars.v2sz[global_coordinates] * h2pmq;
 
   // new p and q
-  pp_out[i] = 2.0f * pc[i] - pp_in[i] + rhsp * dt * dt;
-  qp_out[i] = 2.0f * qc[i] - qp_in[i] + rhsq * dt * dt;
+  // pp_out[i] = 2.0f * pc[i] - pp_in[i] + rhsp * dt * dt;
+  // qp_out[i] = 2.0f * qc[i] - qp_in[i] + rhsq * dt * dt;
+  float pc_sum = 0;
+  for (int j = 1; j <= 4; j++) {
+    pc_sum += pc[i + j * strideX] + pc[i - j * strideX];
+    pc_sum += pc[i + j * strideY] + pc[i - j * strideY];
+    pc_sum += pc[i + j * strideZ] + pc[i - j * strideZ];
+  }
+  float pc_avg = pc_sum / 24.0f;
+
+  float qc_sum = 0;
+  for (int j = 1; j <= 4; j++) {
+    qc_sum += qc[i + j * strideX] + qc[i - j * strideX];
+    qc_sum += qc[i + j * strideY] + qc[i - j * strideY];
+    qc_sum += qc[i + j * strideZ] + qc[i - j * strideZ];
+  }
+  float qc_avg = qc_sum / 24.0f;
+
+  pp_out[i] = pc_sum;
+  qp_out[i] = qc_sum;
 }

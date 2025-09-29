@@ -5,6 +5,7 @@
 #include "coordinator.h"
 #include "log.h"
 #include "setup.h"
+#include "stdlib.h"
 #include "worker.h"
 
 problem_data_t dc_initialize_problem(MPI_Comm comm,
@@ -35,6 +36,14 @@ problem_data_t dc_initialize_problem(MPI_Comm comm,
     result.pc[i] = 0.0f;
     result.qp[i] = 0.0f;
     result.qc[i] = 0.0f;
+  }
+  unsigned int seed = 14;
+  for (int i = 0; i < result.size_x * result.size_y * result.size_z; i++) {
+    int value = rand_r(&seed);
+    result.pp[i] = log2(value);
+    result.pc[i] = log2(value);
+    result.qp[i] = log2(value);
+    result.qc[i] = log2(value);
   }
   result.worker_indices = (size_t **)calloc(workers, sizeof(size_t *));
   result.pp_workers = (float **)calloc(workers, sizeof(float *));

@@ -13,5 +13,5 @@
  * @param iy Y coordinate of the point to compute
  * @param iz Z coordinate of the point to compute
  */
-void sample_compute(const dc_process_t *process, float *pp_in, float *qp_in,
-                    size_t ix, size_t iy, size_t iz);
+void sample_compute(const dc_process_t *process, const float *pp_in,
+                    const float *qp_in, size_t ix, size_t iy, size_t iz);

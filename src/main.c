@@ -122,14 +122,11 @@ int main(int argc, char **argv) {
            sizeof(size_t) * DIMENSIONS);
     size_t coordinator_size =
         dc_compute_count_from_sizes(problem_data.worker_sizes[0]);
-    mpi_process.indices = (size_t *)malloc(sizeof(size_t) * coordinator_size);
     mpi_process.pp = (float *)malloc(sizeof(float) * coordinator_size);
     mpi_process.pc = (float *)malloc(sizeof(float) * coordinator_size);
     mpi_process.qp = (float *)malloc(sizeof(float) * coordinator_size);
     mpi_process.qc = (float *)malloc(sizeof(float) * coordinator_size);
     mpi_process.source_index = problem_data.source_index[0];
-    memcpy(mpi_process.indices, problem_data.worker_indices[0],
-           sizeof(size_t) * coordinator_size);
     memcpy(mpi_process.pp, problem_data.pp_workers[0],
            sizeof(float) * coordinator_size);
     memcpy(mpi_process.qp, problem_data.qp_workers[0],

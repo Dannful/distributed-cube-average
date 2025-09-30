@@ -21,6 +21,7 @@ typedef struct {
   size_t halo_count;
   size_t *halo_sizes;
   float **halo_data;
+  int (*halo_dirs)[DIMENSIONS];
 } worker_halos_t;
 
 void dc_extract_coordinates(size_t *position_x, size_t *position_y,
@@ -44,8 +45,8 @@ void dc_send_halo_to_neighbours(dc_process_t process, int tag, float *from,
 worker_halos_t dc_receive_halos(dc_process_t process, int tag);
 void dc_send_data_to_coordinator(dc_process_t process);
 
-void dc_compute_boundaries(const dc_process_t *process);
-void dc_compute_interior(const dc_process_t *process);
+void dc_compute_boundaries(const dc_process_t *process, const float *pp, const float *qp);
+void dc_compute_interior(const dc_process_t *process, const float *pp, const float *qp);
 
 void dc_free_worker_halos(worker_halos_t *halos);
 void dc_free_worker_requests(worker_requests_t *requests);

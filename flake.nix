@@ -33,7 +33,22 @@
         };
         packages.script =
           pkgs.writeShellScriptBin "run-distributed-cube-average" ''
-            ${pkgs.openmpi}/bin/mpirun -np 1 ${distributed-cube-average}/bin/distributed-cube-average --size-x=5 --size-y=5 --size-z=5 --absorption=6 --dx=2 --dy=3 --dz=4 --dt=0.000110 --time-max=3 --output-file=./validation/ground_truth.dc
+            ${pkgs.openmpi}/bin/mpirun -np 8 ${distributed-cube-average}/bin/distributed-cube-average --size-x=5 --size-y=5 --size-z=5 --absorption=6 --dx=2 --dy=3 --dz=4 --dt=0.000110 --time-max=3 --output-file=./validation/predicted.dc
+          '';
+        packages.comparison =
+          pkgs.writeShellScriptBin "run-distributed-cube-average-comparison" ''
+            size_x=5
+            size_y=5
+            size_z=5
+            absorption=6
+            dx=2
+            dy=3
+            dz=4
+            dt=0.000110
+            tmax=3
+            ${pkgs.openmpi}/bin/mpirun -np 1 ${distributed-cube-average}/bin/distributed-cube-average --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/ground_truth.dc
+            ${pkgs.openmpi}/bin/mpirun -np 8 ${distributed-cube-average}/bin/distributed-cube-average --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
+            Rscript ./validation/CompareResults.R
           '';
         packages.default = distributed-cube-average;
         apps.default = {
@@ -41,6 +56,12 @@
           program = "${
               self.packages.${system}.script
             }/bin/run-distributed-cube-average";
+        };
+        apps.comparison = {
+          type = "app";
+          program = "${
+              self.packages.${system}.comparison
+            }/bin/run-distributed-cube-average-comparison";
         };
       });
 }

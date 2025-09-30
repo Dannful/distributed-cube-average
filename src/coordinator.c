@@ -52,51 +52,10 @@ problem_data_t dc_initialize_problem(MPI_Comm comm,
 }
 
 void dc_determine_source(size_t size_x, size_t size_y, size_t size_z,
-                         unsigned int topology[DIMENSIONS], size_t *source_x,
-                         size_t *source_y, size_t *source_z) {
-  size_t partition_size_x = STENCIL + (size_x - 2 * STENCIL) / topology[0];
-  size_t partition_size_y = STENCIL + (size_y - 2 * STENCIL) / topology[1];
-  size_t partition_size_z = STENCIL + (size_z - 2 * STENCIL) / topology[2];
-
-  dc_log_info(COORDINATOR,
-              "Initializing source search with partition sizes (%d, %d, %d)...",
-              partition_size_x, partition_size_y, partition_size_z);
-
-  *source_x = size_x / 4;
-  *source_y = size_y / 4;
-  *source_z = size_z / 4;
-
-  size_t x = 0, y = 0, z = 0;
-  while (1) {
-    size_t new_source_x = *source_x + x;
-    size_t new_source_y = *source_y + y;
-    size_t new_source_z = *source_z + z;
-    size_t remainder_x = new_source_x % partition_size_x;
-    size_t remainder_y = new_source_y % partition_size_y;
-    size_t remainder_z = new_source_z % partition_size_z;
-
-    if (remainder_x >= STENCIL && remainder_x < partition_size_x - STENCIL &&
-        remainder_y >= STENCIL && remainder_y < partition_size_y - STENCIL &&
-        remainder_z >= STENCIL && remainder_z < partition_size_z - STENCIL)
-      break;
-    int step_x = remainder_x == 0 ? 1 : (remainder_x < STENCIL ? 1 : -1);
-    int step_y = remainder_y == 0 ? 1 : (remainder_y < STENCIL ? 1 : -1);
-    int step_z = remainder_z == 0 ? 1 : (remainder_z < STENCIL ? 1 : -1);
-    step_x *=
-        remainder_x < STENCIL || remainder_x >= partition_size_x - STENCIL;
-    step_y *=
-        remainder_y < STENCIL || remainder_y >= partition_size_y - STENCIL;
-    step_z *=
-        remainder_z < STENCIL || remainder_z >= partition_size_z - STENCIL;
-    dc_log_info(COORDINATOR, "Stepping (%d, %d, %d) towards new source.",
-                step_x, step_y, step_z);
-    x += step_x;
-    y += step_y;
-    z += step_z;
-  }
-  *source_x += x;
-  *source_y += y;
-  *source_z += z;
+                         size_t *source_x, size_t *source_y, size_t *source_z) {
+  *source_x = size_x / 2;
+  *source_y = size_y / 2;
+  *source_z = size_z / 2;
 }
 
 void dc_partition_cube(problem_data_t *problem_data) {
@@ -119,8 +78,7 @@ void dc_partition_cube(problem_data_t *problem_data) {
   size_t source_x, source_y, source_z;
   dc_log_info(COORDINATOR, "Calculating source...");
   dc_determine_source(problem_data->size_x, problem_data->size_y,
-                      problem_data->size_z, problem_data->topology, &source_x,
-                      &source_y, &source_z);
+                      problem_data->size_z, &source_x, &source_y, &source_z);
   dc_log_info(COORDINATOR,
               "Source is located at coordinates X: %d, Y: %d and Z: %d",
               source_x, source_y, source_z);
@@ -270,8 +228,7 @@ dc_result_t dc_receive_data_from_workers(dc_process_t coordinator_process,
               size_t local_y = y - STENCIL;
               size_t local_z = z - STENCIL;
               size_t worker_index = dc_get_index_for_coordinates(
-                  x, y, z, worker_sizes[0], worker_sizes[1],
-                  worker_sizes[2]);
+                  x, y, z, worker_sizes[0], worker_sizes[1], worker_sizes[2]);
               size_t global_sizes[DIMENSIONS] = {cube_size_x, cube_size_y,
                                                  cube_size_z};
               size_t local_coordinates[DIMENSIONS] = {x, y, z};

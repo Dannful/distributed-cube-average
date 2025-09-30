@@ -40,12 +40,12 @@
             size_x=5
             size_y=5
             size_z=5
-            absorption=6
+            absorption=14
             dx=2
             dy=3
             dz=4
             dt=0.000110
-            tmax=3
+            tmax=1
             ${pkgs.openmpi}/bin/mpirun -np 1 ${distributed-cube-average}/bin/distributed-cube-average --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/ground_truth.dc
             ${pkgs.openmpi}/bin/mpirun -np 8 ${distributed-cube-average}/bin/distributed-cube-average --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
             Rscript ./validation/CompareResults.R

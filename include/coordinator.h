@@ -49,8 +49,7 @@ void dc_send_data_to_workers(problem_data_t problem_data);
 void dc_partition_cube(problem_data_t *problem_data);
 void dc_free_problem_data_mem(problem_data_t *problem_data);
 void dc_determine_source(size_t size_x, size_t size_y, size_t size_z,
-                         unsigned int topology[DIMENSIONS], size_t *source_x,
-                         size_t *source_y, size_t *source_z);
+                         size_t *source_x, size_t *source_y, size_t *source_z);
 dc_result_t dc_receive_data_from_workers(dc_process_t coordinator_process,
                                          size_t cube_size_x, size_t cube_size_y,
                                          size_t cube_size_z);

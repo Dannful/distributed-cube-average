@@ -3,7 +3,7 @@
 #SBATCH --partition=draco
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --time=00:15:00
+#SBATCH --time=10:00:00
 #SBATCH --output=%x_%j.out
 #SBATCH --error=%x_%j.err
 

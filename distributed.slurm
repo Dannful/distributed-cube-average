@@ -2,7 +2,7 @@
 #SBATCH --job-name=distributed-cube-distributed
 #SBATCH --partition=draco
 #SBATCH --nodes=4
-#SBATCH --ntasks=8
+#SBATCH --ntasks=16
 #SBATCH --time=10:00:00
 #SBATCH --output=%x_%j.out
 #SBATCH --error=%x_%j.err

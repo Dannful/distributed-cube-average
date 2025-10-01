@@ -1,7 +1,11 @@
 #include "precomp.h"
 #include <math.h>
+#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "coordinator.h"
+#include "log.h"
 
 dc_precomp_vars dc_compute_precomp_vars(int sx, int sy, int sz,
                                         dc_anisotropy_t anisotropy) {
@@ -9,15 +13,75 @@ dc_precomp_vars dc_compute_precomp_vars(int sx, int sy, int sz,
   int n = sx * sy * sz;
 
   vars.ch1dxx = (float *)malloc(n * sizeof(float));
+  if (vars.ch1dxx == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for ch1dxx in "
+                              "dc_compute_precomp_vars");
+    MPI_Finalize();
+    exit(1);
+  }
   vars.ch1dyy = (float *)malloc(n * sizeof(float));
+  if (vars.ch1dyy == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for ch1dyy in "
+                              "dc_compute_precomp_vars");
+    MPI_Finalize();
+    exit(1);
+  }
   vars.ch1dzz = (float *)malloc(n * sizeof(float));
+  if (vars.ch1dzz == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for ch1dzz in "
+                              "dc_compute_precomp_vars");
+    MPI_Finalize();
+    exit(1);
+  }
   vars.ch1dxy = (float *)malloc(n * sizeof(float));
+  if (vars.ch1dxy == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for ch1dxy in "
+                              "dc_compute_precomp_vars");
+    MPI_Finalize();
+    exit(1);
+  }
   vars.ch1dyz = (float *)malloc(n * sizeof(float));
+  if (vars.ch1dyz == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for ch1dyz in "
+                              "dc_compute_precomp_vars");
+    MPI_Finalize();
+    exit(1);
+  }
   vars.ch1dxz = (float *)malloc(n * sizeof(float));
+  if (vars.ch1dxz == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for ch1dxz in "
+                              "dc_compute_precomp_vars");
+    MPI_Finalize();
+    exit(1);
+  }
   vars.v2px = (float *)malloc(n * sizeof(float));
+  if (vars.v2px == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for v2px in "
+                              "dc_compute_precomp_vars");
+    MPI_Finalize();
+    exit(1);
+  }
   vars.v2pz = (float *)malloc(n * sizeof(float));
+  if (vars.v2pz == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for v2pz in "
+                              "dc_compute_precomp_vars");
+    MPI_Finalize();
+    exit(1);
+  }
   vars.v2sz = (float *)malloc(n * sizeof(float));
+  if (vars.v2sz == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for v2sz in "
+                              "dc_compute_precomp_vars");
+    MPI_Finalize();
+    exit(1);
+  }
   vars.v2pn = (float *)malloc(n * sizeof(float));
+  if (vars.v2pn == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for v2pn in "
+                              "dc_compute_precomp_vars");
+    MPI_Finalize();
+    exit(1);
+  }
 
   for (int i = 0; i < n; i++) {
     float sinTheta = sin(anisotropy.theta[i]);
@@ -48,11 +112,47 @@ dc_anisotropy_t dc_compute_anisotropy_vars(int sx, int sy, int sz) {
   dc_anisotropy_t anisotropy;
   int n = sx * sy * sz;
   anisotropy.vpz = (float *)malloc(sizeof(float) * n);
+  if (anisotropy.vpz == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for vpz in "
+                              "dc_compute_anisotropy_vars");
+    MPI_Finalize();
+    exit(1);
+  }
   anisotropy.vsv = (float *)malloc(sizeof(float) * n);
+  if (anisotropy.vsv == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for vsv in "
+                              "dc_compute_anisotropy_vars");
+    MPI_Finalize();
+    exit(1);
+  }
   anisotropy.epsilon = (float *)malloc(sizeof(float) * n);
+  if (anisotropy.epsilon == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for epsilon in "
+                              "dc_compute_anisotropy_vars");
+    MPI_Finalize();
+    exit(1);
+  }
   anisotropy.delta = (float *)malloc(sizeof(float) * n);
+  if (anisotropy.delta == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for delta in "
+                              "dc_compute_anisotropy_vars");
+    MPI_Finalize();
+    exit(1);
+  }
   anisotropy.phi = (float *)malloc(sizeof(float) * n);
+  if (anisotropy.phi == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for phi in "
+                              "dc_compute_anisotropy_vars");
+    MPI_Finalize();
+    exit(1);
+  }
   anisotropy.theta = (float *)malloc(sizeof(float) * n);
+  if (anisotropy.theta == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for theta in "
+                              "dc_compute_anisotropy_vars");
+    MPI_Finalize();
+    exit(1);
+  }
 
   for (int i = 0; i < n; i++) {
     anisotropy.vpz[i] = 3000.0;

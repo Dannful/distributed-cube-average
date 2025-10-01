@@ -16,4 +16,4 @@ mpirun -np $SLURM_NTASKS \
 	--mca btl ^openib \
 	--mca btl_tcp_if_include eno2 \
 	--bind-to none \
-	nix shell -c ./result/bin/distributed-cube-average --size-x=1000 --size-y=1000 --size-z=1000 --absorption=800 --dx=3 --dy=3 --dz=3 --dt=0.000110 --time-max=30 --output-file=./validation/predicted.dc
+	nix shell -c ./result/bin/distributed-cube-average --size-x=100 --size-y=100 --size-z=100 --absorption=80 --dx=3 --dy=3 --dz=3 --dt=0.000110 --time-max=30 --output-file=./validation/predicted.dc

@@ -58,9 +58,37 @@ void dc_worker_receive_data(dc_process_t *process) {
 
   size_t count = dc_compute_count_from_sizes(process->sizes);
   process->pp = (float *)malloc(count * sizeof(float));
+  if (process->pp == NULL) {
+    dc_log_error(
+        process->rank,
+        "OOM: could not allocate memory for pp in dc_worker_receive_data");
+    MPI_Finalize();
+    exit(1);
+  }
   process->pc = (float *)malloc(count * sizeof(float));
+  if (process->pc == NULL) {
+    dc_log_error(
+        process->rank,
+        "OOM: could not allocate memory for pc in dc_worker_receive_data");
+    MPI_Finalize();
+    exit(1);
+  }
   process->qp = (float *)malloc(count * sizeof(float));
+  if (process->qp == NULL) {
+    dc_log_error(
+        process->rank,
+        "OOM: could not allocate memory for qp in dc_worker_receive_data");
+    MPI_Finalize();
+    exit(1);
+  }
   process->qc = (float *)malloc(count * sizeof(float));
+  if (process->qc == NULL) {
+    dc_log_error(
+        process->rank,
+        "OOM: could not allocate memory for qc in dc_worker_receive_data");
+    MPI_Finalize();
+    exit(1);
+  }
 
   MPI_Recv(process->pp, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG,
            process->communicator, MPI_STATUS_IGNORE);
@@ -79,7 +107,21 @@ void dc_send_halo_to_neighbours(dc_process_t process, int tag, float *from,
 
   reqs.count = 0;
   reqs.requests = malloc(26 * sizeof(MPI_Request));
+  if (reqs.requests == NULL) {
+    dc_log_error(process.rank,
+                 "OOM: could not allocate memory for reqs.requests in "
+                 "dc_send_halo_to_neighbours");
+    MPI_Finalize();
+    exit(1);
+  }
   reqs.buffers_to_free = malloc(26 * sizeof(void *));
+  if (reqs.buffers_to_free == NULL) {
+    dc_log_error(process.rank,
+                 "OOM: could not allocate memory for reqs.buffers_to_free in "
+                 "dc_send_halo_to_neighbours");
+    MPI_Finalize();
+    exit(1);
+  }
 
   for (int dz = -1; dz <= 1; dz++) {
     for (int dy = -1; dy <= 1; dy++) {
@@ -146,13 +188,21 @@ void dc_send_halo_to_neighbours(dc_process_t process, int tag, float *from,
                            (send_ends[1] - send_starts[1]) *
                            (send_ends[2] - send_starts[2]);
         float *send_buffer = malloc(data_size * sizeof(float));
+        if (send_buffer == NULL) {
+          dc_log_error(process.rank,
+                       "OOM: could not allocate memory for send_buffer in "
+                       "dc_send_halo_to_neighbours");
+          MPI_Finalize();
+          exit(1);
+        }
 
         size_t data_index = 0;
         for (size_t z = send_starts[2]; z < send_ends[2]; z++) {
           for (size_t y = send_starts[1]; y < send_ends[1]; y++) {
             for (size_t x = send_starts[0]; x < send_ends[0]; x++) {
               size_t from_idx = dc_get_index_for_coordinates(
-                  x, y, z, process.sizes[0], process.sizes[1], process.sizes[2]);
+                  x, y, z, process.sizes[0], process.sizes[1],
+                  process.sizes[2]);
               send_buffer[data_index++] = from[from_idx];
             }
           }
@@ -165,7 +215,7 @@ void dc_send_halo_to_neighbours(dc_process_t process, int tag, float *from,
       }
     }
   }
-  dc_concatenate_worker_requests(requests, &reqs);
+  dc_concatenate_worker_requests(process.rank, requests, &reqs);
 }
 
 worker_halos_t dc_receive_halos(dc_process_t process, int tag) {
@@ -175,10 +225,31 @@ worker_halos_t dc_receive_halos(dc_process_t process, int tag) {
 
   result.requests.count = 0;
   result.requests.requests = malloc(26 * sizeof(MPI_Request));
+  if (result.requests.requests == NULL) {
+    dc_log_error(
+        process.rank,
+        "OOM: could not allocate memory for requests in dc_receive_halos");
+    MPI_Finalize();
+    exit(1);
+  }
   result.requests.buffers_to_free = NULL;
 
   result.halo_sizes = calloc(26, sizeof(size_t));
+  if (result.halo_sizes == NULL) {
+    dc_log_error(
+        process.rank,
+        "OOM: could not allocate memory for halo_sizes in dc_receive_halos");
+    MPI_Finalize();
+    exit(1);
+  }
   result.halo_data = calloc(26, sizeof(float *));
+  if (result.halo_data == NULL) {
+    dc_log_error(
+        process.rank,
+        "OOM: could not allocate memory for halo_data in dc_receive_halos");
+    MPI_Finalize();
+    exit(1);
+  }
 
   for (int dx = -1; dx <= 1; dx++) {
     for (int dy = -1; dy <= 1; dy++) {
@@ -218,6 +289,13 @@ worker_halos_t dc_receive_halos(dc_process_t process, int tag) {
         size_t face_index = 9 * (dz + 1) + 3 * (dy + 1) + dx + 1;
         result.halo_sizes[face_index] = recv_data_size;
         result.halo_data[face_index] = malloc(recv_data_size * sizeof(float));
+        if (result.halo_data[face_index] == NULL) {
+          dc_log_error(process.rank,
+                       "OOM: could not allocate memory for "
+                       "halo_data[face_index] in dc_receive_halos");
+          MPI_Finalize();
+          exit(1);
+        }
 
         MPI_Irecv(result.halo_data[face_index], recv_data_size, MPI_FLOAT,
                   neighbour_rank, tag, process.communicator,
@@ -300,7 +378,21 @@ void dc_worker_process(dc_process_t *process) {
   size_t total_size = dc_compute_count_from_sizes(process->sizes);
 
   float *pp_copy = malloc(total_size * sizeof(float));
+  if (pp_copy == NULL) {
+    dc_log_error(
+        process->rank,
+        "OOM: could not allocate memory for pp_copy in dc_worker_process");
+    MPI_Finalize();
+    exit(1);
+  }
   float *qp_copy = malloc(total_size * sizeof(float));
+  if (qp_copy == NULL) {
+    dc_log_error(
+        process->rank,
+        "OOM: could not allocate memory for qp_copy in dc_worker_process");
+    MPI_Finalize();
+    exit(1);
+  }
 
   for (unsigned int i = 0; i < process->iterations; i++) {
     if (process->source_index != -1) {
@@ -385,29 +477,56 @@ void dc_worker_free(dc_process_t process) {
   free(process.qc);
 }
 
-void dc_concatenate_worker_requests(worker_requests_t *target,
+void dc_concatenate_worker_requests(int rank, worker_requests_t *target,
                                     worker_requests_t *source) {
   if (source == NULL || source->count == 0)
     return;
   size_t original_target_count = target->count;
   size_t new_count = original_target_count + source->count;
   target->requests = realloc(target->requests, new_count * sizeof(MPI_Request));
+  if (target->requests == NULL) {
+    dc_log_error(rank, "OOM: could not allocate memory for target->requests in "
+                       "dc_concatenate_worker_requests");
+    MPI_Finalize();
+    exit(1);
+  }
   memcpy(target->requests + original_target_count, source->requests,
          source->count * sizeof(MPI_Request));
   if (source->buffers_to_free != NULL) {
     if (target->buffers_to_free == NULL) {
       target->buffers_to_free = malloc(new_count * sizeof(void *));
+      if (target->buffers_to_free == NULL) {
+        dc_log_error(
+            rank, "OOM: could not allocate memory for target->buffers_to_free "
+                  "in dc_concatenate_worker_requests");
+        MPI_Finalize();
+        exit(1);
+      }
       memset(target->buffers_to_free, 0,
              original_target_count * sizeof(void *));
     } else {
       target->buffers_to_free =
           realloc(target->buffers_to_free, new_count * sizeof(void *));
+      if (target->buffers_to_free == NULL) {
+        dc_log_error(rank, "OOM: could not re-allocate memory for "
+                           "target->buffers_to_free in "
+                           "dc_concatenate_worker_requests");
+        MPI_Finalize();
+        exit(1);
+      }
     }
     memcpy(target->buffers_to_free + original_target_count,
            source->buffers_to_free, source->count * sizeof(void *));
   } else if (target->buffers_to_free != NULL) {
     target->buffers_to_free =
         realloc(target->buffers_to_free, new_count * sizeof(void *));
+    if (target->buffers_to_free == NULL) {
+      dc_log_error(rank, "OOM: could not re-allocate memory for "
+                         "target->buffers_to_free in "
+                         "dc_concatenate_worker_requests");
+      MPI_Finalize();
+      exit(1);
+    }
     memset(target->buffers_to_free + original_target_count, 0,
            source->count * sizeof(void *));
   }

@@ -26,12 +26,32 @@ problem_data_t dc_initialize_problem(MPI_Comm comm,
       arguments.size_z + 2 * arguments.absorption_size + 2 * STENCIL;
   result.pp = (float *)malloc(result.size_x * result.size_y * result.size_z *
                               sizeof(float));
+  if (result.pp == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for pp in dc_initialize_problem");
+    MPI_Finalize();
+    exit(1);
+  }
   result.pc = (float *)malloc(result.size_x * result.size_y * result.size_z *
                               sizeof(float));
+  if (result.pc == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for pc in dc_initialize_problem");
+    MPI_Finalize();
+    exit(1);
+  }
   result.qp = (float *)malloc(result.size_x * result.size_y * result.size_z *
                               sizeof(float));
+  if (result.qp == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for qp in dc_initialize_problem");
+    MPI_Finalize();
+    exit(1);
+  }
   result.qc = (float *)malloc(result.size_x * result.size_y * result.size_z *
                               sizeof(float));
+  if (result.qc == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for qc in dc_initialize_problem");
+    MPI_Finalize();
+    exit(1);
+  }
   for (int i = 0; i < result.size_x * result.size_y * result.size_z; i++) {
     result.pp[i] = 0.0f;
     result.pc[i] = 0.0f;
@@ -39,15 +59,45 @@ problem_data_t dc_initialize_problem(MPI_Comm comm,
     result.qc[i] = 0.0f;
   }
   result.pp_workers = (float **)calloc(workers, sizeof(float *));
+  if (result.pp_workers == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for pp_workers in dc_initialize_problem");
+    MPI_Finalize();
+    exit(1);
+  }
   result.pc_workers = (float **)calloc(workers, sizeof(float *));
+  if (result.pc_workers == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for pc_workers in dc_initialize_problem");
+    MPI_Finalize();
+    exit(1);
+  }
   result.qp_workers = (float **)calloc(workers, sizeof(float *));
+  if (result.qp_workers == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for qp_workers in dc_initialize_problem");
+    MPI_Finalize();
+    exit(1);
+  }
   result.qc_workers = (float **)calloc(workers, sizeof(float *));
+  if (result.qc_workers == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for qc_workers in dc_initialize_problem");
+    MPI_Finalize();
+    exit(1);
+  }
   result.source_index = (int *)malloc(workers * sizeof(int));
+  if (result.source_index == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for source_index in dc_initialize_problem");
+    MPI_Finalize();
+    exit(1);
+  }
   for (int i = 0; i < workers; i++) {
     result.source_index[i] = -1;
   }
   memcpy(result.topology, topology, DIMENSIONS * sizeof(unsigned int));
   result.worker_sizes = calloc(workers, sizeof(size_t *));
+  if (result.worker_sizes == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for worker_sizes in dc_initialize_problem");
+    MPI_Finalize();
+    exit(1);
+  }
   return result;
 }
 
@@ -105,17 +155,42 @@ void dc_partition_cube(problem_data_t *problem_data) {
         worker_size_z += 2 * STENCIL;
         problem_data->worker_sizes[worker] =
             malloc(sizeof(size_t) * DIMENSIONS);
+        if (problem_data->worker_sizes[worker] == NULL) {
+          dc_log_error(COORDINATOR, "OOM: could not allocate memory for worker_sizes for worker %d in dc_partition_cube", worker);
+          MPI_Finalize();
+          exit(1);
+        }
         problem_data->worker_sizes[worker][0] = worker_size_x;
         problem_data->worker_sizes[worker][1] = worker_size_y;
         problem_data->worker_sizes[worker][2] = worker_size_z;
         problem_data->pp_workers[worker] = (float *)malloc(
             sizeof(float) * worker_size_x * worker_size_y * worker_size_z);
+        if (problem_data->pp_workers[worker] == NULL) {
+          dc_log_error(COORDINATOR, "OOM: could not allocate memory for pp_workers for worker %d in dc_partition_cube", worker);
+          MPI_Finalize();
+          exit(1);
+        }
         problem_data->pc_workers[worker] = (float *)malloc(
             sizeof(float) * worker_size_x * worker_size_y * worker_size_z);
+        if (problem_data->pc_workers[worker] == NULL) {
+          dc_log_error(COORDINATOR, "OOM: could not allocate memory for pc_workers for worker %d in dc_partition_cube", worker);
+          MPI_Finalize();
+          exit(1);
+        }
         problem_data->qp_workers[worker] = (float *)malloc(
             sizeof(float) * worker_size_x * worker_size_y * worker_size_z);
+        if (problem_data->qp_workers[worker] == NULL) {
+          dc_log_error(COORDINATOR, "OOM: could not allocate memory for qp_workers for worker %d in dc_partition_cube", worker);
+          MPI_Finalize();
+          exit(1);
+        }
         problem_data->qc_workers[worker] = (float *)malloc(
             sizeof(float) * worker_size_x * worker_size_y * worker_size_z);
+        if (problem_data->qc_workers[worker] == NULL) {
+          dc_log_error(COORDINATOR, "OOM: could not allocate memory for qc_workers for worker %d in dc_partition_cube", worker);
+          MPI_Finalize();
+          exit(1);
+        }
         size_t count = 0;
         for (size_t z = process_coordinates[2] * partition_size_z;
              z < process_coordinates[2] * partition_size_z + worker_size_z;
@@ -180,8 +255,18 @@ dc_result_t dc_receive_data_from_workers(dc_process_t coordinator_process,
   dc_result_t result;
   result.pc =
       (float *)malloc(cube_size_x * cube_size_y * cube_size_z * sizeof(float));
+  if (result.pc == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for result.pc in dc_receive_data_from_workers");
+    MPI_Finalize();
+    exit(1);
+  }
   result.qc =
       (float *)malloc(cube_size_x * cube_size_y * cube_size_z * sizeof(float));
+  if (result.qc == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for result.qc in dc_receive_data_from_workers");
+    MPI_Finalize();
+    exit(1);
+  }
   for (int i = 0; i < cube_size_x * cube_size_y * cube_size_z; i++) {
     result.pc[i] = 0.0f;
     result.qc[i] = 0.0f;
@@ -215,7 +300,17 @@ dc_result_t dc_receive_data_from_workers(dc_process_t coordinator_process,
                    coordinator_process.communicator, MPI_STATUSES_IGNORE);
           worker_count = dc_compute_count_from_sizes(worker_sizes);
           pc = malloc(sizeof(float) * worker_count);
+          if (pc == NULL) {
+            dc_log_error(COORDINATOR, "OOM: could not allocate memory for pc for worker %d in dc_receive_data_from_workers", worker_rank);
+            MPI_Finalize();
+            exit(1);
+          }
           qc = malloc(sizeof(float) * worker_count);
+          if (qc == NULL) {
+            dc_log_error(COORDINATOR, "OOM: could not allocate memory for qc for worker %d in dc_receive_data_from_workers", worker_rank);
+            MPI_Finalize();
+            exit(1);
+          }
           MPI_Recv(pc, worker_count, MPI_FLOAT, worker_rank, 0,
                    coordinator_process.communicator, MPI_STATUSES_IGNORE);
           MPI_Recv(qc, worker_count, MPI_FLOAT, worker_rank, 0,

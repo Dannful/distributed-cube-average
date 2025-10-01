@@ -1,0 +1,118 @@
+#+TITLE: LabBook to follow Spadotto's Undergraduate Thesis
+#+AUTHOR: Lucas M. Schnorr
+#+STARTUP: overview indent
+#+EXPORT_SELECT_TAGS: export
+#+EXPORT_EXCLUDE_TAGS: noexport
+
+* Packages
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+library(tidyverse)
+#+end_src
+
+* Meetings
+** 2025-10-01
+*** Convert RST \to CSV
+
+#+begin_src shell :results output :exports both
+~/dev/akypuera/b3/aky_converter --no-links rastro-*.rst | \
+    ~/dev/pajeng/b1/pj_dump | \
+    grep ^State > saida.csv
+#+end_src
+
+#+RESULTS:
+
+*** Read
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+options(crayon.enabled=FALSE)
+suppressMessages(library(tidyverse))
+read_csv("saida.csv", col_names=FALSE, progress=FALSE, show_col_types=FALSE) |>
+  select(rank = X2, start = X4, end = X5, duration = X6, state = X8) |>
+  mutate(rank = as.integer(gsub("rank", "", rank))) |>
+  mutate(state = as.factor(state)) -> df
+#+end_src
+
+*** Define true start and end
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df |>
+  filter(state == "MPI_Recv") |>
+  filter(start == min(start)) |>
+  pull(start) -> s.start
+
+df |>
+  filter(state == "MPI_Finalize") |>
+  filter(start == max(start)) |>
+  pull(start) -> s.end
+#+end_src
+
+*** Consider only the middle of the execution
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df |>
+  filter(!(state %in% c("MPI_Recv", # remove o recv inicial
+                      "MPI_Send", # remove o send inicial
+                      "MPI_Wtime"))) |>
+  filter(start >= s.start) |>
+  filter(end <= s.end) -> df.filtered
+#+end_src
+
+#+RESULTS:
+
+*** Consider only when everyone is working
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.filtered |>
+  group_by(rank) |>
+  arrange(start) |>
+  slice(1) |>
+  ungroup() |>
+  arrange(start) |>
+  slice(n()) |>
+  pull(start) -> s.start
+
+bind_rows(
+  df.filtered |>
+  filter(start <= s.start & end >= s.start) |>
+  mutate(start = s.start)
+,
+  df.filtered |>
+  filter(!(start <= s.start & end >= s.start)) |>
+  filter(start >= s.start)
+) -> df.filtered2
+#+end_src
+
+#+RESULTS:
+
+*** Stats
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.filtered2 |>
+  group_by(rank) |>
+  summarize(MPI.time = sum(duration),
+            Makespan.time = max(end) * length(unique(rank))) |>
+  mutate(P = round(MPI.time / Makespan.time * 100, 2)) |>
+  write_csv("mpi_time_per_rank.csv", progress=FALSE) |>
+  ungroup() |>
+  filter(rank != 0) |> # because 0 is a bit different in the beginning and in the end
+  summarize(MPI.time = sum(MPI.time),
+            Makespan.time = sum(Makespan.time)) |>
+  mutate(P = round(MPI.time / Makespan.time * 100, 2)) |>
+  write_csv("mpi_time_global.csv")
+#+end_src
+
+#+RESULTS:
+
+*** Plot
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.filtered2 |>
+  ggplot(aes(fill = state, color = state,
+             xmin = start, xmax = end,
+             ymin = rank-0.3, ymax = rank+0.3)) +
+  geom_rect()
+ggsave("saida.png")
+#+end_src
+
+#+RESULTS:
+: Saving 18.1 x 4.07 in image

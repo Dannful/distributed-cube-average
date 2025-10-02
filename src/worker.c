@@ -376,9 +376,9 @@ void dc_worker_process(dc_process_t *process) {
                                &all_send_requests);
     dc_compute_interior(process, pp_copy, qp_copy);
 
+    dc_concatenate_worker_requests(process->rank, &new_pp_halos.requests,
+                                   &new_qp_halos.requests);
     MPI_Waitall(new_pp_halos.requests.count, new_pp_halos.requests.requests,
-                MPI_STATUSES_IGNORE);
-    MPI_Waitall(new_qp_halos.requests.count, new_qp_halos.requests.requests,
                 MPI_STATUSES_IGNORE);
     dc_worker_insert_halos(process, &new_pp_halos, process->pp);
     dc_worker_insert_halos(process, &new_qp_halos, process->qp);

@@ -4,6 +4,7 @@
 #include <mpi.h>
 
 #define DIMENSIONS 3
+#define NEIGHBOURHOOD 27
 
 typedef enum {
   LEFT = 0,
@@ -18,7 +19,7 @@ typedef struct {
   MPI_Comm communicator;
   int rank;
   int coordinates[DIMENSIONS];
-  int neighbours[DIMENSIONS * 2];
+  int neighbours[NEIGHBOURHOOD];
   int topology[DIMENSIONS];
   unsigned int iterations;
   int source_index;

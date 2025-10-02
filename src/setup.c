@@ -28,12 +28,34 @@ dc_process_t dc_process_init(MPI_Comm communicator, int rank,
   memcpy(process.topology, topology, sizeof(int) * DIMENSIONS);
   MPI_Cart_coords(communicator, rank, DIMENSIONS, process.coordinates);
 
-  MPI_Cart_shift(communicator, 0, 1, process.neighbours + LEFT,
-                 process.neighbours + RIGHT);
-  MPI_Cart_shift(communicator, 1, 1, process.neighbours + UP,
-                 process.neighbours + DOWN);
-  MPI_Cart_shift(communicator, 2, 1, process.neighbours + FRONT,
-                 process.neighbours + BACK);
+  for (int dx = -1; dx <= 1; dx++) {
+    for (int dy = -1; dy <= 1; dy++) {
+      for (int dz = -1; dz <= 1; dz++) {
+        size_t face_index = 9 * (dz + 1) + 3 * (dy + 1) + dx + 1;
+        if (dx == 0 && dy == 0 && dz == 0) {
+          process.neighbours[face_index] = MPI_PROC_NULL;
+          continue;
+        }
+
+        int displacement[DIMENSIONS] = {dx, dy, dz};
+        int target_coords[DIMENSIONS];
+        unsigned char is_displacement_valid = 1;
+        for (unsigned int i = 0; i < DIMENSIONS; i++) {
+          if (process.coordinates[i] + displacement[i] < 0 ||
+              process.coordinates[i] + displacement[i] >= process.topology[i]) {
+            is_displacement_valid = 0;
+            break;
+          }
+          target_coords[i] = process.coordinates[i] + displacement[i];
+        }
+        if (!is_displacement_valid) {
+          process.neighbours[face_index] = MPI_PROC_NULL;
+          continue;
+        }
+        MPI_Cart_rank(process.communicator, target_coords, process.neighbours + face_index);
+      }
+    }
+  }
 
   return process;
 }

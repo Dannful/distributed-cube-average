@@ -106,7 +106,7 @@ void dc_send_halo_to_neighbours(dc_process_t process, int tag, float *from,
   size_t radius = STENCIL;
 
   reqs.count = 0;
-  reqs.requests = malloc(26 * sizeof(MPI_Request));
+  reqs.requests = malloc((NEIGHBOURHOOD - 1) * sizeof(MPI_Request));
   if (reqs.requests == NULL) {
     dc_log_error(process.rank,
                  "OOM: could not allocate memory for reqs.requests in "
@@ -114,7 +114,7 @@ void dc_send_halo_to_neighbours(dc_process_t process, int tag, float *from,
     MPI_Finalize();
     exit(1);
   }
-  reqs.buffers_to_free = malloc(26 * sizeof(void *));
+  reqs.buffers_to_free = malloc((NEIGHBOURHOOD - 1) * sizeof(void *));
   if (reqs.buffers_to_free == NULL) {
     dc_log_error(process.rank,
                  "OOM: could not allocate memory for reqs.buffers_to_free in "
@@ -123,97 +123,79 @@ void dc_send_halo_to_neighbours(dc_process_t process, int tag, float *from,
     exit(1);
   }
 
-  for (int dz = -1; dz <= 1; dz++) {
-    for (int dy = -1; dy <= 1; dy++) {
-      for (int dx = -1; dx <= 1; dx++) {
-        if (dx == 0 && dy == 0 && dz == 0) {
-          continue;
+  for (size_t face_index = 0; face_index < NEIGHBOURHOOD; face_index++) {
+    int neighbour_rank = process.neighbours[face_index];
+    if (neighbour_rank == MPI_PROC_NULL)
+      continue;
+    int dz = face_index / 9;
+    int dy = (face_index % 9) / 3;
+    int dx = face_index % 3;
+
+    dx -= 1;
+    dy -= 1;
+    dz -= 1;
+
+    size_t send_starts[3], send_ends[3];
+    if (dx == -1) {
+      send_starts[0] = radius;
+      send_ends[0] = 2 * radius;
+    } else if (dx == 1) {
+      send_starts[0] = process.sizes[0] - 2 * radius;
+      send_ends[0] = process.sizes[0] - radius;
+    } else {
+      send_starts[0] = radius;
+      send_ends[0] = process.sizes[0] - radius;
+    }
+
+    if (dy == -1) {
+      send_starts[1] = radius;
+      send_ends[1] = 2 * radius;
+    } else if (dy == 1) {
+      send_starts[1] = process.sizes[1] - 2 * radius;
+      send_ends[1] = process.sizes[1] - radius;
+    } else {
+      send_starts[1] = radius;
+      send_ends[1] = process.sizes[1] - radius;
+    }
+
+    if (dz == -1) {
+      send_starts[2] = radius;
+      send_ends[2] = 2 * radius;
+    } else if (dz == 1) {
+      send_starts[2] = process.sizes[2] - 2 * radius;
+      send_ends[2] = process.sizes[2] - radius;
+    } else {
+      send_starts[2] = radius;
+      send_ends[2] = process.sizes[2] - radius;
+    }
+
+    size_t data_size = (send_ends[0] - send_starts[0]) *
+                       (send_ends[1] - send_starts[1]) *
+                       (send_ends[2] - send_starts[2]);
+    float *send_buffer = malloc(data_size * sizeof(float));
+    if (send_buffer == NULL) {
+      dc_log_error(process.rank,
+                   "OOM: could not allocate memory for send_buffer in "
+                   "dc_send_halo_to_neighbours");
+      MPI_Finalize();
+      exit(1);
+    }
+
+    size_t data_index = 0;
+    for (size_t z = send_starts[2]; z < send_ends[2]; z++) {
+      for (size_t y = send_starts[1]; y < send_ends[1]; y++) {
+        for (size_t x = send_starts[0]; x < send_ends[0]; x++) {
+          size_t from_idx = dc_get_index_for_coordinates(
+              x, y, z, process.sizes[0], process.sizes[1], process.sizes[2]);
+          send_buffer[data_index++] = from[from_idx];
         }
-
-        int displacement[DIMENSIONS] = {dx, dy, dz};
-        int target_coords[DIMENSIONS];
-        unsigned char is_displacement_valid = 1;
-        for (unsigned int i = 0; i < DIMENSIONS; i++) {
-          if (process.coordinates[i] + displacement[i] < 0 ||
-              process.coordinates[i] + displacement[i] >= process.topology[i]) {
-            is_displacement_valid = 0;
-            break;
-          }
-          target_coords[i] = process.coordinates[i] + displacement[i];
-        }
-        if (!is_displacement_valid)
-          continue;
-
-        int neighbour_rank;
-        MPI_Cart_rank(process.communicator, target_coords, &neighbour_rank);
-
-        if (neighbour_rank < 0)
-          continue;
-
-        size_t send_starts[3], send_ends[3];
-        if (dx == -1) {
-          send_starts[0] = radius;
-          send_ends[0] = 2 * radius;
-        } else if (dx == 1) {
-          send_starts[0] = process.sizes[0] - 2 * radius;
-          send_ends[0] = process.sizes[0] - radius;
-        } else {
-          send_starts[0] = radius;
-          send_ends[0] = process.sizes[0] - radius;
-        }
-
-        if (dy == -1) {
-          send_starts[1] = radius;
-          send_ends[1] = 2 * radius;
-        } else if (dy == 1) {
-          send_starts[1] = process.sizes[1] - 2 * radius;
-          send_ends[1] = process.sizes[1] - radius;
-        } else {
-          send_starts[1] = radius;
-          send_ends[1] = process.sizes[1] - radius;
-        }
-
-        if (dz == -1) {
-          send_starts[2] = radius;
-          send_ends[2] = 2 * radius;
-        } else if (dz == 1) {
-          send_starts[2] = process.sizes[2] - 2 * radius;
-          send_ends[2] = process.sizes[2] - radius;
-        } else {
-          send_starts[2] = radius;
-          send_ends[2] = process.sizes[2] - radius;
-        }
-
-        size_t data_size = (send_ends[0] - send_starts[0]) *
-                           (send_ends[1] - send_starts[1]) *
-                           (send_ends[2] - send_starts[2]);
-        float *send_buffer = malloc(data_size * sizeof(float));
-        if (send_buffer == NULL) {
-          dc_log_error(process.rank,
-                       "OOM: could not allocate memory for send_buffer in "
-                       "dc_send_halo_to_neighbours");
-          MPI_Finalize();
-          exit(1);
-        }
-
-        size_t data_index = 0;
-        for (size_t z = send_starts[2]; z < send_ends[2]; z++) {
-          for (size_t y = send_starts[1]; y < send_ends[1]; y++) {
-            for (size_t x = send_starts[0]; x < send_ends[0]; x++) {
-              size_t from_idx = dc_get_index_for_coordinates(
-                  x, y, z, process.sizes[0], process.sizes[1],
-                  process.sizes[2]);
-              send_buffer[data_index++] = from[from_idx];
-            }
-          }
-        }
-
-        reqs.buffers_to_free[reqs.count] = send_buffer;
-        MPI_Isend(send_buffer, data_size, MPI_FLOAT, neighbour_rank, tag,
-                  process.communicator, &reqs.requests[reqs.count]);
-        reqs.count++;
       }
     }
+
+    reqs.buffers_to_free[reqs.count] = send_buffer;
+    MPI_Isend(send_buffer, data_size, MPI_FLOAT, neighbour_rank, tag,
+              process.communicator, &reqs.requests[reqs.count]);
+    reqs.count++;
   }
   dc_concatenate_worker_requests(process.rank, requests, &reqs);
 }
@@ -224,7 +206,7 @@ worker_halos_t dc_receive_halos(dc_process_t process, int tag) {
   result.halo_count = 0;
 
   result.requests.count = 0;
-  result.requests.requests = malloc(26 * sizeof(MPI_Request));
+  result.requests.requests = malloc((NEIGHBOURHOOD - 1) * sizeof(MPI_Request));
   if (result.requests.requests == NULL) {
     dc_log_error(
         process.rank,
@@ -234,7 +216,7 @@ worker_halos_t dc_receive_halos(dc_process_t process, int tag) {
   }
   result.requests.buffers_to_free = NULL;
 
-  result.halo_sizes = calloc(26, sizeof(size_t));
+  result.halo_sizes = calloc(NEIGHBOURHOOD - 1, sizeof(size_t));
   if (result.halo_sizes == NULL) {
     dc_log_error(
         process.rank,
@@ -242,7 +224,7 @@ worker_halos_t dc_receive_halos(dc_process_t process, int tag) {
     MPI_Finalize();
     exit(1);
   }
-  result.halo_data = calloc(26, sizeof(float *));
+  result.halo_data = calloc(NEIGHBOURHOOD - 1, sizeof(float *));
   if (result.halo_data == NULL) {
     dc_log_error(
         process.rank,
@@ -251,60 +233,38 @@ worker_halos_t dc_receive_halos(dc_process_t process, int tag) {
     exit(1);
   }
 
-  for (int dx = -1; dx <= 1; dx++) {
-    for (int dy = -1; dy <= 1; dy++) {
-      for (int dz = -1; dz <= 1; dz++) {
-        if (dx == 0 && dy == 0 && dz == 0)
-          continue;
+  for (size_t face_index = 0; face_index < NEIGHBOURHOOD; face_index++) {
+    int neighbour_rank = process.neighbours[face_index];
+    if (neighbour_rank == MPI_PROC_NULL)
+      continue;
+    int dz = face_index / 9;
+    int dy = (face_index % 9) / 3;
+    int dx = face_index % 3;
+    int displacement[DIMENSIONS] = {dx - 1, dy - 1, dz - 1};
 
-        int displacement[DIMENSIONS] = {dx, dy, dz};
-        int target_coords[DIMENSIONS];
-        unsigned char is_displacement_valid = 1;
-        for (unsigned int i = 0; i < DIMENSIONS; i++) {
-          if (process.coordinates[i] + displacement[i] < 0 ||
-              process.coordinates[i] + displacement[i] >= process.topology[i]) {
-            is_displacement_valid = 0;
-            break;
-          }
-          target_coords[i] = process.coordinates[i] + displacement[i];
-        }
-        if (!is_displacement_valid)
-          continue;
-
-        int neighbour_rank;
-        MPI_Cart_rank(process.communicator, target_coords, &neighbour_rank);
-
-        if (neighbour_rank < 0)
-          continue;
-
-        size_t recv_data_size = 1;
-        for (unsigned int i = 0; i < DIMENSIONS; i++) {
-          if (displacement[i] == 0) {
-            recv_data_size *= process.sizes[i] - 2 * radius;
-          } else {
-            recv_data_size *= radius;
-          }
-        }
-
-        size_t face_index = 9 * (dz + 1) + 3 * (dy + 1) + dx + 1;
-        result.halo_sizes[face_index] = recv_data_size;
-        result.halo_data[face_index] = malloc(recv_data_size * sizeof(float));
-        if (result.halo_data[face_index] == NULL) {
-          dc_log_error(process.rank,
-                       "OOM: could not allocate memory for "
-                       "halo_data[face_index] in dc_receive_halos");
-          MPI_Finalize();
-          exit(1);
-        }
-
-        MPI_Irecv(result.halo_data[face_index], recv_data_size, MPI_FLOAT,
-                  neighbour_rank, tag, process.communicator,
-                  &result.requests.requests[result.requests.count]);
-
-        result.halo_count++;
-        result.requests.count++;
+    size_t recv_data_size = 1;
+    for (unsigned int i = 0; i < DIMENSIONS; i++) {
+      if (displacement[i] == 0) {
+        recv_data_size *= process.sizes[i] - 2 * radius;
+      } else {
+        recv_data_size *= radius;
       }
     }
+    result.halo_sizes[face_index] = recv_data_size;
+    result.halo_data[face_index] = malloc(recv_data_size * sizeof(float));
+    if (result.halo_data[face_index] == NULL) {
+      dc_log_error(process.rank, "OOM: could not allocate memory for "
+                                 "halo_data[face_index] in dc_receive_halos");
+      MPI_Finalize();
+      exit(1);
+    }
+
+    MPI_Irecv(result.halo_data[face_index], recv_data_size, MPI_FLOAT,
+              neighbour_rank, tag, process.communicator,
+              &result.requests.requests[result.requests.count]);
+
+    result.halo_count++;
+    result.requests.count++;
   }
   return result;
 }

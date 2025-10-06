@@ -6,28 +6,57 @@
 
 * Packages
 
-#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
-library(tidyverse)
+#+begin_src R :results silent :session *R* :exports both :noweb yes :colnames yes
+  library(tidyverse)
+  library(here)
 #+end_src
+
+* Advancements
+
+** 2025, Saturday, 27 September
+
+*Problem*: the hash of the output produced *in parallel* (sequentially works fine) by our application did not match that of the original.
+
+*Partial solution*:
+The study object was improperly using the wrong indices for the anisotropy variables: since every worker computes the precomputation and anisotropy
+variables on their own (for the sake of having work to do before receiving the assigned portion of the cube from the coordinator), they were wrongly
+using their local indices (worker indices) instead of the global ones, which are the ones used by the original application.
+
+** 2025, Monday, 29 September
+
+*Problem*: the hash of the output produced *in parallel* (sequentially works fine) by our application did not match that of the original.
+*Final solution*:
+The original application utilizes cross derivatives between X and Y, which requires diagonals to be exchanged between halo regions.
+This wasn't present in our implementation, so diagonal communications were implemented.
+
+*Problem*: the source insertion was poorly handled, making the output hash differ from the proper one.
+*Solution*: make every worker insert the source on their own on *pc* and *qc*, which ensures they have the correct data available to compute with.
+
+** 2025, Tuesday, 30 September
+
+*Problem*: *MPI_cart_rank* was being called every iteration by every worker in order to find their neighbours, which is an unnecessary MPI overhead.
+*Solution*: bringing all these calls to the beginning of the application
+
+*Problem*: *MPI_Waitall* was being called twice per iteration with the purpose of waiting the two halo receivings (for *pp* and *qp*), introducing
+an unnecessary MPI overhead.
+*Solution*: merged both requests into one larger *MPI_Request* array before calling a single *MPI_Waitall*.
 
 * Meetings
 ** 2025-10-01
 *** Convert RST \to CSV
 
-#+begin_src shell :results output :exports both
-~/dev/akypuera/b3/aky_converter --no-links rastro-*.rst | \
-    ~/dev/pajeng/b1/pj_dump | \
+#+begin_src shell :results silent :exports both
+aky_converter --no-links 2025-10-01/rastro-*.rst | \
+    pj_dump | \
     grep ^State > saida.csv
 #+end_src
 
-#+RESULTS:
-
 *** Read
 
-#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+#+begin_src R :results silent :session *R* :exports both :noweb yes :colnames yes
 options(crayon.enabled=FALSE)
 suppressMessages(library(tidyverse))
-read_csv("saida.csv", col_names=FALSE, progress=FALSE, show_col_types=FALSE) |>
+read_csv(here::here("analysis/saida.csv"), col_names=FALSE, progress=FALSE, show_col_types=FALSE) |>
   select(rank = X2, start = X4, end = X5, duration = X6, state = X8) |>
   mutate(rank = as.integer(gsub("rank", "", rank))) |>
   mutate(state = as.factor(state)) -> df
@@ -35,34 +64,33 @@ read_csv("saida.csv", col_names=FALSE, progress=FALSE, show_col_types=FALSE) |>
 
 *** Define true start and end
 
-#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+#+begin_src R :results silent :session *R* :exports both :noweb yes :colnames yes
 df |>
   filter(state == "MPI_Recv") |>
   filter(start == min(start)) |>
   pull(start) -> s.start
 
 df |>
-  filter(state == "MPI_Finalize") |>
-  filter(start == max(start)) |>
-  pull(start) -> s.end
+  filter(state == "MPI_Waitall") |>
+  filter(end == max(end)) |>
+  pull(end) -> s.end
 #+end_src
 
 *** Consider only the middle of the execution
 
-#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
-df |>
-  filter(!(state %in% c("MPI_Recv", # remove o recv inicial
-                      "MPI_Send", # remove o send inicial
-                      "MPI_Wtime"))) |>
-  filter(start >= s.start) |>
-  filter(end <= s.end) -> df.filtered
+#+begin_src R :results silent :session *R* :exports both :noweb yes :colnames yes
+  df |>
+    filter(!(state %in% c("MPI_Recv", # remove o recv inicial
+                        "MPI_Send", # remove o send inicial
+                        "MPI_Cart_rank", # remove as chamadas de rank finais
+                        "MPI_Wtime"))) |>
+    filter(start >= s.start) |>
+    filter(end <= s.end) -> df.filtered
 #+end_src
-
-#+RESULTS:
 
 *** Consider only when everyone is working
 
-#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+#+begin_src R :results none :session :exports both :noweb yes :colnames yes
 df.filtered |>
   group_by(rank) |>
   arrange(start) |>
@@ -87,7 +115,7 @@ bind_rows(
 
 *** Stats
 
-#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+#+begin_src R :results silent :session *R* :exports both :noweb yes :colnames yes
 df.filtered2 |>
   group_by(rank) |>
   summarize(MPI.time = sum(duration),
@@ -111,8 +139,8 @@ df.filtered2 |>
              xmin = start, xmax = end,
              ymin = rank-0.3, ymax = rank+0.3)) +
   geom_rect()
-ggsave("saida.png")
+ggsave("saida.pdf")
 #+end_src
 
 #+RESULTS:
-: Saving 18.1 x 4.07 in image
+: Saving 6.99 x 7 in image

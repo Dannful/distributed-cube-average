@@ -1,5 +1,6 @@
 .direnv
 bin
 result
+nohup.out
 *.dc
 *.rst

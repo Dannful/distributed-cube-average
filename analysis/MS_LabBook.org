@@ -11,9 +11,83 @@
   library(here)
 #+end_src
 
+* Reusable functions
+
+#+begin_src R :results silent :session *R* :exports both :noweb yes :colnames yes
+  generate_analysis <- function(day) {
+    # Convert RST to CSV
+    system(paste0("aky_converter --no-links ", day, "/rastro-*.rst | pj_dump | grep ^State > ", day, ".csv"))
+
+    # Read
+    df <- read_csv(paste0(day, ".csv"), col_names=FALSE, progress=FALSE, show_col_types=FALSE) |>
+      select(rank = X2, start = X4, end = X5, duration = X6, state = X8) |>
+      mutate(rank = as.integer(gsub("rank", "", rank))) |>
+      mutate(state = as.factor(state))
+
+    # Define true start and end
+    s.start <- df |>
+      filter(state == "MPI_Recv") |>
+      filter(start == min(start)) |>
+      pull(start)
+
+    s.end <- df |>
+      filter(state == "MPI_Waitall") |>
+      filter(end == max(end)) |>
+      pull(end)
+
+    # Consider only the middle of the execution
+    df.filtered <- df |>
+      filter(!(state %in% c("MPI_Recv", "MPI_Send", "MPI_Cart_rank", "MPI_Wtime"))) |>
+      filter(start >= s.start) |>
+      filter(end <= s.end)
+
+    # Consider only when everyone is working
+    df.filtered |>
+      group_by(rank) |>
+      arrange(start) |>
+      slice(1) |>
+      ungroup() |>
+      arrange(start) |>
+      slice(n()) |>
+      pull(start) -> s.start
+
+    df.filtered2 <- bind_rows(
+      df.filtered |>
+        filter(start <= s.start & end >= s.start) |>
+        mutate(start = s.start),
+      df.filtered |>
+        filter(!(start <= s.start & end >= s.start)) |>
+        filter(start >= s.start)
+    )
+
+    # Stats
+    df.filtered2 |>
+      group_by(rank) |>
+      summarize(MPI.time = sum(duration),
+                Makespan.time = max(end) * length(unique(rank))) |>
+      mutate(P = round(MPI.time / Makespan.time * 100, 2)) |>
+      write_csv(paste0(day, "_mpi_time_per_rank.csv"), progress=FALSE) |>
+      ungroup() |>
+      filter(rank != 0) |>
+      summarize(MPI.time = sum(MPI.time),
+                Makespan.time = sum(Makespan.time)) |>
+      mutate(P = round(MPI.time / Makespan.time * 100, 2)) |>
+      write_csv(paste0(day, "_mpi_time_global.csv"))
+
+    # Plot
+    p <- df.filtered2 |>
+      ggplot(aes(fill = state, color = state,
+                 xmin = start, xmax = end,
+                 ymin = rank-0.3, ymax = rank+0.3)) +
+      geom_rect()
+    ggsave(paste0(day, ".pdf"), p)
+    print(p)
+  }
+#+end_src
+
 * Advancements
 
-** 2025, Saturday, 27 September
+** 2025-09-27
 
 *Problem*: the hash of the output produced *in parallel* (sequentially works fine) by our application did not match that of the original.
 
@@ -22,7 +96,7 @@ The study object was improperly using the wrong indices for the anisotropy varia
 variables on their own (for the sake of having work to do before receiving the assigned portion of the cube from the coordinator), they were wrongly
 using their local indices (worker indices) instead of the global ones, which are the ones used by the original application.
 
-** 2025, Monday, 29 September
+** 2025-09-29
 
 *Problem*: the hash of the output produced *in parallel* (sequentially works fine) by our application did not match that of the original.
 *Final solution*:
@@ -32,7 +106,7 @@ This wasn't present in our implementation, so diagonal communications were imple
 *Problem*: the source insertion was poorly handled, making the output hash differ from the proper one.
 *Solution*: make every worker insert the source on their own on *pc* and *qc*, which ensures they have the correct data available to compute with.
 
-** 2025, Tuesday, 30 September
+** 2025-09-30
 
 *Problem*: *MPI_cart_rank* was being called every iteration by every worker in order to find their neighbours, which is an unnecessary MPI overhead.
 *Solution*: bringing all these calls to the beginning of the application
@@ -40,107 +114,25 @@ This wasn't present in our implementation, so diagonal communications were imple
 *Problem*: *MPI_Waitall* was being called twice per iteration with the purpose of waiting the two halo receivings (for *pp* and *qp*), introducing
 an unnecessary MPI overhead.
 *Solution*: merged both requests into one larger *MPI_Request* array before calling a single *MPI_Waitall*.
+** 2025-10-16
+Collected new results from execution. Factors:
+- ~size_x~: 500
+- ~size_y~: 500
+- ~size_z~: 500
+- ~absorption~: 3
+- ~dx~: 0.03
+- ~dy~: 0.03
+- ~dz~: 0.03
+- ~dt~: 0.000110
+- ~tmax~: 30
+Results:
+#+begin_src R :results value :session *R* :exports both :noweb yes :colnames yes
+  generate_analysis(here::here("analysis/2025-10-16"))
+#+end_src
 
 * Meetings
 ** 2025-10-01
-*** Convert RST \to CSV
-
-#+begin_src shell :results silent :exports both
-aky_converter --no-links 2025-10-01/rastro-*.rst | \
-    pj_dump | \
-    grep ^State > saida.csv
+*** Generate analysis for the day
+#+begin_src R :results value :session *R* :exports both :noweb yes :colnames yes
+  generate_analysis(here::here("analysis/2025-10-01"))
 #+end_src
-
-*** Read
-
-#+begin_src R :results silent :session *R* :exports both :noweb yes :colnames yes
-options(crayon.enabled=FALSE)
-suppressMessages(library(tidyverse))
-read_csv(here::here("analysis/saida.csv"), col_names=FALSE, progress=FALSE, show_col_types=FALSE) |>
-  select(rank = X2, start = X4, end = X5, duration = X6, state = X8) |>
-  mutate(rank = as.integer(gsub("rank", "", rank))) |>
-  mutate(state = as.factor(state)) -> df
-#+end_src
-
-*** Define true start and end
-
-#+begin_src R :results silent :session *R* :exports both :noweb yes :colnames yes
-df |>
-  filter(state == "MPI_Recv") |>
-  filter(start == min(start)) |>
-  pull(start) -> s.start
-
-df |>
-  filter(state == "MPI_Waitall") |>
-  filter(end == max(end)) |>
-  pull(end) -> s.end
-#+end_src
-
-*** Consider only the middle of the execution
-
-#+begin_src R :results silent :session *R* :exports both :noweb yes :colnames yes
-  df |>
-    filter(!(state %in% c("MPI_Recv", # remove o recv inicial
-                        "MPI_Send", # remove o send inicial
-                        "MPI_Cart_rank", # remove as chamadas de rank finais
-                        "MPI_Wtime"))) |>
-    filter(start >= s.start) |>
-    filter(end <= s.end) -> df.filtered
-#+end_src
-
-*** Consider only when everyone is working
-
-#+begin_src R :results none :session :exports both :noweb yes :colnames yes
-df.filtered |>
-  group_by(rank) |>
-  arrange(start) |>
-  slice(1) |>
-  ungroup() |>
-  arrange(start) |>
-  slice(n()) |>
-  pull(start) -> s.start
-
-bind_rows(
-  df.filtered |>
-  filter(start <= s.start & end >= s.start) |>
-  mutate(start = s.start)
-,
-  df.filtered |>
-  filter(!(start <= s.start & end >= s.start)) |>
-  filter(start >= s.start)
-) -> df.filtered2
-#+end_src
-
-#+RESULTS:
-
-*** Stats
-
-#+begin_src R :results silent :session *R* :exports both :noweb yes :colnames yes
-df.filtered2 |>
-  group_by(rank) |>
-  summarize(MPI.time = sum(duration),
-            Makespan.time = max(end) * length(unique(rank))) |>
-  mutate(P = round(MPI.time / Makespan.time * 100, 2)) |>
-  write_csv("mpi_time_per_rank.csv", progress=FALSE) |>
-  ungroup() |>
-  filter(rank != 0) |> # because 0 is a bit different in the beginning and in the end
-  summarize(MPI.time = sum(MPI.time),
-            Makespan.time = sum(Makespan.time)) |>
-  mutate(P = round(MPI.time / Makespan.time * 100, 2)) |>
-  write_csv("mpi_time_global.csv")
-#+end_src
-
-#+RESULTS:
-
-*** Plot
-#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
-df.filtered2 |>
-  ggplot(aes(fill = state, color = state,
-             xmin = start, xmax = end,
-             ymin = rank-0.3, ymax = rank+0.3)) +
-  geom_rect()
-ggsave("saida.pdf")
-#+end_src
-
-#+RESULTS:
-: Saving 6.99 x 7 in image

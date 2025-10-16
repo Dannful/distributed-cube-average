@@ -21,7 +21,7 @@
           '';
         };
         rEnv = pkgs.rWrapper.override {
-          packages = with pkgs.rPackages; [ languageserver lintr here digest ];
+          packages = with pkgs.rPackages; [ languageserver lintr here digest tidyverse ];
         };
 
       in {

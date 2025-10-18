@@ -23,6 +23,7 @@ static struct argp_option options[] = {
     {"absorption", 'a', "INTEGER", 0, "Absorption zone size"},
     {"output-file", 'o', "PATH", 0,
      "Path to the file to output the results to"},
+    {0},
 };
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state) {
@@ -77,12 +78,12 @@ static struct argp argp = {
     "A program that solves Fletcher equations in a distributed setup"};
 
 int main(int argc, char **argv) {
+  MPI_Init(&argc, &argv);
   dc_arguments_t arguments = {0};
   argp_parse(&argp, argc, argv, 0, 0, &arguments);
   MPI_Comm communicator;
   int topology[DIMENSIONS] = {0};
   int rank, size;
-  MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
   MPI_Dims_create(size, DIMENSIONS, topology);
   dc_mpi_world_init(&communicator, topology);

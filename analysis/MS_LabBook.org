@@ -19,7 +19,7 @@
     system(paste0("aky_converter --no-links ", day, "/rastro-*.rst | pj_dump | grep ^State > ", day, ".csv"))
 
     # Read
-    df <- read_csv(paste0(day, ".csv"), col_names=FALSE, progress=FALSE, show_col_types=FALSE) |>
+    df <- read_csv(paste0(day, ".csv"), col_names = FALSE, progress = FALSE, show_col_types = FALSE) |>
       select(rank = X2, start = X4, end = X5, duration = X6, state = X8) |>
       mutate(rank = as.integer(gsub("rank", "", rank))) |>
       mutate(state = as.factor(state))
@@ -63,22 +63,28 @@
     # Stats
     df.filtered2 |>
       group_by(rank) |>
-      summarize(MPI.time = sum(duration),
-                Makespan.time = max(end) * length(unique(rank))) |>
+      summarize(
+        MPI.time = sum(duration),
+        Makespan.time = max(end) * length(unique(rank))
+      ) |>
       mutate(P = round(MPI.time / Makespan.time * 100, 2)) |>
-      write_csv(paste0(day, "_mpi_time_per_rank.csv"), progress=FALSE) |>
+      write_csv(paste0(day, "_mpi_time_per_rank.csv"), progress = FALSE) |>
       ungroup() |>
       filter(rank != 0) |>
-      summarize(MPI.time = sum(MPI.time),
-                Makespan.time = sum(Makespan.time)) |>
+      summarize(
+        MPI.time = sum(MPI.time),
+        Makespan.time = sum(Makespan.time)
+      ) |>
       mutate(P = round(MPI.time / Makespan.time * 100, 2)) |>
       write_csv(paste0(day, "_mpi_time_global.csv"))
 
     # Plot
     p <- df.filtered2 |>
-      ggplot(aes(fill = state, color = state,
-                 xmin = start, xmax = end,
-                 ymin = rank-0.3, ymax = rank+0.3)) +
+      ggplot(aes(
+        fill = state, color = state,
+        xmin = start, xmax = end,
+        ymin = rank - 0.3, ymax = rank + 0.3
+      )) +
       geom_rect()
     ggsave(paste0(day, ".pdf"), p)
     print(p)

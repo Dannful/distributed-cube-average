@@ -7,7 +7,7 @@
 #include "calculate_source.h"
 #include "coordinator.h"
 #include "log.h"
-#include "sample.h"
+#include "propagate.h"
 #include "setup.h"
 #include "worker.h"
 
@@ -31,9 +31,6 @@ dc_get_global_coordinates(const int worker_coordinates[DIMENSIONS],
                           const size_t global_sizes[DIMENSIONS],
                           const size_t local_coordinates[DIMENSIONS],
                           const int topology[DIMENSIONS]) {
-  size_t worker_index = dc_get_index_for_coordinates(
-      local_coordinates[0], local_coordinates[1], local_coordinates[2],
-      worker_sizes[0], worker_sizes[1], worker_sizes[2]);
   size_t local_x = local_coordinates[0] - STENCIL;
   size_t local_y = local_coordinates[1] - STENCIL;
   size_t local_z = local_coordinates[2] - STENCIL;
@@ -272,9 +269,6 @@ worker_halos_t dc_receive_halos(dc_process_t process, int tag) {
 void dc_compute_boundaries(const dc_process_t *process, const float *pp_copy,
                            const float *qp_copy) {
   const int radius = STENCIL;
-  const size_t size_x = process->sizes[0];
-  const size_t size_y = process->sizes[1];
-  const size_t size_z = process->sizes[2];
 
   for (unsigned int dimension = 0; dimension < DIMENSIONS; dimension++) {
     for (int direction = -1; direction <= 1; direction += 2) {
@@ -287,13 +281,11 @@ void dc_compute_boundaries(const dc_process_t *process, const float *pp_copy,
         end_coords[i] =
             (displacement[i] < 0) ? 2 * radius : process->sizes[i] - radius;
       }
-      for (size_t z = start_coords[2]; z < end_coords[2]; z++) {
-        for (size_t y = start_coords[1]; y < end_coords[1]; y++) {
-          for (size_t x = start_coords[0]; x < end_coords[0]; x++) {
-            sample_compute(process, pp_copy, qp_copy, x, y, z);
-          }
-        }
-      }
+      dc_propagate(start_coords, end_coords, process->sizes,
+                   process->coordinates, process->global_sizes,
+                   process->topology, &process->precomp_vars, process->dx,
+                   process->dy, process->dz, process->dt, process->pp,
+                   process->pc, process->qp, process->qc, pp_copy, qp_copy);
     }
   }
 }
@@ -301,17 +293,17 @@ void dc_compute_boundaries(const dc_process_t *process, const float *pp_copy,
 void dc_compute_interior(const dc_process_t *process, const float *pp_copy,
                          const float *qp_copy) {
   const int radius = STENCIL;
-  const size_t size_x = process->sizes[0];
-  const size_t size_y = process->sizes[1];
-  const size_t size_z = process->sizes[2];
 
-  for (size_t z = 2 * radius; z < size_z - 2 * radius; z++) {
-    for (size_t y = 2 * radius; y < size_y - 2 * radius; y++) {
-      for (size_t x = 2 * radius; x < size_x - 2 * radius; x++) {
-        sample_compute(process, pp_copy, qp_copy, x, y, z);
-      }
-    }
-  }
+  size_t start_coords[DIMENSIONS] = {2 * radius, 2 * radius, 2 * radius};
+  size_t end_coords[DIMENSIONS] = {process->sizes[0] - 2 * radius,
+                                   process->sizes[1] - 2 * radius,
+                                   process->sizes[2] - 2 * radius};
+
+  dc_propagate(start_coords, end_coords, process->sizes,
+               process->coordinates, process->global_sizes, process->topology,
+               &process->precomp_vars, process->dx, process->dy, process->dz,
+               process->dt, process->pp, process->pc, process->qp, process->qc,
+               pp_copy, qp_copy);
 }
 
 void dc_send_data_to_coordinator(dc_process_t process) {
@@ -326,8 +318,6 @@ void dc_send_data_to_coordinator(dc_process_t process) {
 }
 
 void dc_worker_process(dc_process_t *process) {
-  size_t count = dc_compute_count_from_sizes(process->sizes);
-
   worker_requests_t all_send_requests;
   all_send_requests.buffers_to_free = NULL;
   all_send_requests.requests = NULL;

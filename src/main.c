@@ -148,7 +148,6 @@ int main(int argc, char **argv) {
   dc_worker_process(&mpi_process);
   dc_send_data_to_coordinator(mpi_process);
   if (rank == COORDINATOR) {
-    size_t total_size = sx * sy * sz;
     dc_result_t result = dc_receive_data_from_workers(mpi_process, sx, sy, sz);
     FILE *output = fopen(arguments.output_file, "wb");
     fwrite(result.pc, sizeof(float), sx * sy * sz, output);

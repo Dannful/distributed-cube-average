@@ -6,21 +6,16 @@
 #include <stddef.h>
 #include <stdio.h>
 
-void sample_compute(const dc_process_t *process, const float *pp_in,
+void sample_compute(const size_t sizes[DIMENSIONS], float dx, float dy, float dz,
+                    float dt, const int coordinates[DIMENSIONS],
+                    const size_t global_sizes[DIMENSIONS],
+                    const int topology[DIMENSIONS], float *pc, float *qc,
+                    float *pp_out, float *qp_out,
+                    dc_precomp_vars precomp_vars, const float *pp_in,
                     const float *qp_in, size_t ix, size_t iy, size_t iz) {
-  // Unpack data from process struct
-  const size_t size_x = process->sizes[0];
-  const size_t size_y = process->sizes[1];
-  const size_t size_z = process->sizes[2];
-  const float dx = process->dx;
-  const float dy = process->dy;
-  const float dz = process->dz;
-  const float dt = process->dt;
-  float *pc = process->pc;
-  float *qc = process->qc;
-  float *pp_out = process->pp;
-  float *qp_out = process->qp;
-  dc_precomp_vars precomp_vars = process->precomp_vars;
+  const size_t size_x = sizes[0];
+  const size_t size_y = sizes[1];
+  const size_t size_z = sizes[2];
 
   // Calculate strides for each dimension
   const int strideX =
@@ -47,9 +42,7 @@ void sample_compute(const dc_process_t *process, const float *pp_in,
 
   size_t local_coordinates[DIMENSIONS] = {ix, iy, iz};
   size_t global_coordinates = dc_get_global_coordinates(
-      process->coordinates, process->sizes, process->global_sizes,
-      local_coordinates, process->topology);
-  // global_coordinates = process->indices[i];
+      coordinates, sizes, global_sizes, local_coordinates, topology);
 
   // p derivatives, H1(p) and H2(p)
   const float pxx = der2(pc, i, strideX, dxxinv);

@@ -136,6 +136,16 @@ Results:
   generate_analysis(here::here("analysis/2025-10-16"))
 #+end_src
 
+** 2025-10-20
+Modularized the project to allow for different backends. Two major changes were required:
+1. Modifying the ~Makefile~ to allow for different environments
+2. Modifying the interior computation and boundaries computation functions to use a function from
+   a separate file, which source is provided by the Makefile based on the variables provided.
+No major issues arised, the parallel and sequential version's hashes remain the same.
+The only problem faced was that MPI automatically binds processes to cores, which makes multithreading
+in a single machine (for testing purposes) impossible. Therefore, a flag was passed to ~mpicc~ to avoid
+such binding.
+
 * Meetings
 ** 2025-10-01
 *** Generate analysis for the day

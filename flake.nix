@@ -21,19 +21,32 @@
           '';
         };
         rEnv = pkgs.rWrapper.override {
-          packages = with pkgs.rPackages; [ languageserver lintr here digest tidyverse ];
+          packages = with pkgs.rPackages; [
+            languageserver
+            lintr
+            here
+            digest
+            tidyverse
+          ];
         };
 
       in {
         devShell = pkgs.mkShell {
-          buildInputs = [ pkgs.openmpi pkgs.clang-tools rEnv akypuera pajeng ];
+          buildInputs = [
+            pkgs.openmpi
+            pkgs.clang-tools
+            pkgs.llvmPackages.openmp
+            rEnv
+            akypuera
+            pajeng
+          ];
           shellHook = ''
             export PATH=${pkgs.clang-tools}/bin/clangd:$PATH
           '';
         };
         packages.script =
           pkgs.writeShellScriptBin "run-distributed-cube-average" ''
-            ${pkgs.openmpi}/bin/mpirun -np 8 ${distributed-cube-average}/bin/distributed-cube-average --size-x=5 --size-y=5 --size-z=5 --absorption=6 --dx=2 --dy=3 --dz=4 --dt=0.000110 --time-max=1 --output-file=./validation/predicted.dc
+            ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none ${distributed-cube-average}/bin/distributed-cube-average --size-x=100 --size-y=100 --size-z=100 --absorption=6 --dx=2 --dy=3 --dz=4 --dt=0.000110 --time-max=1 --output-file=./validation/predicted.dc
           '';
         packages.comparison =
           pkgs.writeShellScriptBin "run-distributed-cube-average-comparison" ''
@@ -45,9 +58,9 @@
             dy=3
             dz=4
             dt=0.000110
-            tmax=1
-            ${pkgs.openmpi}/bin/mpirun -np 1 ${distributed-cube-average}/bin/distributed-cube-average --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/ground_truth.dc
-            ${pkgs.openmpi}/bin/mpirun -np 8 ${distributed-cube-average}/bin/distributed-cube-average --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
+            tmax=0.00110
+            OMP_NUM_THREADS=1 ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none ${distributed-cube-average}/bin/distributed-cube-average --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/ground_truth.dc
+            ${pkgs.openmpi}/bin/mpirun -np 8 --bind-to none ${distributed-cube-average}/bin/distributed-cube-average --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
             Rscript ./validation/CompareResults.R
           '';
         packages.default = distributed-cube-average;

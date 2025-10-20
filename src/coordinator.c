@@ -285,7 +285,6 @@ dc_result_t dc_receive_data_from_workers(dc_process_t coordinator_process,
         MPI_Cart_rank(coordinator_process.communicator, worker_coordinates,
                       &worker_rank);
         size_t worker_sizes[DIMENSIONS] = {0};
-        size_t *indices = NULL;
         float *pc = NULL;
         float *qc = NULL;
         size_t worker_count = 0;

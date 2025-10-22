@@ -375,13 +375,13 @@ void dc_worker_process(dc_process_t *process) {
     dc_free_worker_halos(&new_pp_halos);
     dc_free_worker_halos(&new_qp_halos);
     dc_worker_swap_arrays(process);
+    MPI_Waitall(all_send_requests.count, all_send_requests.requests,
+                MPI_STATUSES_IGNORE);
+    dc_free_worker_requests(&all_send_requests);
   }
 
   free(pp_copy);
   free(qp_copy);
-  MPI_Waitall(all_send_requests.count, all_send_requests.requests,
-              MPI_STATUS_IGNORE);
-  dc_free_worker_requests(&all_send_requests);
   dc_log_info(process->rank, "Processing complete.");
 }
 

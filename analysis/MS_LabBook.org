@@ -146,6 +146,10 @@ The only problem faced was that MPI automatically binds processes to cores, whic
 in a single machine (for testing purposes) impossible. Therefore, a flag was passed to ~mpicc~ to avoid
 such binding.
 
+** 2025-10-22
+Found a potential bug in ~worker.c~. The ~MPI_Wait~ calls were being executed all at once
+by the end of the loop, which could cause a buffer overflow. These wait calls have been brought to the
+last lines of the main worker loop.
 * Meetings
 ** 2025-10-01
 *** Generate analysis for the day

@@ -92,7 +92,6 @@
 #+end_src
 
 * Advancements
-
 ** 2025-09-27
 
 *Problem*: the hash of the output produced *in parallel* (sequentially works fine) by our application did not match that of the original.
@@ -156,3 +155,459 @@ last lines of the main worker loop.
 #+begin_src R :results value :session *R* :exports both :noweb yes :colnames yes
   generate_analysis(here::here("analysis/2025-10-01"))
 #+end_src
+
+** 2025-10-23
+*** Generate analysis for the day
+#+begin_src R :results value :session *R* :exports both :noweb yes :colnames yes
+  generate_analysis(here::here("analysis/2025-10-16"))
+#+end_src
+
+#+RESULTS:
+|---|
+*** Copy/Paste
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+day <- "2025-10-16"
+
+    # Convert RST to CSV
+    system(paste0("aky_converter --no-links ", day, "/rastro-*.rst | pj_dump | grep ^State > ", day, ".csv"))
+
+    # Read
+    df <- read_csv(paste0(day, ".csv"), col_names = FALSE, progress = FALSE, show_col_types = FALSE) |>
+      select(rank = X2, start = X4, end = X5, duration = X6, state = X8) |>
+      mutate(rank = as.integer(gsub("rank", "", rank))) |>
+      mutate(state = as.factor(state))
+
+    # Define true start and end
+    s.start <- df |>
+      filter(state == "MPI_Recv") |>
+      filter(start == min(start)) |>
+      pull(start)
+
+    s.end <- df |>
+      filter(state == "MPI_Waitall") |>
+      filter(end == max(end)) |>
+      pull(end)
+
+    # Consider only the middle of the execution
+    df.filtered <- df |>
+      filter(!(state %in% c("MPI_Recv", "MPI_Send", "MPI_Cart_rank", "MPI_Wtime"))) |>
+      filter(start >= s.start) |>
+      filter(end <= s.end)
+
+    # Consider only when everyone is working
+    df.filtered |>
+      group_by(rank) |>
+      arrange(start) |>
+      slice(1) |>
+      ungroup() |>
+      arrange(start) |>
+      slice(n()) |>
+      pull(start) -> s.start
+
+    df.filtered2 <- bind_rows(
+      df.filtered |>
+        filter(start <= s.start & end >= s.start) |>
+        mutate(start = s.start),
+      df.filtered |>
+        filter(!(start <= s.start & end >= s.start)) |>
+        filter(start >= s.start)
+    )
+print(s.start)
+print(s.end)
+
+
+    # Stats
+    df.filtered2 |>
+      group_by(rank) |>
+      summarize(
+        MPI.time = sum(duration),
+        Makespan.time = max(end) * length(unique(rank))
+      ) |>
+      mutate(P = round(MPI.time / Makespan.time * 100, 2)) |>
+      write_csv(paste0(day, "_mpi_time_per_rank.csv"), progress = FALSE) |>
+      ungroup() |>
+      filter(rank != 0) |>
+      summarize(
+        MPI.time = sum(MPI.time),
+        Makespan.time = sum(Makespan.time)
+      ) |>
+      mutate(P = round(MPI.time / Makespan.time * 100, 2)) |>
+      write_csv(paste0(day, "_mpi_time_global.csv"))
+
+    # Plot
+    p <- df.filtered2 |>
+      ggplot(aes(
+        fill = state, color = state,
+        xmin = start, xmax = end,
+        ymin = rank - 0.3, ymax = rank + 0.3
+      )) +
+      geom_rect()
+    ggsave(paste0(day, ".pdf"), p)
+    print(p)
+
+#+end_src
+
+#+RESULTS:
+: [1] 42.18672
+: [1] 69630.57
+: wrote 1.00TB in  0s, 55.19PB/s                                                                              > > > . + > Saving 18.5 x 4.51 in image
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.filtered
+#+end_src
+
+#+RESULTS:
+#+begin_example
+# A tibble: 101,305 × 5
+    rank start   end duration state    
+   <int> <dbl> <dbl>    <dbl> <fct>    
+ 1     3  41.8  41.8 0.000006 MPI_Irecv
+ 2     3  41.8  41.8 0.000064 MPI_Irecv
+ 3     3  41.8  41.8 0.000028 MPI_Irecv
+ 4     3  41.8  41.8 0.000045 MPI_Irecv
+ 5     3  41.8  41.8 0.000005 MPI_Irecv
+ 6     3  41.8  41.8 0.000007 MPI_Irecv
+ 7     3  43.1  43.1 0.0001   MPI_Isend
+ 8     3  43.1  43.1 0.000024 MPI_Isend
+ 9     3  43.1  43.1 0.000062 MPI_Isend
+10     3  43.1  43.1 0.000035 MPI_Isend
+# ℹ 101,295 more rows
+# ℹ Use `print(n = ...)` to see more rows
+#+end_example
+
+Which operation takes the most of the time?
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.filtered2 |>
+  group_by(state) |>
+  summarize(
+    MPI.time = sum(duration),
+    Makespan.time = max(end) * length(unique(rank))
+  ) |>
+  mutate(P = round(MPI.time / Makespan.time * 100, 2))
+#+end_src
+
+#+RESULTS:
+: # A tibble: 3 × 4
+:   state        MPI.time Makespan.time     P
+:   <fct>           <dbl>         <dbl> <dbl>
+: 1 MPI_Irecv        1.72       278452.   0  
+: 2 MPI_Isend        3.59       278458.   0  
+: 3 MPI_Waitall 152719.         278522.  54.8
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.filtered2 |>
+  ggplot(aes(
+    fill = state, color = state,
+    xmin = start, xmax = end,
+    ymin = rank - 0.3, ymax = rank + 0.3
+  )) +
+  geom_rect() +
+  coord_cartesian(xlim=c(20000, 20100))
+#+end_src
+
+#+RESULTS:
+
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.filtered2 |>
+  filter(rank == 2) |>
+  group_by(rank) |>
+  arrange(start)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+# A tibble: 25,323 × 5
+# Groups:   rank [1]
+    rank start   end  duration state      
+   <int> <dbl> <dbl>     <dbl> <fct>      
+ 1     2  51.3  77.8 26.4      MPI_Waitall
+ 2     2  77.9  77.9  0.000076 MPI_Irecv  
+ 3     2  77.9  77.9  0.000041 MPI_Irecv  
+ 4     2  77.9  77.9  0.000034 MPI_Irecv  
+ 5     2  77.9  77.9  0.000015 MPI_Irecv  
+ 6     2  77.9  77.9  0.000036 MPI_Irecv  
+ 7     2  77.9  77.9  0.000006 MPI_Irecv  
+ 8     2  79.2  79.2  0.000084 MPI_Isend  
+ 9     2  79.2  79.2  0.000044 MPI_Isend  
+10     2  79.2  79.2  0.000021 MPI_Isend  
+# ℹ 25,313 more rows
+# ℹ Use `print(n = ...)` to see more rows
+#+end_example
+*** New analysis
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df |>
+  group_by(rank) |>
+  arrange(start) |>
+  filter(state == "MPI_Irecv") |>
+  slice(1) |>
+  select(rank, kickoff = start) -> df.start
+
+df |>
+  group_by(rank) |>
+  arrange(start) |>
+  filter(state == "MPI_Waitall") |>
+  slice(n()) |>
+  select(rank, kickend = end) -> df.end
+
+df |>
+  left_join(df.start, by = join_by(rank)) |>
+  left_join(df.end, by = join_by(rank)) |>  
+  filter(start >= kickoff) |>
+  filter(end <= kickend) |>
+  group_by(rank) |>
+  arrange(start) |>
+  mutate(mark = state == "MPI_Waitall") |>
+  mutate(iteration = 1 + cumsum(mark)) |>
+  mutate(iteration = case_when(state == "MPI_Waitall" ~ iteration - 1,
+                               TRUE ~ iteration)) |>
+  select(-mark) -> df.iteration
+
+df.iteration |>
+  filter(state == "MPI_Isend") |>
+  ggplot(aes(x = duration)) +
+  geom_density() + #histogram(bins=1000) +
+  facet_wrap(~state)
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.iteration |>
+  filter(state == "MPI_Isend") |>
+  filter(duration > 1) |>
+  print() |>
+  ggplot(aes(
+    fill = state, color = state,
+    xmin = start, xmax = end,
+    ymin = rank - 0.3, ymax = rank + 0.3
+  )) +
+  geom_rect()
+#+end_src
+
+#+RESULTS:
+: # A tibble: 0 × 8
+: # Groups:   rank [0]
+: # ℹ 8 variables: rank <int>, start <dbl>, end <dbl>, duration <dbl>,
+: #   state <fct>, kickoff <dbl>, kickend <dbl>, iteration <dbl>
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.iteration |>
+  filter(state == "MPI_Isend") |>
+  filter(duration <= 1) |>
+  ggplot(aes(x = duration)) +
+  geom_histogram(bins=1000) +
+  facet_wrap(~state)
+#+end_src
+
+#+RESULTS:
+
+waitall
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.iteration |>
+  filter(state == "MPI_Waitall") |>
+#  filter(duration <= 1) |>
+  ggplot(aes(x = duration)) +
+  geom_histogram(bins=1000) +
+  facet_wrap(~state)
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.iteration |>
+  filter(state == "MPI_Waitall") |>
+  filter(duration > 10) |>
+  print() |>
+  ggplot(aes(
+    fill = state, color = state,
+    xmin = start, xmax = end,
+    ymin = rank - 0.3, ymax = rank + 0.3
+  )) +
+  geom_rect()
+#+end_src
+
+#+RESULTS:
+#+begin_example
+# A tibble: 3,895 × 8
+# Groups:   rank [4]
+    rank start   end duration state       kickoff kickend iteration
+   <int> <dbl> <dbl>    <dbl> <fct>         <dbl>   <dbl>     <dbl>
+ 1     1  49.9  70.4     20.4 MPI_Waitall    32.3  69613.         1
+ 2     2  51.3  77.8     26.4 MPI_Waitall    37.1  69609.         1
+ 3     3  70.3 107.      36.2 MPI_Waitall    41.8  69631.         2
+ 4     0  77.7 107.      28.8 MPI_Waitall    42.2  69577.         2
+ 5     1 106.  135.      29.3 MPI_Waitall    32.3  69613.         3
+ 6     2 107.  142.      35.7 MPI_Waitall    37.1  69609.         3
+ 7     3 135.  171.      35.9 MPI_Waitall    41.8  69631.         4
+ 8     0 142.  171.      28.8 MPI_Waitall    42.2  69577.         4
+ 9     1 171.  207.      36.0 MPI_Waitall    32.3  69613.         5
+10     2 171.  207.      35.7 MPI_Waitall    37.1  69609.         5
+# ℹ 3,885 more rows
+# ℹ Use `print(n = ...)` to see more rows
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.iteration |>
+#  filter(state == "MPI_Waitall") |>
+#  filter(duration > 10) |>
+  print() |>
+  ggplot(aes(
+    fill = state, color = state,
+    xmin = start, xmax = end,
+    ymin = rank - 0.3, ymax = rank + 0.3
+  )) +
+  geom_rect() +
+  coord_cartesian(xlim=c(0, 200))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+# A tibble: 101,283 × 8
+# Groups:   rank [4]
+    rank start   end duration state     kickoff kickend iteration
+   <int> <dbl> <dbl>    <dbl> <fct>       <dbl>   <dbl>     <dbl>
+ 1     1  32.3  32.3 0.000006 MPI_Irecv    32.3  69613.         1
+ 2     1  32.3  32.3 0.000012 MPI_Irecv    32.3  69613.         1
+ 3     1  32.3  32.3 0.000004 MPI_Irecv    32.3  69613.         1
+ 4     1  32.3  32.3 0.000054 MPI_Irecv    32.3  69613.         1
+ 5     1  32.3  32.3 0        MPI_Irecv    32.3  69613.         1
+ 6     1  32.3  32.3 0        MPI_Irecv    32.3  69613.         1
+ 7     1  33.9  33.9 0.000094 MPI_Isend    32.3  69613.         1
+ 8     1  33.9  33.9 0.00126  MPI_Isend    32.3  69613.         1
+ 9     1  33.9  33.9 0.000103 MPI_Isend    32.3  69613.         1
+10     1  33.9  33.9 0.000027 MPI_Isend    32.3  69613.         1
+# ℹ 101,273 more rows
+# ℹ Use `print(n = ...)` to see more rows
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.iteration |>
+  group_by(rank, iteration) |>
+  summarize(Iteration.Start = min(start),
+            Iteration.End = max(end)) |>
+  ggplot(aes(x = Iteration.Start, xend = Iteration.End,
+             y = rank, yend = rank+0.5)) +
+  geom_segment()
+#+end_src
+
+#+RESULTS:
+: `summarise()` has grouped output by 'rank'. You can override using the
+: `.groups` argument.
+*** Rewriting the trace
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.iteration |>
+  select(rank, duration, state) |>
+  filter(state == "MPI_Waitall") |>
+  ggplot(aes(x = duration)) +
+  geom_histogram(bins=1000) +
+  facet_wrap(~state)
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.iteration |>
+  select(rank, duration, state) |>
+  filter(state == "MPI_Waitall") |>
+  filter(duration < 10) |>
+  pull(duration) |>
+  mean() -> mean.duration.waitall.faster
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.iteration |>
+  select(rank, duration, state) |>
+  filter(!(state %in% c("MPI_Waitall"))) -> df.1
+df.iteration |>
+  select(rank, duration, state) |>
+  filter((state %in% c("MPI_Waitall"))) |>
+  filter(duration < 10) -> df.2
+df.iteration |>
+  select(rank, duration, state) |>
+  filter((state %in% c("MPI_Waitall"))) |>
+  filter(duration > 10) |>
+  # brutal
+  mutate(duration = mean.duration.waitall.faster) -> df.3
+bind_rows(df.1, df.2, df.3) |>
+  group_by(rank) |>
+  summarize(MPI.time = sum(duration))
+  
+#+end_src
+
+#+RESULTS:
+: # A tibble: 4 × 2
+:    rank MPI.time
+:   <int>    <dbl>
+: 1     0     27.8
+: 2     1     26.2
+: 3     2     24.6
+: 4     3     22.9
+*** Analysis with iteration
+iteraton
+
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.iteration |>
+  filter(iteration%%2 != 0) |>
+  filter(iteration > 20) |>
+  filter(iteration < 50) |>
+#  filter(state == "MPI_Waitall") |>
+#  filter(duration > 10) |>
+  print() |>
+  ggplot(aes(
+    fill = state, color = state,
+    xmin = start, xmax = end,
+    ymin = rank - 0.3, ymax = rank + 0.3
+  )) +
+  geom_rect() +
+  facet_wrap(~iteration, ncol=1, scales="free_x")# +
+#  coord_cartesian(xlim=c(0, 200))  
+#+end_src
+
+#+RESULTS:
+#+begin_example
+# A tibble: 780 × 8
+# Groups:   rank [4]
+    rank start   end duration state     kickoff kickend iteration
+   <int> <dbl> <dbl>    <dbl> <fct>       <dbl>   <dbl>     <dbl>
+ 1     2  723.  723. 0.000007 MPI_Irecv    37.1  69609.        21
+ 2     2  723.  723. 0.000001 MPI_Irecv    37.1  69609.        21
+ 3     2  723.  723. 0.000001 MPI_Irecv    37.1  69609.        21
+ 4     2  723.  723. 0        MPI_Irecv    37.1  69609.        21
+ 5     2  723.  723. 0.000001 MPI_Irecv    37.1  69609.        21
+ 6     2  723.  723. 0.000001 MPI_Irecv    37.1  69609.        21
+ 7     2  724.  724. 0.000016 MPI_Isend    37.1  69609.        21
+ 8     2  724.  724. 0.000083 MPI_Isend    37.1  69609.        21
+ 9     2  724.  724. 0.000003 MPI_Isend    37.1  69609.        21
+10     2  724.  724. 0.000011 MPI_Isend    37.1  69609.        21
+# ℹ 770 more rows
+# ℹ Use `print(n = ...)` to see more rows
+#+end_example
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.iteration |>
+  group_by(rank, iteration) |>
+  summarize(Iteration.Start = min(start),
+            Iteration.End = max(end)) |>
+  ggplot(aes(x = Iteration.Start, xend = Iteration.End,
+             y = rank, yend = rank+0.5)) +
+  geom_segment() +
+  facet_wrap(~iteration)
+#+end_src
+*** Conclusions
+- Imbalance communication (likely due to four nodes usage)
+  - We should use a number of nodes that has a cubic root
+*** Future work
+- Support to CUDA in the current version as a new backend
+- Ghost cell fine tuning methodology with simulation (simgrid)
+- Executions in Grid5000 larger clusters
+  - Lille chuc because of 4 x Nvidia A100 (40 GiB)
+  - If doesnt work, fallback to CPU-only with larger clusters such as
+    - Nancy gros
+    - Grenoble dahu

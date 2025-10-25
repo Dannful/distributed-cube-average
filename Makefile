@@ -6,7 +6,7 @@ INCDIR = include
 BUILDDIR = bin
 OBJDIR = $(BUILDDIR)/obj
 
-CFLAGS = -I$(INCDIR) -Wall -lm -laky
+CFLAGS = -I$(INCDIR) -Wall -lm -laky -fsanitize=address
 
 # Generic sources, excluding backend-specific implementations
 SOURCES = $(filter-out $(wildcard $(SRCDIR)/*_propagate.c), $(wildcard $(SRCDIR)/*.c))

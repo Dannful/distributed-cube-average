@@ -299,11 +299,10 @@ void dc_compute_interior(const dc_process_t *process, const float *pp_copy,
                                    process->sizes[1] - 2 * radius,
                                    process->sizes[2] - 2 * radius};
 
-  dc_propagate(start_coords, end_coords, process->sizes,
-               process->coordinates, process->global_sizes, process->topology,
-               &process->precomp_vars, process->dx, process->dy, process->dz,
-               process->dt, process->pp, process->pc, process->qp, process->qc,
-               pp_copy, qp_copy);
+  dc_propagate(start_coords, end_coords, process->sizes, process->coordinates,
+               process->global_sizes, process->topology, &process->precomp_vars,
+               process->dx, process->dy, process->dz, process->dt, process->pp,
+               process->pc, process->qp, process->qc, pp_copy, qp_copy);
 }
 
 void dc_send_data_to_coordinator(dc_process_t process) {
@@ -375,11 +374,11 @@ void dc_worker_process(dc_process_t *process) {
     dc_free_worker_halos(&new_pp_halos);
     dc_free_worker_halos(&new_qp_halos);
     dc_worker_swap_arrays(process);
-    MPI_Waitall(all_send_requests.count, all_send_requests.requests,
-                MPI_STATUSES_IGNORE);
-    dc_free_worker_requests(&all_send_requests);
   }
 
+  MPI_Waitall(all_send_requests.count, all_send_requests.requests,
+              MPI_STATUSES_IGNORE);
+  dc_free_worker_requests(&all_send_requests);
   free(pp_copy);
   free(qp_copy);
   dc_log_info(process->rank, "Processing complete.");
@@ -521,6 +520,9 @@ void dc_worker_insert_halos(const dc_process_t *process,
         }
 
         size_t face_index = 9 * (dz + 1) + 3 * (dy + 1) + dx + 1;
+        if (halos->halo_count <= face_index) {
+          continue;
+        }
         float *halo_buffer = halos->halo_data[face_index];
 
         if (halo_buffer == NULL) {

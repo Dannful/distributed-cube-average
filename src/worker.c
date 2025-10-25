@@ -103,7 +103,7 @@ void dc_send_halo_to_neighbours(dc_process_t process, int tag, float *from,
   size_t radius = STENCIL;
 
   reqs.count = 0;
-  reqs.requests = malloc((NEIGHBOURHOOD - 1) * sizeof(MPI_Request));
+  reqs.requests = malloc(NEIGHBOURHOOD * sizeof(MPI_Request));
   if (reqs.requests == NULL) {
     dc_log_error(process.rank,
                  "OOM: could not allocate memory for reqs.requests in "
@@ -111,7 +111,7 @@ void dc_send_halo_to_neighbours(dc_process_t process, int tag, float *from,
     MPI_Finalize();
     exit(1);
   }
-  reqs.buffers_to_free = malloc((NEIGHBOURHOOD - 1) * sizeof(void *));
+  reqs.buffers_to_free = malloc(NEIGHBOURHOOD * sizeof(void *));
   if (reqs.buffers_to_free == NULL) {
     dc_log_error(process.rank,
                  "OOM: could not allocate memory for reqs.buffers_to_free in "
@@ -203,7 +203,7 @@ worker_halos_t dc_receive_halos(dc_process_t process, int tag) {
   result.halo_count = 0;
 
   result.requests.count = 0;
-  result.requests.requests = malloc((NEIGHBOURHOOD - 1) * sizeof(MPI_Request));
+  result.requests.requests = malloc(NEIGHBOURHOOD * sizeof(MPI_Request));
   if (result.requests.requests == NULL) {
     dc_log_error(
         process.rank,
@@ -213,7 +213,7 @@ worker_halos_t dc_receive_halos(dc_process_t process, int tag) {
   }
   result.requests.buffers_to_free = NULL;
 
-  result.halo_sizes = calloc(NEIGHBOURHOOD - 1, sizeof(size_t));
+  result.halo_sizes = calloc(NEIGHBOURHOOD, sizeof(size_t));
   if (result.halo_sizes == NULL) {
     dc_log_error(
         process.rank,
@@ -221,7 +221,7 @@ worker_halos_t dc_receive_halos(dc_process_t process, int tag) {
     MPI_Finalize();
     exit(1);
   }
-  result.halo_data = calloc(NEIGHBOURHOOD - 1, sizeof(float *));
+  result.halo_data = calloc(NEIGHBOURHOOD, sizeof(float *));
   if (result.halo_data == NULL) {
     dc_log_error(
         process.rank,
@@ -299,11 +299,10 @@ void dc_compute_interior(const dc_process_t *process, const float *pp_copy,
                                    process->sizes[1] - 2 * radius,
                                    process->sizes[2] - 2 * radius};
 
-  dc_propagate(start_coords, end_coords, process->sizes,
-               process->coordinates, process->global_sizes, process->topology,
-               &process->precomp_vars, process->dx, process->dy, process->dz,
-               process->dt, process->pp, process->pc, process->qp, process->qc,
-               pp_copy, qp_copy);
+  dc_propagate(start_coords, end_coords, process->sizes, process->coordinates,
+               process->global_sizes, process->topology, &process->precomp_vars,
+               process->dx, process->dy, process->dz, process->dt, process->pp,
+               process->pc, process->qp, process->qc, pp_copy, qp_copy);
 }
 
 void dc_send_data_to_coordinator(dc_process_t process) {
@@ -404,7 +403,7 @@ void dc_free_worker_requests(worker_requests_t *requests) {
 
 void dc_free_worker_halos(worker_halos_t *halos) {
   if (halos->halo_data != NULL) {
-    for (size_t i = 0; i < halos->halo_count; i++) {
+    for (size_t i = 0; i < NEIGHBOURHOOD; i++) {
       if (halos->halo_data[i] != NULL) {
         free(halos->halo_data[i]);
       }
@@ -521,6 +520,9 @@ void dc_worker_insert_halos(const dc_process_t *process,
         }
 
         size_t face_index = 9 * (dz + 1) + 3 * (dy + 1) + dx + 1;
+        if (process->neighbours[face_index] == MPI_PROC_NULL) {
+          continue;
+        }
         float *halo_buffer = halos->halo_data[face_index];
 
         if (halo_buffer == NULL) {

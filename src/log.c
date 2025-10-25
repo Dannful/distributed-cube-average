@@ -34,5 +34,6 @@ void dc_log_error(int rank, char *message, ...) {
   va_start(args, message);
   fprintf(stderr, "[ERROR] %s - %s: ", hostname, worker_type);
   vfprintf(stderr, message, args);
+  va_end(args);
   fprintf(stderr, "\n");
 }

@@ -6,7 +6,12 @@
     utils,
   }:
     utils.lib.eachDefaultSystem (system: let
-      pkgs = import nixpkgs {inherit system;};
+      pkgs = import nixpkgs {
+        inherit system;
+        config = {
+          allowUnfree = true;
+        };
+      };
 
       akypuera = import ./akypuera.nix {pkgs = pkgs;};
 
@@ -35,6 +40,7 @@
     in {
       devShell = pkgs.mkShell {
         buildInputs = [
+          pkgs.cudatoolkit
           pkgs.openmpi
           pkgs.clang-tools
           pkgs.llvmPackages.openmp
@@ -44,10 +50,11 @@
         ];
         shellHook = ''
           export PATH=${pkgs.clang-tools}/bin/clangd:$PATH
+          export CUDA_PATH=${pkgs.cudatoolkit}
         '';
       };
       packages.script = pkgs.writeShellScriptBin "run-distributed-cube-average" ''
-        ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none ${distributed-cube-average}/bin/distributed-cube-average --size-x=100 --size-y=100 --size-z=100 --absorption=6 --dx=2 --dy=3 --dz=4 --dt=0.000110 --time-max=0.00110 --output-file=./validation/predicted.dc
+        ${pkgs.openmpi}/bin/mpirun -np 8 --bind-to none ${distributed-cube-average}/bin/distributed-cube-average --size-x=100 --size-y=100 --size-z=100 --absorption=6 --dx=2 --dy=3 --dz=4 --dt=0.000110 --time-max=0.00110 --output-file=./validation/predicted.dc
       '';
       packages.comparison = pkgs.writeShellScriptBin "run-distributed-cube-average-comparison" ''
         size_x=100

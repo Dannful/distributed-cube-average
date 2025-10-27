@@ -4,18 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(__cplusplus)
-#include <cuda_runtime.h>
-#endif
-
 #include "calculate_source.h"
 #include "coordinator.h"
 #include "log.h"
 #include "propagate.h"
 #include "setup.h"
 #include "worker.h"
-
-
 
 void dc_worker_receive_data(dc_process_t *process) {
   MPI_Recv(&process->source_index, 1, MPI_INT, COORDINATOR, MPI_ANY_TAG,

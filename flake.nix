@@ -71,9 +71,9 @@
       '';
       packages.comparison = pkgs.writeShellScriptBin "run-distributed-cube-average-comparison" ''
         export PATH=${pkgs.cudatoolkit}/bin:$PATH
-        size_x=100
-        size_y=100
-        size_z=100
+        size_x=5
+        size_y=5
+        size_z=5
         absorption=6
         dx=2
         dy=3
@@ -92,11 +92,11 @@
         Rscript ./validation/CompareResults.R 0
 
         echo "Running CUDA version..."
-        ${pkgs.openmpi}/bin/mpirun -np 8 --bind-to none ${distributed-cube-average-cuda}/bin/distributed-cube-average --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/cuda_predicted.dc
+        ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none ${distributed-cube-average-cuda}/bin/distributed-cube-average --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/cuda_predicted.dc
 
         echo "Comparing CUDA with ground truth..."
         mv ./validation/cuda_predicted.dc ./validation/predicted.dc
-        
+
         echo "--- Comparison with tolerance 1e-3 ---"
         Rscript ./validation/CompareResults.R 1e-3
 

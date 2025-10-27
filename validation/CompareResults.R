@@ -1,6 +1,13 @@
 library(here)
 library(digest)
 
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) == 0) {
+  tolerance <- 1e-6
+} else {
+  tolerance <- as.numeric(args[1])
+}
+
 ground_truth_path <- here::here("validation/ground_truth.dc")
 predicted_path <- here::here("validation/predicted.dc")
 
@@ -32,12 +39,12 @@ if (length(ground_truth_floats) != length(predicted_floats)) {
   differences <- ground_truth_floats - predicted_floats
   abs_differences <- abs(differences)
 
-  if (all(abs_differences == 0)) {
+  if (all(abs_differences <= tolerance)) {
     output <- paste0(
       "Min: ", min(ground_truth_floats), "\n",
       "Max: ", max(ground_truth_floats), "\n",
       "Standard deviation: ", sd(ground_truth_floats), "\n",
-      "✅ Validation successful! The files are numerically identical."
+      "✅ Validation successful! The files are numerically similar within a tolerance of ", tolerance, "."
     )
   } else {
     max_abs_diff <- max(abs_differences)

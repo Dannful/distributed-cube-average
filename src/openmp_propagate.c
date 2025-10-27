@@ -1,7 +1,8 @@
 #include "precomp.h"
 #include "propagate.h"
-#include "sample.h"
+#include "derivatives.h"
 #include "setup.h"
+#include "worker.h"
 
 void dc_propagate(const size_t start_coords[DIMENSIONS],
                   const size_t end_coords[DIMENSIONS],
@@ -17,9 +18,7 @@ void dc_propagate(const size_t start_coords[DIMENSIONS],
   for (size_t z = start_coords[2]; z < end_coords[2]; z++) {
     for (size_t y = start_coords[1]; y < end_coords[1]; y++) {
       for (size_t x = start_coords[0]; x < end_coords[0]; x++) {
-        sample_compute(sizes, dx, dy, dz, dt, process_coordinates, global_sizes,
-                       topology, pc, qc, pp_out, qp_out, *precomp_vars, pp_in,
-                       qp_in, x, y, z);
+#include "sample_compute.h"
       }
     }
   }

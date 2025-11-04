@@ -31,7 +31,7 @@ OBJECTS_C = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SOURCES_C))
 OBJECTS_CUDA = $(patsubst $(SRCDIR)/%.cu,$(OBJDIR)/%.o,$(SOURCES_CUDA))
 OBJECTS = $(OBJECTS_C) $(OBJECTS_CUDA)
 
-TARGET = $(BUILDDIR)/distributed-cube-average
+TARGET = $(BUILDDIR)/dc
 
 all: $(TARGET)
 

@@ -17,27 +17,27 @@
 
       pajeng = import ./pajeng.nix {inherit pkgs;};
 
-      distributed-cube-average = pkgs.stdenv.mkDerivation {
-        pname = "distributed-cube-average";
+      dc = pkgs.stdenv.mkDerivation {
+        pname = "dc";
         version = "0.1.0";
         src = ./.;
         nativeBuildInputs = with pkgs; [gnumake openmpi akypuera];
         buildPhase = "make all";
         installPhase = ''
           mkdir -p $out/bin
-          cp bin/distributed-cube-average $out/bin/
+          cp bin/dc $out/bin
         '';
       };
 
-      distributed-cube-average-cuda = pkgs.stdenv.mkDerivation {
-        pname = "distributed-cube-average-cuda";
+      dc-cuda = pkgs.stdenv.mkDerivation {
+        pname = "dc-cuda";
         version = "0.1.0";
         src = ./.;
         nativeBuildInputs = with pkgs; [gnumake openmpi akypuera cudatoolkit];
         buildPhase = "make all BACKEND=cuda";
         installPhase = ''
           mkdir -p $out/bin
-          cp bin/distributed-cube-average $out/bin/
+          cp bin/dc $out/bin/dc-cuda
         '';
       };
 
@@ -60,6 +60,8 @@
           rEnv
           akypuera
           pajeng
+          dc
+          dc-cuda
         ];
         shellHook = ''
           export PATH=${pkgs.clang-tools}/bin/clangd:$PATH
@@ -67,10 +69,10 @@
         '';
       };
       packages = {
-        script = pkgs.writeShellScriptBin "run-distributed-cube-average" ''
-          ${pkgs.openmpi}/bin/mpirun -np 8 --bind-to none ${distributed-cube-average}/bin/distributed-cube-average --size-x=100 --size-y=100 --size-z=100 --absorption=0.1 --dx=0.1 --dy=0.1 --dz=0.1 --dt=0.000110 --time-max=0.00110 --output-file=./validation/predicted.dc
+        script = pkgs.writeShellScriptBin "run-dc" ''
+          ${pkgs.openmpi}/bin/mpirun -np 8 --bind-to none ${dc}/bin/dc --size-x=100 --size-y=100 --size-z=100 --absorption=0.1 --dx=0.1 --dy=0.1 --dz=0.1 --dt=0.000110 --time-max=0.00110 --output-file=./validation/predicted.dc
         '';
-        comparison = pkgs.writeShellScriptBin "run-distributed-cube-average-comparison" ''
+        comparison = pkgs.writeShellScriptBin "run-dc-comparison" ''
           export PATH=${pkgs.cudatoolkit}/bin:$PATH
           size_x=20
           size_y=20
@@ -83,17 +85,17 @@
           tmax=0.00110
 
           echo "Running sequential version to generate ground truth..."
-          OMP_NUM_THREADS=1 ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none ${distributed-cube-average}/bin/distributed-cube-average --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/ground_truth.dc
+          OMP_NUM_THREADS=1 ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none ${dc}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/ground_truth.dc
 
           echo "Running OpenMP version..."
-          ${pkgs.openmpi}/bin/mpirun -np 3 --bind-to none ${distributed-cube-average}/bin/distributed-cube-average --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/openmp_predicted.dc
+          ${pkgs.openmpi}/bin/mpirun -np 3 --bind-to none ${dc}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/openmp_predicted.dc
 
           echo "Comparing OpenMP with ground truth..."
           mv ./validation/openmp_predicted.dc ./validation/predicted.dc
           Rscript ./validation/CompareResults.R 0
 
           echo "Running CUDA version..."
-          ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none ${distributed-cube-average-cuda}/bin/distributed-cube-average --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/cuda_predicted.dc
+          ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none ${dc-cuda}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/cuda_predicted.dc
 
           echo "Comparing CUDA with ground truth..."
           mv ./validation/cuda_predicted.dc ./validation/predicted.dc
@@ -110,21 +112,21 @@
           echo "--- Comparison with tolerance 0 (exact) ---"
           Rscript ./validation/CompareResults.R 0
         '';
-        default = distributed-cube-average;
-        cuda = distributed-cube-average-cuda;
+        default = dc;
+        cuda = dc-cuda;
       };
       apps = {
         default = {
           type = "app";
-          program = "${self.packages.${system}.script}/bin/run-distributed-cube-average";
+          program = "${self.packages.${system}.script}/bin/run-dc";
         };
         cuda = {
           type = "app";
-          program = "${self.packages.${system}.script}/bin/run-distributed-cube-average";
+          program = "${self.packages.${system}.script}/bin/run-dc";
         };
         comparison = {
           type = "app";
-          program = "${self.packages.${system}.comparison}/bin/run-distributed-cube-average-comparison";
+          program = "${self.packages.${system}.comparison}/bin/run-dc-comparison";
         };
       };
     });

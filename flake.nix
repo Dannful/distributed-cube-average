@@ -95,7 +95,7 @@
           Rscript ./validation/CompareResults.R 0
 
           echo "Running CUDA version..."
-          ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none ${dc-cuda}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/cuda_predicted.dc
+          ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none ${dc-cuda}/bin/dc-cuda --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/cuda_predicted.dc
 
           echo "Comparing CUDA with ground truth..."
           mv ./validation/cuda_predicted.dc ./validation/predicted.dc

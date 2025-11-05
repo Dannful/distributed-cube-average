@@ -1,10 +1,16 @@
-#if defined(__cplusplus)
-#include <cstddef>
-#else
-#include <stddef.h>
-#endif
+#pragma once
 
-{
+#include "derivatives.h"
+#include "setup.h"
+#include "worker.h"
+
+static inline HOST_DEVICE void
+sample_compute(size_t x, size_t y, size_t z, const size_t *sizes,
+               const size_t *global_sizes, const int *process_coordinates,
+               const int *topology, float dx, float dy, float dz, float dt,
+               const float *pc, const float *qc, const float *pp_in,
+               const float *qp_in, float *pp_out, float *qp_out,
+               dc_precomp_vars *precomp_vars) {
   const size_t size_x = sizes[0];
   const size_t size_y = sizes[1];
   const size_t size_z = sizes[2];

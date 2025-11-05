@@ -1,6 +1,5 @@
-#include "derivatives.h"
 #include "propagate.h"
-#include "worker.h"
+#include "sample_compute.h"
 #include <cuda_runtime.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,7 +18,9 @@ __global__ void propagate_kernel(
     return;
   }
 
-#include "sample_compute.h"
+  sample_compute(x, y, z, sizes, global_sizes, process_coordinates, topology,
+                 dx, dy, dz, dt, pc, qc, pp_in, qp_in, pp_out, qp_out,
+                 (dc_precomp_vars *)precomp_vars);
 }
 
 static void

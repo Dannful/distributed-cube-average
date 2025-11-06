@@ -7,7 +7,7 @@ INCDIR = include
 BUILDDIR = bin
 OBJDIR = $(BUILDDIR)/obj
 
-CFLAGS = -I$(INCDIR) -Wall
+CFLAGS = -I$(INCDIR) -Wall -O3
 LDFLAGS = -lm -laky
 CUDA_CFLAGS = -I$(INCDIR)
 CUDA_LDFLAGS = -L/usr/local/cuda/lib64 -lcudart

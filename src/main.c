@@ -108,15 +108,15 @@ int main(int argc, char **argv) {
                          arguments.size_z, STENCIL, arguments.absorption_size,
                          mpi_process.anisotropy_vars.vpz,
                          mpi_process.anisotropy_vars.vsv, &seed);
-  mpi_process.precomp_vars =
-      dc_compute_precomp_vars(sx, sy, sz, mpi_process.anisotropy_vars);
 
   if (rank == COORDINATOR) {
+    mpi_process.precomp_vars =
+        dc_compute_precomp_vars(sx, sy, sz, mpi_process.anisotropy_vars);
     dc_log_info(rank, "Initializing problem data...");
     problem_data_t problem_data = dc_initialize_problem(
         communicator, (unsigned int *)topology, STENCIL, size, arguments);
     dc_log_info(rank, "Partitioning cube...");
-    dc_partition_cube(&problem_data);
+    dc_partition_cube(&problem_data, mpi_process.precomp_vars);
     dc_log_info(rank, "Partition completed. Sending data to workers...");
     dc_send_data_to_workers(problem_data);
     memcpy(mpi_process.sizes, problem_data.worker_sizes[0],
@@ -138,6 +138,10 @@ int main(int argc, char **argv) {
            sizeof(float) * coordinator_size);
     mpi_process.iterations = problem_data.iterations;
     mpi_process.rank = rank;
+    free_precomp_vars(&mpi_process.precomp_vars);
+    mpi_process.precomp_vars = *problem_data.precomp_vars_workers[0];
+    free(problem_data.precomp_vars_workers[0]);
+    problem_data.precomp_vars_workers[0] = NULL;
     dc_free_problem_data_mem(&problem_data);
   } else {
     dc_log_info(rank, "Awaiting data from coordinator...");

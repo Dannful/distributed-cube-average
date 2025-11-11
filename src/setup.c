@@ -22,9 +22,6 @@ dc_process_t dc_process_init(MPI_Comm communicator, int rank,
   process.dz = dz;
   process.dt = dt;
   process.source_index = -1;
-  process.global_sizes[0] = sx;
-  process.global_sizes[1] = sy;
-  process.global_sizes[2] = sz;
   memcpy(process.topology, topology, sizeof(int) * DIMENSIONS);
   MPI_Cart_coords(communicator, rank, DIMENSIONS, process.coordinates);
 
@@ -52,7 +49,8 @@ dc_process_t dc_process_init(MPI_Comm communicator, int rank,
           process.neighbours[face_index] = MPI_PROC_NULL;
           continue;
         }
-        MPI_Cart_rank(process.communicator, target_coords, process.neighbours + face_index);
+        MPI_Cart_rank(process.communicator, target_coords,
+                      process.neighbours + face_index);
       }
     }
   }

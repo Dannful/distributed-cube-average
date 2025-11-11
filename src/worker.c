@@ -61,6 +61,104 @@ void dc_worker_receive_data(dc_process_t *process) {
            process->communicator, MPI_STATUS_IGNORE);
   MPI_Recv(process->qc, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG,
            process->communicator, MPI_STATUS_IGNORE);
+
+  process->precomp_vars.ch1dxx = (float *)malloc(count * sizeof(float));
+  if (process->precomp_vars.ch1dxx == NULL) {
+    dc_log_error(process->rank,
+                 "OOM: could not allocate memory for "
+                 "precomp_vars.ch1dxx in dc_worker_receive_data");
+    MPI_Finalize();
+    exit(1);
+  }
+  process->precomp_vars.ch1dyy = (float *)malloc(count * sizeof(float));
+  if (process->precomp_vars.ch1dyy == NULL) {
+    dc_log_error(process->rank,
+                 "OOM: could not allocate memory for "
+                 "precomp_vars.ch1dyy in dc_worker_receive_data");
+    MPI_Finalize();
+    exit(1);
+  }
+  process->precomp_vars.ch1dzz = (float *)malloc(count * sizeof(float));
+  if (process->precomp_vars.ch1dzz == NULL) {
+    dc_log_error(process->rank,
+                 "OOM: could not allocate memory for "
+                 "precomp_vars.ch1dzz in dc_worker_receive_data");
+    MPI_Finalize();
+    exit(1);
+  }
+  process->precomp_vars.ch1dxy = (float *)malloc(count * sizeof(float));
+  if (process->precomp_vars.ch1dxy == NULL) {
+    dc_log_error(process->rank,
+                 "OOM: could not allocate memory for "
+                 "precomp_vars.ch1dxy in dc_worker_receive_data");
+    MPI_Finalize();
+    exit(1);
+  }
+  process->precomp_vars.ch1dyz = (float *)malloc(count * sizeof(float));
+  if (process->precomp_vars.ch1dyz == NULL) {
+    dc_log_error(process->rank,
+                 "OOM: could not allocate memory for "
+                 "precomp_vars.ch1dyz in dc_worker_receive_data");
+    MPI_Finalize();
+    exit(1);
+  }
+  process->precomp_vars.ch1dxz = (float *)malloc(count * sizeof(float));
+  if (process->precomp_vars.ch1dxz == NULL) {
+    dc_log_error(process->rank,
+                 "OOM: could not allocate memory for "
+                 "precomp_vars.ch1dxz in dc_worker_receive_data");
+    MPI_Finalize();
+    exit(1);
+  }
+  process->precomp_vars.v2px = (float *)malloc(count * sizeof(float));
+  if (process->precomp_vars.v2px == NULL) {
+    dc_log_error(process->rank, "OOM: could not allocate memory for "
+                                "precomp_vars.v2px in dc_worker_receive_data");
+    MPI_Finalize();
+    exit(1);
+  }
+  process->precomp_vars.v2pz = (float *)malloc(count * sizeof(float));
+  if (process->precomp_vars.v2pz == NULL) {
+    dc_log_error(process->rank, "OOM: could not allocate memory for "
+                                "precomp_vars.v2pz in dc_worker_receive_data");
+    MPI_Finalize();
+    exit(1);
+  }
+  process->precomp_vars.v2sz = (float *)malloc(count * sizeof(float));
+  if (process->precomp_vars.v2sz == NULL) {
+    dc_log_error(process->rank, "OOM: could not allocate memory for "
+                                "precomp_vars.v2sz in dc_worker_receive_data");
+    MPI_Finalize();
+    exit(1);
+  }
+  process->precomp_vars.v2pn = (float *)malloc(count * sizeof(float));
+  if (process->precomp_vars.v2pn == NULL) {
+    dc_log_error(process->rank, "OOM: could not allocate memory for "
+                                "precomp_vars.v2pn in dc_worker_receive_data");
+    MPI_Finalize();
+    exit(1);
+  }
+
+  MPI_Recv(process->precomp_vars.ch1dxx, count, MPI_FLOAT, COORDINATOR,
+           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.ch1dyy, count, MPI_FLOAT, COORDINATOR,
+           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.ch1dzz, count, MPI_FLOAT, COORDINATOR,
+           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.ch1dxy, count, MPI_FLOAT, COORDINATOR,
+           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.ch1dyz, count, MPI_FLOAT, COORDINATOR,
+           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.ch1dxz, count, MPI_FLOAT, COORDINATOR,
+           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.v2px, count, MPI_FLOAT, COORDINATOR,
+           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.v2pz, count, MPI_FLOAT, COORDINATOR,
+           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.v2sz, count, MPI_FLOAT, COORDINATOR,
+           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.v2pn, count, MPI_FLOAT, COORDINATOR,
+           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
 }
 
 void dc_send_halo_to_neighbours(dc_process_t process, int tag, float *from,
@@ -248,10 +346,10 @@ void dc_compute_boundaries(const dc_process_t *process, const float *pp_copy,
             (displacement[i] < 0) ? 2 * radius : process->sizes[i] - radius;
       }
       dc_propagate(start_coords, end_coords, process->sizes,
-                   process->coordinates, process->global_sizes,
-                   process->topology, &process->precomp_vars, process->dx,
-                   process->dy, process->dz, process->dt, process->pp,
-                   process->pc, process->qp, process->qc, pp_copy, qp_copy);
+                   process->coordinates, process->topology,
+                   &process->precomp_vars, process->dx, process->dy,
+                   process->dz, process->dt, process->pp, process->pc,
+                   process->qp, process->qc, pp_copy, qp_copy);
     }
   }
 }
@@ -266,9 +364,9 @@ void dc_compute_interior(const dc_process_t *process, const float *pp_copy,
                                    process->sizes[2] - 2 * radius};
 
   dc_propagate(start_coords, end_coords, process->sizes, process->coordinates,
-               process->global_sizes, process->topology, &process->precomp_vars,
-               process->dx, process->dy, process->dz, process->dt, process->pp,
-               process->pc, process->qp, process->qc, pp_copy, qp_copy);
+               process->topology, &process->precomp_vars, process->dx,
+               process->dy, process->dz, process->dt, process->pp, process->pc,
+               process->qp, process->qc, pp_copy, qp_copy);
 }
 
 void dc_send_data_to_coordinator(dc_process_t process) {

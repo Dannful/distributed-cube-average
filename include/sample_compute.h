@@ -1,16 +1,14 @@
 #pragma once
 
 #include "derivatives.h"
-#include "setup.h"
 #include "worker.h"
 
 static inline HOST_DEVICE void
 sample_compute(size_t x, size_t y, size_t z, const size_t *sizes,
-               const size_t *global_sizes, const int *process_coordinates,
-               const int *topology, float dx, float dy, float dz, float dt,
-               const float *pc, const float *qc, const float *pp_in,
-               const float *qp_in, float *pp_out, float *qp_out,
-               dc_precomp_vars *precomp_vars) {
+               const int *process_coordinates, const int *topology, float dx,
+               float dy, float dz, float dt, const float *pc, const float *qc,
+               const float *pp_in, const float *qp_in, float *pp_out,
+               float *qp_out, dc_precomp_vars *precomp_vars) {
   const size_t size_x = sizes[0];
   const size_t size_y = sizes[1];
   const size_t size_z = sizes[2];
@@ -37,10 +35,6 @@ sample_compute(size_t x, size_t y, size_t z, const size_t *sizes,
   // Calculate index for current position
   const int i = dc_get_index_for_coordinates(x, y, z, size_x, size_y, size_z);
 
-  size_t local_coordinates[DIMENSIONS] = {x, y, z};
-  size_t global_coordinates = dc_get_global_coordinates(
-      process_coordinates, sizes, global_sizes, local_coordinates, topology);
-
   // p derivatives, H1(p) and H2(p)
   const float pxx = der2(pc, i, strideX, dxxinv);
   const float pyy = der2(pc, i, strideY, dyyinv);
@@ -49,12 +43,12 @@ sample_compute(size_t x, size_t y, size_t z, const size_t *sizes,
   const float pyz = derCross(pc, i, strideY, strideZ, dyzinv);
   const float pxz = derCross(pc, i, strideX, strideZ, dxzinv);
 
-  const float cpxx = precomp_vars->ch1dxx[global_coordinates] * pxx;
-  const float cpyy = precomp_vars->ch1dyy[global_coordinates] * pyy;
-  const float cpzz = precomp_vars->ch1dzz[global_coordinates] * pzz;
-  const float cpxy = precomp_vars->ch1dxy[global_coordinates] * pxy;
-  const float cpxz = precomp_vars->ch1dxz[global_coordinates] * pxz;
-  const float cpyz = precomp_vars->ch1dyz[global_coordinates] * pyz;
+  const float cpxx = precomp_vars->ch1dxx[i] * pxx;
+  const float cpyy = precomp_vars->ch1dyy[i] * pyy;
+  const float cpzz = precomp_vars->ch1dzz[i] * pzz;
+  const float cpxy = precomp_vars->ch1dxy[i] * pxy;
+  const float cpxz = precomp_vars->ch1dxz[i] * pxz;
+  const float cpyz = precomp_vars->ch1dyz[i] * pyz;
   const float h1p = cpxx + cpyy + cpzz + cpxy + cpxz + cpyz;
   const float h2p = pxx + pyy + pzz - h1p;
 
@@ -66,12 +60,12 @@ sample_compute(size_t x, size_t y, size_t z, const size_t *sizes,
   const float qyz = derCross(qc, i, strideY, strideZ, dyzinv);
   const float qxz = derCross(qc, i, strideX, strideZ, dxzinv);
 
-  const float cqxx = precomp_vars->ch1dxx[global_coordinates] * qxx;
-  const float cqyy = precomp_vars->ch1dyy[global_coordinates] * qyy;
-  const float cqzz = precomp_vars->ch1dzz[global_coordinates] * qzz;
-  const float cqxy = precomp_vars->ch1dxy[global_coordinates] * qxy;
-  const float cqxz = precomp_vars->ch1dxz[global_coordinates] * qxz;
-  const float cqyz = precomp_vars->ch1dyz[global_coordinates] * qyz;
+  const float cqxx = precomp_vars->ch1dxx[i] * qxx;
+  const float cqyy = precomp_vars->ch1dyy[i] * qyy;
+  const float cqzz = precomp_vars->ch1dzz[i] * qzz;
+  const float cqxy = precomp_vars->ch1dxy[i] * qxy;
+  const float cqxz = precomp_vars->ch1dxz[i] * qxz;
+  const float cqyz = precomp_vars->ch1dyz[i] * qyz;
   const float h1q = cqxx + cqyy + cqzz + cqxy + cqxz + cqyz;
   const float h2q = qxx + qyy + qzz - h1q;
 
@@ -80,12 +74,10 @@ sample_compute(size_t x, size_t y, size_t z, const size_t *sizes,
   const float h2pmq = h2p - h2q;
 
   // rhs of p and q equations
-  float rhsp = precomp_vars->v2px[global_coordinates] * h2p +
-               precomp_vars->v2pz[global_coordinates] * h1q +
-               precomp_vars->v2sz[global_coordinates] * h1pmq;
-  float rhsq = precomp_vars->v2pn[global_coordinates] * h2p +
-               precomp_vars->v2pz[global_coordinates] * h1q -
-               precomp_vars->v2sz[global_coordinates] * h2pmq;
+  float rhsp = precomp_vars->v2px[i] * h2p + precomp_vars->v2pz[i] * h1q +
+               precomp_vars->v2sz[i] * h1pmq;
+  float rhsq = precomp_vars->v2pn[i] * h2p + precomp_vars->v2pz[i] * h1q -
+               precomp_vars->v2sz[i] * h2pmq;
 
   // new p and q
   pp_out[i] = 2.0f * pc[i] - pp_in[i] + rhsp * dt * dt;

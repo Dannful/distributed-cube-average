@@ -5,6 +5,7 @@
 
 #include "coordinator.h"
 #include "log.h"
+#include "precomp.h"
 #include "setup.h"
 #include "stdlib.h"
 #include "worker.h"
@@ -112,6 +113,12 @@ problem_data_t dc_initialize_problem(MPI_Comm comm,
     MPI_Finalize();
     exit(1);
   }
+  result.precomp_vars_workers = calloc(workers, sizeof(dc_precomp_vars *));
+  if (result.precomp_vars_workers == NULL) {
+    dc_log_error(COORDINATOR, "OOM: could not allocate memory for "
+                              "precomp_vars_workers in dc_initialize_problem");
+    exit(1);
+  }
   return result;
 }
 
@@ -122,7 +129,17 @@ void dc_determine_source(size_t size_x, size_t size_y, size_t size_z,
   *source_z = size_z / 2;
 }
 
-void dc_partition_cube(problem_data_t *problem_data) {
+#define OOM_CHECK(ptr, var, worker)                                            \
+  if (ptr == NULL) {                                                           \
+    dc_log_error(COORDINATOR,                                                  \
+                 "OOM: could not allocate memory for " var " for worker %d",   \
+                 worker);                                                      \
+    MPI_Finalize();                                                            \
+    exit(1);                                                                   \
+  }
+
+void dc_partition_cube(problem_data_t *problem_data,
+                       dc_precomp_vars precomp_vars) {
   size_t partition_size_x =
       (problem_data->size_x - 2 * STENCIL) / problem_data->topology[0];
   size_t partition_size_y =
@@ -169,57 +186,68 @@ void dc_partition_cube(problem_data_t *problem_data) {
         worker_size_z += 2 * STENCIL;
         problem_data->worker_sizes[worker] =
             malloc(sizeof(size_t) * DIMENSIONS);
-        if (problem_data->worker_sizes[worker] == NULL) {
-          dc_log_error(COORDINATOR,
-                       "OOM: could not allocate memory for worker_sizes for "
-                       "worker %d in dc_partition_cube",
-                       worker);
-          MPI_Finalize();
-          exit(1);
-        }
+        OOM_CHECK(problem_data->worker_sizes[worker], "worker_sizes", worker);
         problem_data->worker_sizes[worker][0] = worker_size_x;
         problem_data->worker_sizes[worker][1] = worker_size_y;
         problem_data->worker_sizes[worker][2] = worker_size_z;
-        problem_data->pp_workers[worker] = (float *)malloc(
-            sizeof(float) * worker_size_x * worker_size_y * worker_size_z);
-        if (problem_data->pp_workers[worker] == NULL) {
-          dc_log_error(COORDINATOR,
-                       "OOM: could not allocate memory for pp_workers for "
-                       "worker %d in dc_partition_cube",
-                       worker);
-          MPI_Finalize();
-          exit(1);
-        }
-        problem_data->pc_workers[worker] = (float *)malloc(
-            sizeof(float) * worker_size_x * worker_size_y * worker_size_z);
-        if (problem_data->pc_workers[worker] == NULL) {
-          dc_log_error(COORDINATOR,
-                       "OOM: could not allocate memory for pc_workers for "
-                       "worker %d in dc_partition_cube",
-                       worker);
-          MPI_Finalize();
-          exit(1);
-        }
-        problem_data->qp_workers[worker] = (float *)malloc(
-            sizeof(float) * worker_size_x * worker_size_y * worker_size_z);
-        if (problem_data->qp_workers[worker] == NULL) {
-          dc_log_error(COORDINATOR,
-                       "OOM: could not allocate memory for qp_workers for "
-                       "worker %d in dc_partition_cube",
-                       worker);
-          MPI_Finalize();
-          exit(1);
-        }
-        problem_data->qc_workers[worker] = (float *)malloc(
-            sizeof(float) * worker_size_x * worker_size_y * worker_size_z);
-        if (problem_data->qc_workers[worker] == NULL) {
-          dc_log_error(COORDINATOR,
-                       "OOM: could not allocate memory for qc_workers for "
-                       "worker %d in dc_partition_cube",
-                       worker);
-          MPI_Finalize();
-          exit(1);
-        }
+        size_t worker_domain_size =
+            worker_size_x * worker_size_y * worker_size_z;
+        problem_data->pp_workers[worker] =
+            (float *)malloc(sizeof(float) * worker_domain_size);
+        OOM_CHECK(problem_data->pp_workers[worker], "pp_workers", worker);
+        problem_data->pc_workers[worker] =
+            (float *)malloc(sizeof(float) * worker_domain_size);
+        OOM_CHECK(problem_data->pc_workers[worker], "pc_workers", worker);
+        problem_data->qp_workers[worker] =
+            (float *)malloc(sizeof(float) * worker_domain_size);
+        OOM_CHECK(problem_data->qp_workers[worker], "qp_workers", worker);
+        problem_data->qc_workers[worker] =
+            (float *)malloc(sizeof(float) * worker_domain_size);
+        OOM_CHECK(problem_data->qc_workers[worker], "qc_workers", worker);
+        problem_data->precomp_vars_workers[worker] =
+            (dc_precomp_vars *)malloc(sizeof(dc_precomp_vars));
+        OOM_CHECK(problem_data->precomp_vars_workers[worker],
+                  "precomp_vars_workers", worker);
+        problem_data->precomp_vars_workers[worker]->ch1dxx =
+            (float *)malloc(sizeof(float) * worker_domain_size);
+        OOM_CHECK(problem_data->precomp_vars_workers[worker]->ch1dxx,
+                  "precomp_vars_workers.ch1dxx", worker);
+        problem_data->precomp_vars_workers[worker]->ch1dyy =
+            (float *)malloc(sizeof(float) * worker_domain_size);
+        OOM_CHECK(problem_data->precomp_vars_workers[worker]->ch1dyy,
+                  "precomp_vars_workers.ch1dyy", worker);
+        problem_data->precomp_vars_workers[worker]->ch1dzz =
+            (float *)malloc(sizeof(float) * worker_domain_size);
+        OOM_CHECK(problem_data->precomp_vars_workers[worker]->ch1dzz,
+                  "precomp_vars_workers.ch1dzz", worker);
+        problem_data->precomp_vars_workers[worker]->ch1dxy =
+            (float *)malloc(sizeof(float) * worker_domain_size);
+        OOM_CHECK(problem_data->precomp_vars_workers[worker]->ch1dxy,
+                  "precomp_vars_workers.ch1dxy", worker);
+        problem_data->precomp_vars_workers[worker]->ch1dyz =
+            (float *)malloc(sizeof(float) * worker_domain_size);
+        OOM_CHECK(problem_data->precomp_vars_workers[worker]->ch1dyz,
+                  "precomp_vars_workers.ch1dyz", worker);
+        problem_data->precomp_vars_workers[worker]->ch1dxz =
+            (float *)malloc(sizeof(float) * worker_domain_size);
+        OOM_CHECK(problem_data->precomp_vars_workers[worker]->ch1dxz,
+                  "precomp_vars_workers.ch1dxz", worker);
+        problem_data->precomp_vars_workers[worker]->v2px =
+            (float *)malloc(sizeof(float) * worker_domain_size);
+        OOM_CHECK(problem_data->precomp_vars_workers[worker]->v2px,
+                  "precomp_vars_workers.v2px", worker);
+        problem_data->precomp_vars_workers[worker]->v2pz =
+            (float *)malloc(sizeof(float) * worker_domain_size);
+        OOM_CHECK(problem_data->precomp_vars_workers[worker]->v2pz,
+                  "precomp_vars_workers.v2pz", worker);
+        problem_data->precomp_vars_workers[worker]->v2sz =
+            (float *)malloc(sizeof(float) * worker_domain_size);
+        OOM_CHECK(problem_data->precomp_vars_workers[worker]->v2sz,
+                  "precomp_vars_workers.v2sz", worker);
+        problem_data->precomp_vars_workers[worker]->v2pn =
+            (float *)malloc(sizeof(float) * worker_domain_size);
+        OOM_CHECK(problem_data->precomp_vars_workers[worker]->v2pn,
+                  "precomp_vars_workers.v2pn", worker);
         size_t count = 0;
         for (size_t z = process_coordinates[2] * partition_size_z;
              z < process_coordinates[2] * partition_size_z + worker_size_z;
@@ -237,6 +265,26 @@ void dc_partition_cube(problem_data_t *problem_data) {
               problem_data->pc_workers[worker][count] = problem_data->pc[index];
               problem_data->qp_workers[worker][count] = problem_data->qp[index];
               problem_data->qc_workers[worker][count] = problem_data->qc[index];
+              problem_data->precomp_vars_workers[worker]->ch1dxx[count] =
+                  precomp_vars.ch1dxx[index];
+              problem_data->precomp_vars_workers[worker]->ch1dyy[count] =
+                  precomp_vars.ch1dyy[index];
+              problem_data->precomp_vars_workers[worker]->ch1dzz[count] =
+                  precomp_vars.ch1dzz[index];
+              problem_data->precomp_vars_workers[worker]->ch1dxy[count] =
+                  precomp_vars.ch1dxy[index];
+              problem_data->precomp_vars_workers[worker]->ch1dyz[count] =
+                  precomp_vars.ch1dyz[index];
+              problem_data->precomp_vars_workers[worker]->ch1dxz[count] =
+                  precomp_vars.ch1dxz[index];
+              problem_data->precomp_vars_workers[worker]->v2px[count] =
+                  precomp_vars.v2px[index];
+              problem_data->precomp_vars_workers[worker]->v2pz[count] =
+                  precomp_vars.v2pz[index];
+              problem_data->precomp_vars_workers[worker]->v2sz[count] =
+                  precomp_vars.v2sz[index];
+              problem_data->precomp_vars_workers[worker]->v2pn[count] =
+                  precomp_vars.v2pn[index];
               if (x == source_x && y == source_y && z == source_z) {
                 problem_data->source_index[worker] = count;
                 dc_log_info(COORDINATOR,
@@ -275,6 +323,26 @@ void dc_send_data_to_workers(problem_data_t problem_data) {
              problem_data.communicator);
     MPI_Send(problem_data.qc_workers[worker], count, MPI_FLOAT, worker, 0,
              problem_data.communicator);
+    MPI_Send(problem_data.precomp_vars_workers[worker]->ch1dxx, count,
+             MPI_FLOAT, worker, 0, problem_data.communicator);
+    MPI_Send(problem_data.precomp_vars_workers[worker]->ch1dyy, count,
+             MPI_FLOAT, worker, 0, problem_data.communicator);
+    MPI_Send(problem_data.precomp_vars_workers[worker]->ch1dzz, count,
+             MPI_FLOAT, worker, 0, problem_data.communicator);
+    MPI_Send(problem_data.precomp_vars_workers[worker]->ch1dxy, count,
+             MPI_FLOAT, worker, 0, problem_data.communicator);
+    MPI_Send(problem_data.precomp_vars_workers[worker]->ch1dyz, count,
+             MPI_FLOAT, worker, 0, problem_data.communicator);
+    MPI_Send(problem_data.precomp_vars_workers[worker]->ch1dxz, count,
+             MPI_FLOAT, worker, 0, problem_data.communicator);
+    MPI_Send(problem_data.precomp_vars_workers[worker]->v2px, count, MPI_FLOAT,
+             worker, 0, problem_data.communicator);
+    MPI_Send(problem_data.precomp_vars_workers[worker]->v2pz, count, MPI_FLOAT,
+             worker, 0, problem_data.communicator);
+    MPI_Send(problem_data.precomp_vars_workers[worker]->v2sz, count, MPI_FLOAT,
+             worker, 0, problem_data.communicator);
+    MPI_Send(problem_data.precomp_vars_workers[worker]->v2pn, count, MPI_FLOAT,
+             worker, 0, problem_data.communicator);
   }
 }
 
@@ -393,6 +461,19 @@ void dc_free_problem_data_mem(problem_data_t *problem_data) {
     free(problem_data->qp_workers[i]);
     free(problem_data->qc_workers[i]);
     free(problem_data->worker_sizes[i]);
+    if (problem_data->precomp_vars_workers[i] != NULL) {
+      free(problem_data->precomp_vars_workers[i]->ch1dxx);
+      free(problem_data->precomp_vars_workers[i]->ch1dyy);
+      free(problem_data->precomp_vars_workers[i]->ch1dzz);
+      free(problem_data->precomp_vars_workers[i]->ch1dxy);
+      free(problem_data->precomp_vars_workers[i]->ch1dyz);
+      free(problem_data->precomp_vars_workers[i]->ch1dxz);
+      free(problem_data->precomp_vars_workers[i]->v2px);
+      free(problem_data->precomp_vars_workers[i]->v2pz);
+      free(problem_data->precomp_vars_workers[i]->v2sz);
+      free(problem_data->precomp_vars_workers[i]->v2pn);
+      free(problem_data->precomp_vars_workers[i]);
+    }
   }
   free(problem_data->pp);
   free(problem_data->qp);
@@ -404,10 +485,12 @@ void dc_free_problem_data_mem(problem_data_t *problem_data) {
   free(problem_data->qp_workers);
   free(problem_data->qc_workers);
   free(problem_data->worker_sizes);
+  free(problem_data->precomp_vars_workers);
 
   problem_data->pp_workers = NULL;
   problem_data->qp_workers = NULL;
   problem_data->pc_workers = NULL;
   problem_data->qc_workers = NULL;
   problem_data->worker_sizes = NULL;
+  problem_data->precomp_vars_workers = NULL;
 }

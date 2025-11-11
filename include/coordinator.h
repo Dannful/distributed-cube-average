@@ -1,5 +1,6 @@
 #pragma once
 
+#include "precomp.h"
 #include "setup.h"
 #include <mpi.h>
 #include <stdlib.h>
@@ -19,6 +20,7 @@ typedef struct {
   float **pc_workers;
   float **qp_workers;
   float **qc_workers;
+  dc_precomp_vars **precomp_vars_workers;
   int *source_index;
   size_t **worker_sizes;
   unsigned int topology[DIMENSIONS];
@@ -46,7 +48,8 @@ problem_data_t dc_initialize_problem(MPI_Comm comm,
                                      unsigned int border, unsigned int workers,
                                      dc_arguments_t arguments);
 void dc_send_data_to_workers(problem_data_t problem_data);
-void dc_partition_cube(problem_data_t *problem_data);
+void dc_partition_cube(problem_data_t *problem_data,
+                         dc_precomp_vars precomp_vars);
 void dc_free_problem_data_mem(problem_data_t *problem_data);
 void dc_determine_source(size_t size_x, size_t size_y, size_t size_z,
                          size_t *source_x, size_t *source_y, size_t *source_z);

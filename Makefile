@@ -1,6 +1,7 @@
 CC = mpicc
 NVCC = nvcc
 BACKEND ?= openmp
+ARCH ?= sm_89
 
 SRCDIR = src
 INCDIR = include
@@ -9,7 +10,7 @@ OBJDIR = $(BUILDDIR)/obj
 
 CFLAGS = -I$(INCDIR) -Wall -O3
 LDFLAGS = -lm -laky
-CUDA_CFLAGS = -I$(INCDIR)
+CUDA_CFLAGS = -I$(INCDIR) -gencode arch=compute_$(subst sm_,,$(ARCH)),code=$(ARCH)
 CUDA_LDFLAGS = -L/usr/local/cuda/lib64 -lcudart
 
 # Generic sources, excluding backend-specific implementations

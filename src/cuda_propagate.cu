@@ -119,8 +119,8 @@ static void free_device_memory(float *d_pp_out, float *d_pc, float *d_qp_out,
                                dc_precomp_vars *d_precomp_vars_st,
                                dc_precomp_vars *d_precomp_vars,
                                size_t *d_start_coords, size_t *d_end_coords,
-                               size_t *d_sizes, size_t *d_global_sizes,
-                               int *d_process_coordinates, int *d_topology) {
+                               size_t *d_sizes, int *d_process_coordinates,
+                               int *d_topology) {
   cudaFree(d_pp_out);
   cudaFree(d_pc);
   cudaFree(d_qp_out);
@@ -143,7 +143,6 @@ static void free_device_memory(float *d_pp_out, float *d_pc, float *d_qp_out,
   cudaFree(d_start_coords);
   cudaFree(d_end_coords);
   cudaFree(d_sizes);
-  cudaFree(d_global_sizes);
   cudaFree(d_process_coordinates);
   cudaFree(d_topology);
 }
@@ -161,7 +160,7 @@ extern "C" void dc_propagate(
   float *d_pp_out, *d_pc, *d_qp_out, *d_qc, *d_pp_in, *d_qp_in;
   dc_precomp_vars d_precomp_vars_st;
   dc_precomp_vars *d_precomp_vars;
-  size_t *d_start_coords, *d_end_coords, *d_sizes, *d_global_sizes;
+  size_t *d_start_coords, *d_end_coords, *d_sizes;
   int *d_process_coordinates, *d_topology;
 
   allocate_device_memory(&d_pp_out, &d_pc, &d_qp_out, &d_qc, &d_pp_in, &d_qp_in,
@@ -175,13 +174,14 @@ extern "C" void dc_propagate(
                       d_end_coords, sizes, d_sizes, process_coordinates,
                       d_process_coordinates, topology, d_topology);
 
-  const dim3 threadsPerBlock(16, 16, 16);
+  const dim3 threadsPerBlock(8, 8, 8);
   const size_t nx = end_coords[0] - start_coords[0];
   const size_t ny = end_coords[1] - start_coords[1];
   const size_t nz = end_coords[2] - start_coords[2];
 
-  const dim3 numBlocks(nx / threadsPerBlock.x, ny / threadsPerBlock.y,
-                       nz / threadsPerBlock.z);
+  const dim3 numBlocks((nx + threadsPerBlock.x - 1) / threadsPerBlock.x,
+                       (ny + threadsPerBlock.y - 1) / threadsPerBlock.y,
+                       (nz + threadsPerBlock.z - 1) / threadsPerBlock.z);
 
   propagate_kernel<<<numBlocks, threadsPerBlock>>>(
       d_start_coords, d_end_coords, d_sizes, d_process_coordinates, d_topology,
@@ -194,6 +194,5 @@ extern "C" void dc_propagate(
 
   free_device_memory(d_pp_out, d_pc, d_qp_out, d_qc, d_pp_in, d_qp_in,
                      &d_precomp_vars_st, d_precomp_vars, d_start_coords,
-                     d_end_coords, d_sizes, d_global_sizes,
-                     d_process_coordinates, d_topology);
+                     d_end_coords, d_sizes, d_process_coordinates, d_topology);
 }

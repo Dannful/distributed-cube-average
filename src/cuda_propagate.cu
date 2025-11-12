@@ -188,11 +188,10 @@ extern "C" void dc_propagate(
       d_precomp_vars, dx, dy, dz, dt, d_pp_out, d_pc, d_qp_out, d_qc, d_pp_in,
       d_qp_in);
 
-  cudaDeviceSynchronize();
-
   copy_data_from_device(h_pp_out, d_pp_out, h_qp_out, d_qp_out, total_size);
 
   free_device_memory(d_pp_out, d_pc, d_qp_out, d_qc, d_pp_in, d_qp_in,
                      &d_precomp_vars_st, d_precomp_vars, d_start_coords,
                      d_end_coords, d_sizes, d_process_coordinates, d_topology);
+  cudaDeviceSynchronize();
 }

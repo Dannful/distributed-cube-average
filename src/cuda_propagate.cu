@@ -24,76 +24,22 @@ propagate_kernel(const size_t *start_coords, const size_t *end_coords,
                  (dc_precomp_vars *)precomp_vars);
 }
 
-static void allocate_device_memory(
-    float **d_pp_out, float **d_pc, float **d_qp_out, float **d_qc,
-    float **d_pp_in, float **d_qp_in, size_t total_size,
-    dc_precomp_vars *d_precomp_vars_st, dc_precomp_vars **d_precomp_vars,
-    size_t **d_start_coords, size_t **d_end_coords, size_t **d_sizes,
-    int **d_process_coordinates, int **d_topology) {
-  cudaMalloc(d_pp_out, total_size);
-  cudaMalloc(d_pc, total_size);
-  cudaMalloc(d_qp_out, total_size);
-  cudaMalloc(d_qc, total_size);
-  cudaMalloc(d_pp_in, total_size);
-  cudaMalloc(d_qp_in, total_size);
+extern "C" void dc_propagate(const size_t start_coords[DIMENSIONS],
+                             const size_t end_coords[DIMENSIONS],
+                             const size_t sizes[DIMENSIONS],
+                             const int process_coordinates[DIMENSIONS],
+                             const int topology[DIMENSIONS],
+                             dc_device_data *data, const float dx,
+                             const float dy, const float dz, const float dt) {
 
-  cudaMalloc(&d_precomp_vars_st->ch1dxx, total_size);
-  cudaMalloc(&d_precomp_vars_st->ch1dyy, total_size);
-  cudaMalloc(&d_precomp_vars_st->ch1dzz, total_size);
-  cudaMalloc(&d_precomp_vars_st->ch1dxy, total_size);
-  cudaMalloc(&d_precomp_vars_st->ch1dyz, total_size);
-  cudaMalloc(&d_precomp_vars_st->ch1dxz, total_size);
-  cudaMalloc(&d_precomp_vars_st->v2px, total_size);
-  cudaMalloc(&d_precomp_vars_st->v2pz, total_size);
-  cudaMalloc(&d_precomp_vars_st->v2sz, total_size);
-  cudaMalloc(&d_precomp_vars_st->v2pn, total_size);
+  size_t *d_start_coords, *d_end_coords, *d_sizes;
+  int *d_process_coordinates, *d_topology;
 
-  cudaMalloc(d_precomp_vars, sizeof(dc_precomp_vars));
-
-  cudaMalloc(d_start_coords, sizeof(size_t) * DIMENSIONS);
-  cudaMalloc(d_end_coords, sizeof(size_t) * DIMENSIONS);
-  cudaMalloc(d_sizes, sizeof(size_t) * DIMENSIONS);
-  cudaMalloc(d_process_coordinates, sizeof(int) * DIMENSIONS);
-  cudaMalloc(d_topology, sizeof(int) * DIMENSIONS);
-}
-
-static void copy_data_to_device(
-    float *d_pc, const float *h_pc, float *d_qc, const float *h_qc,
-    float *d_pp_in, const float *h_pp_in, float *d_qp_in, const float *h_qp_in,
-    size_t total_size, const dc_precomp_vars *h_precomp_vars,
-    dc_precomp_vars *d_precomp_vars_st, dc_precomp_vars *d_precomp_vars,
-    const size_t *start_coords, size_t *d_start_coords,
-    const size_t *end_coords, size_t *d_end_coords, const size_t *sizes,
-    size_t *d_sizes, const int *process_coordinates, int *d_process_coordinates,
-    const int *topology, int *d_topology) {
-  cudaMemcpy(d_pc, h_pc, total_size, cudaMemcpyHostToDevice);
-  cudaMemcpy(d_qc, h_qc, total_size, cudaMemcpyHostToDevice);
-  cudaMemcpy(d_pp_in, h_pp_in, total_size, cudaMemcpyHostToDevice);
-  cudaMemcpy(d_qp_in, h_qp_in, total_size, cudaMemcpyHostToDevice);
-
-  cudaMemcpy(d_precomp_vars_st->ch1dxx, h_precomp_vars->ch1dxx, total_size,
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(d_precomp_vars_st->ch1dyy, h_precomp_vars->ch1dyy, total_size,
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(d_precomp_vars_st->ch1dzz, h_precomp_vars->ch1dzz, total_size,
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(d_precomp_vars_st->ch1dxy, h_precomp_vars->ch1dxy, total_size,
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(d_precomp_vars_st->ch1dyz, h_precomp_vars->ch1dyz, total_size,
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(d_precomp_vars_st->ch1dxz, h_precomp_vars->ch1dxz, total_size,
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(d_precomp_vars_st->v2px, h_precomp_vars->v2px, total_size,
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(d_precomp_vars_st->v2pz, h_precomp_vars->v2pz, total_size,
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(d_precomp_vars_st->v2sz, h_precomp_vars->v2sz, total_size,
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(d_precomp_vars_st->v2pn, h_precomp_vars->v2pn, total_size,
-             cudaMemcpyHostToDevice);
-
-  cudaMemcpy(d_precomp_vars, d_precomp_vars_st, sizeof(dc_precomp_vars),
-             cudaMemcpyHostToDevice);
+  cudaMalloc(&d_start_coords, sizeof(size_t) * DIMENSIONS);
+  cudaMalloc(&d_end_coords, sizeof(size_t) * DIMENSIONS);
+  cudaMalloc(&d_sizes, sizeof(size_t) * DIMENSIONS);
+  cudaMalloc(&d_process_coordinates, sizeof(int) * DIMENSIONS);
+  cudaMalloc(&d_topology, sizeof(int) * DIMENSIONS);
 
   cudaMemcpy(d_start_coords, start_coords, sizeof(size_t) * DIMENSIONS,
              cudaMemcpyHostToDevice);
@@ -105,74 +51,6 @@ static void copy_data_to_device(
              sizeof(int) * DIMENSIONS, cudaMemcpyHostToDevice);
   cudaMemcpy(d_topology, topology, sizeof(int) * DIMENSIONS,
              cudaMemcpyHostToDevice);
-}
-
-static void copy_data_from_device(float *h_pp_out, const float *d_pp_out,
-                                  float *h_qp_out, const float *d_qp_out,
-                                  size_t total_size) {
-  cudaMemcpy(h_pp_out, d_pp_out, total_size, cudaMemcpyDeviceToHost);
-  cudaMemcpy(h_qp_out, d_qp_out, total_size, cudaMemcpyDeviceToHost);
-}
-
-static void free_device_memory(float *d_pp_out, float *d_pc, float *d_qp_out,
-                               float *d_qc, float *d_pp_in, float *d_qp_in,
-                               dc_precomp_vars *d_precomp_vars_st,
-                               dc_precomp_vars *d_precomp_vars,
-                               size_t *d_start_coords, size_t *d_end_coords,
-                               size_t *d_sizes, int *d_process_coordinates,
-                               int *d_topology) {
-  cudaFree(d_pp_out);
-  cudaFree(d_pc);
-  cudaFree(d_qp_out);
-  cudaFree(d_qc);
-  cudaFree(d_pp_in);
-  cudaFree(d_qp_in);
-
-  cudaFree(d_precomp_vars_st->ch1dxx);
-  cudaFree(d_precomp_vars_st->ch1dyy);
-  cudaFree(d_precomp_vars_st->ch1dzz);
-  cudaFree(d_precomp_vars_st->ch1dxy);
-  cudaFree(d_precomp_vars_st->ch1dyz);
-  cudaFree(d_precomp_vars_st->ch1dxz);
-  cudaFree(d_precomp_vars_st->v2px);
-  cudaFree(d_precomp_vars_st->v2pz);
-  cudaFree(d_precomp_vars_st->v2sz);
-  cudaFree(d_precomp_vars_st->v2pn);
-  cudaFree(d_precomp_vars);
-
-  cudaFree(d_start_coords);
-  cudaFree(d_end_coords);
-  cudaFree(d_sizes);
-  cudaFree(d_process_coordinates);
-  cudaFree(d_topology);
-}
-
-extern "C" void dc_propagate(
-    const size_t start_coords[DIMENSIONS], const size_t end_coords[DIMENSIONS],
-    const size_t sizes[DIMENSIONS], const int process_coordinates[DIMENSIONS],
-    const int topology[DIMENSIONS], const dc_precomp_vars *h_precomp_vars,
-    const float dx, const float dy, const float dz, const float dt,
-    float *h_pp_out, float *h_pc, float *h_qp_out, float *h_qc,
-    const float *h_pp_in, const float *h_qp_in) {
-
-  size_t total_size = sizes[0] * sizes[1] * sizes[2] * sizeof(float);
-
-  float *d_pp_out, *d_pc, *d_qp_out, *d_qc, *d_pp_in, *d_qp_in;
-  dc_precomp_vars d_precomp_vars_st;
-  dc_precomp_vars *d_precomp_vars;
-  size_t *d_start_coords, *d_end_coords, *d_sizes;
-  int *d_process_coordinates, *d_topology;
-
-  allocate_device_memory(&d_pp_out, &d_pc, &d_qp_out, &d_qc, &d_pp_in, &d_qp_in,
-                         total_size, &d_precomp_vars_st, &d_precomp_vars,
-                         &d_start_coords, &d_end_coords, &d_sizes,
-                         &d_process_coordinates, &d_topology);
-
-  copy_data_to_device(d_pc, h_pc, d_qc, h_qc, d_pp_in, h_pp_in, d_qp_in,
-                      h_qp_in, total_size, h_precomp_vars, &d_precomp_vars_st,
-                      d_precomp_vars, start_coords, d_start_coords, end_coords,
-                      d_end_coords, sizes, d_sizes, process_coordinates,
-                      d_process_coordinates, topology, d_topology);
 
   const dim3 threadsPerBlock(8, 8, 8);
   const size_t nx = end_coords[0] - start_coords[0];
@@ -185,13 +63,14 @@ extern "C" void dc_propagate(
 
   propagate_kernel<<<numBlocks, threadsPerBlock>>>(
       d_start_coords, d_end_coords, d_sizes, d_process_coordinates, d_topology,
-      d_precomp_vars, dx, dy, dz, dt, d_pp_out, d_pc, d_qp_out, d_qc, d_pp_in,
-      d_qp_in);
+      data->d_precomp_vars, dx, dy, dz, dt, data->pp, data->pc, data->qp,
+      data->qc, data->pp_copy, data->qp_copy);
 
-  copy_data_from_device(h_pp_out, d_pp_out, h_qp_out, d_qp_out, total_size);
+  cudaFree(d_start_coords);
+  cudaFree(d_end_coords);
+  cudaFree(d_sizes);
+  cudaFree(d_process_coordinates);
+  cudaFree(d_topology);
 
-  free_device_memory(d_pp_out, d_pc, d_qp_out, d_qc, d_pp_in, d_qp_in,
-                     &d_precomp_vars_st, d_precomp_vars, d_start_coords,
-                     d_end_coords, d_sizes, d_process_coordinates, d_topology);
   cudaDeviceSynchronize();
 }

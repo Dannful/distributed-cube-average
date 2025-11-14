@@ -6,6 +6,7 @@
 
 #include "calculate_source.h"
 #include "coordinator.h"
+#include "device_data.h"
 #include "log.h"
 #include "propagate.h"
 #include "setup.h"
@@ -161,7 +162,8 @@ void dc_worker_receive_data(dc_process_t *process) {
            MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
 }
 
-void dc_send_halo_to_neighbours(dc_process_t process, int tag, float *from,
+void dc_send_halo_to_neighbours(dc_process_t process, int tag,
+                                dc_device_data *data, float *from,
                                 worker_requests_t *requests) {
   worker_requests_t reqs;
   size_t radius = STENCIL;
@@ -242,16 +244,8 @@ void dc_send_halo_to_neighbours(dc_process_t process, int tag, float *from,
       exit(1);
     }
 
-    size_t data_index = 0;
-    for (size_t z = send_starts[2]; z < send_ends[2]; z++) {
-      for (size_t y = send_starts[1]; y < send_ends[1]; y++) {
-        for (size_t x = send_starts[0]; x < send_ends[0]; x++) {
-          size_t from_idx = dc_get_index_for_coordinates(
-              x, y, z, process.sizes[0], process.sizes[1], process.sizes[2]);
-          send_buffer[data_index++] = from[from_idx];
-        }
-      }
-    }
+    dc_device_extract_halo_face(data, send_buffer, send_starts, send_ends,
+                                process.sizes, from);
 
     reqs.buffers_to_free[reqs.count] = send_buffer;
     MPI_Isend(send_buffer, data_size, MPI_FLOAT, neighbour_rank, tag,
@@ -330,8 +324,7 @@ worker_halos_t dc_receive_halos(dc_process_t process, int tag) {
   return result;
 }
 
-void dc_compute_boundaries(const dc_process_t *process, const float *pp_copy,
-                           const float *qp_copy) {
+void dc_compute_boundaries(const dc_process_t *process, dc_device_data *data) {
   const int radius = STENCIL;
 
   for (unsigned int dimension = 0; dimension < DIMENSIONS; dimension++) {
@@ -346,16 +339,13 @@ void dc_compute_boundaries(const dc_process_t *process, const float *pp_copy,
             (displacement[i] < 0) ? 2 * radius : process->sizes[i] - radius;
       }
       dc_propagate(start_coords, end_coords, process->sizes,
-                   process->coordinates, process->topology,
-                   &process->precomp_vars, process->dx, process->dy,
-                   process->dz, process->dt, process->pp, process->pc,
-                   process->qp, process->qc, pp_copy, qp_copy);
+                   process->coordinates, process->topology, data, process->dx,
+                   process->dy, process->dz, process->dt);
     }
   }
 }
 
-void dc_compute_interior(const dc_process_t *process, const float *pp_copy,
-                         const float *qp_copy) {
+void dc_compute_interior(const dc_process_t *process, dc_device_data *data) {
   const int radius = STENCIL;
 
   size_t start_coords[DIMENSIONS] = {2 * radius, 2 * radius, 2 * radius};
@@ -364,9 +354,8 @@ void dc_compute_interior(const dc_process_t *process, const float *pp_copy,
                                    process->sizes[2] - 2 * radius};
 
   dc_propagate(start_coords, end_coords, process->sizes, process->coordinates,
-               process->topology, &process->precomp_vars, process->dx,
-               process->dy, process->dz, process->dt, process->pp, process->pc,
-               process->qp, process->qc, pp_copy, qp_copy);
+               process->topology, data, process->dx, process->dy, process->dz,
+               process->dt);
 }
 
 void dc_send_data_to_coordinator(dc_process_t process) {
@@ -381,70 +370,73 @@ void dc_send_data_to_coordinator(dc_process_t process) {
 }
 
 void dc_worker_process(dc_process_t *process) {
-  worker_requests_t all_send_requests;
-  all_send_requests.buffers_to_free = NULL;
-  all_send_requests.requests = NULL;
-  all_send_requests.count = 0;
+  worker_requests_t send_requests;
+  send_requests.buffers_to_free = NULL;
+  send_requests.requests = NULL;
+  send_requests.count = 0;
+
+  worker_requests_t recv_requests;
+  recv_requests.buffers_to_free = NULL;
+  recv_requests.requests = NULL;
+  recv_requests.count = 0;
+
   dc_log_info(process->rank, "Starting %u iterations with sizes %d %d %d",
               process->iterations, process->sizes[0], process->sizes[1],
               process->sizes[2]);
-  size_t total_size = dc_compute_count_from_sizes(process->sizes);
 
-  float *pp_copy = malloc(total_size * sizeof(float));
-  if (pp_copy == NULL) {
-    dc_log_error(
-        process->rank,
-        "OOM: could not allocate memory for pp_copy in dc_worker_process");
-    MPI_Finalize();
-    exit(1);
-  }
-  float *qp_copy = malloc(total_size * sizeof(float));
-  if (qp_copy == NULL) {
-    dc_log_error(
-        process->rank,
-        "OOM: could not allocate memory for qp_copy in dc_worker_process");
-    MPI_Finalize();
-    exit(1);
-  }
+  dc_device_data *data = dc_device_data_init(process);
 
   for (unsigned int i = 0; i < process->iterations; i++) {
     if (process->source_index != -1) {
       float source = dc_calculate_source(process->dt, i);
-      process->pc[process->source_index] += source;
-      process->qc[process->source_index] += source;
+      dc_device_add_source(data, process->source_index, source);
       dc_log_info(process->rank, "Inserting source %f at %d", source,
                   process->source_index);
     }
 
-    memcpy(pp_copy, process->pp, total_size * sizeof(float));
-    memcpy(qp_copy, process->qp, total_size * sizeof(float));
+    dc_device_data_copy_to_device_copies(data, process->sizes);
 
-    worker_halos_t new_pp_halos = dc_receive_halos(*process, PP_TAG);
-    worker_halos_t new_qp_halos = dc_receive_halos(*process, QP_TAG);
+    worker_halos_t new_pc_halos = dc_receive_halos(*process, PC_TAG);
+    worker_halos_t new_qc_halos = dc_receive_halos(*process, QC_TAG);
+    dc_concatenate_worker_requests(process->rank, &recv_requests,
+                                   &new_pc_halos.requests);
+    dc_concatenate_worker_requests(process->rank, &recv_requests,
+                                   &new_qc_halos.requests);
 
-    dc_compute_boundaries(process, pp_copy, qp_copy);
-    dc_send_halo_to_neighbours(*process, PP_TAG, process->pp,
-                               &all_send_requests);
-    dc_send_halo_to_neighbours(*process, QP_TAG, process->qp,
-                               &all_send_requests);
-    dc_compute_interior(process, pp_copy, qp_copy);
+    dc_send_halo_to_neighbours(*process, PC_TAG, data, data->pc,
+                               &send_requests);
+    dc_send_halo_to_neighbours(*process, QC_TAG, data, data->qc,
+                               &send_requests);
 
-    dc_concatenate_worker_requests(process->rank, &new_pp_halos.requests,
-                                   &new_qp_halos.requests);
-    MPI_Waitall(new_pp_halos.requests.count, new_pp_halos.requests.requests,
+    dc_compute_interior(process, data);
+
+    MPI_Waitall(recv_requests.count, recv_requests.requests,
                 MPI_STATUSES_IGNORE);
-    dc_worker_insert_halos(process, &new_pp_halos, process->pp);
-    dc_worker_insert_halos(process, &new_qp_halos, process->qp);
-    dc_free_worker_halos(&new_pp_halos);
-    dc_free_worker_halos(&new_qp_halos);
-    dc_worker_swap_arrays(process);
-    MPI_Waitall(all_send_requests.count, all_send_requests.requests,
+    dc_free_worker_requests(&recv_requests);
+
+    dc_worker_insert_halos(process, &new_pc_halos, data, data->pc);
+    dc_worker_insert_halos(process, &new_qc_halos, data, data->qc);
+
+    dc_compute_boundaries(process, data);
+
+    dc_device_swap_arrays(data);
+
+    MPI_Waitall(send_requests.count, send_requests.requests,
                 MPI_STATUSES_IGNORE);
-    dc_free_worker_requests(&all_send_requests);
+    dc_free_worker_requests(&send_requests);
+
+    dc_free_worker_halos(&new_pc_halos);
+    dc_free_worker_halos(&new_qc_halos);
   }
 
-  free(pp_copy);
-  free(qp_copy);
+  // Update process pointers to final state before returning
+  process->pp = data->pp;
+  process->pc = data->pc;
+  process->qp = data->qp;
+  process->qc = data->qc;
+
+  dc_device_data_get_results(process, data);
+  dc_device_data_free(data);
   dc_log_info(process->rank, "Processing complete.");
 }
 
@@ -573,7 +565,8 @@ void dc_worker_swap_arrays(dc_process_t *process) {
 }
 
 void dc_worker_insert_halos(const dc_process_t *process,
-                            const worker_halos_t *halos, float *data) {
+                            const worker_halos_t *halos, dc_device_data *data,
+                            float *to_array) {
   const size_t radius = STENCIL;
 
   for (int dx = -1; dx <= 1; dx++) {
@@ -627,16 +620,8 @@ void dc_worker_insert_halos(const dc_process_t *process,
           recv_ends[2] = process->sizes[2] - radius;
         }
 
-        size_t data_index = 0;
-        for (size_t z = recv_starts[2]; z < recv_ends[2]; z++) {
-          for (size_t y = recv_starts[1]; y < recv_ends[1]; y++) {
-            for (size_t x = recv_starts[0]; x < recv_ends[0]; x++) {
-              data[dc_get_index_for_coordinates(
-                  x, y, z, process->sizes[0], process->sizes[1],
-                  process->sizes[2])] = halo_buffer[data_index++];
-            }
-          }
-        }
+        dc_device_insert_halo_face(data, halo_buffer, recv_starts, recv_ends,
+                                   process->sizes, to_array);
       }
     }
   }

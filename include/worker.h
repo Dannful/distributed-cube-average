@@ -1,5 +1,6 @@
 #pragma once
 
+#include "device_data.h"
 #include "mpi.h"
 #include "setup.h"
 #include <stddef.h>
@@ -69,15 +70,14 @@ void dc_worker_receive_data(dc_process_t *process);
 void dc_worker_process(dc_process_t *process);
 void dc_worker_free(dc_process_t process);
 
-void dc_send_halo_to_neighbours(dc_process_t process, int tag, float *from,
+void dc_send_halo_to_neighbours(dc_process_t process, int tag,
+                                dc_device_data *data, float *from,
                                 worker_requests_t *requests);
 worker_halos_t dc_receive_halos(dc_process_t process, int tag);
 void dc_send_data_to_coordinator(dc_process_t process);
 
-void dc_compute_boundaries(const dc_process_t *process, const float *pp,
-                           const float *qp);
-void dc_compute_interior(const dc_process_t *process, const float *pp,
-                         const float *qp);
+void dc_compute_boundaries(const dc_process_t *process, dc_device_data *data);
+void dc_compute_interior(const dc_process_t *process, dc_device_data *data);
 
 void dc_free_worker_halos(worker_halos_t *halos);
 void dc_free_worker_requests(worker_requests_t *requests);
@@ -89,4 +89,5 @@ size_t dc_compute_count_from_sizes(size_t sizes[DIMENSIONS]);
 void dc_worker_swap_arrays(dc_process_t *process);
 
 void dc_worker_insert_halos(const dc_process_t *process,
-                            const worker_halos_t *halos, float *data);
+                            const worker_halos_t *halos, dc_device_data *data,
+                            float *to_array);

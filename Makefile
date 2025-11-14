@@ -20,10 +20,12 @@ SOURCES_CUDA =
 # Add backend-specific sources and flags
 ifeq ($(BACKEND), openmp)
 	SOURCES_C += $(SRCDIR)/openmp_propagate.c
+	SOURCES_C += $(SRCDIR)/device_data.c
 	CFLAGS += -fopenmp
 	LDFLAGS += -fopenmp
 else ifeq ($(BACKEND), cuda)
 	SOURCES_CUDA += $(SRCDIR)/cuda_propagate.cu
+	SOURCES_CUDA += $(SRCDIR)/device_data.cu
 else
 	$(error Unsupported backend: $(BACKEND). Currently, only 'openmp' or 'cuda' are supported)
 endif

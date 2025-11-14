@@ -6,15 +6,22 @@
 extern "C" {
 #endif
 
+#ifndef DC_PROPAGATE_H
+#define DC_PROPAGATE_H
+
+#include "device_data.h"
+#include "precomp.h"
+#include "setup.h"
+
 void dc_propagate(const size_t start_coords[DIMENSIONS],
                   const size_t end_coords[DIMENSIONS],
                   const size_t sizes[DIMENSIONS],
                   const int process_coordinates[DIMENSIONS],
-                  const int topology[DIMENSIONS],
-                  const dc_precomp_vars *precomp_vars, const float dx,
-                  const float dy, const float dz, const float dt, float *pp_out,
-                  float *pc, float *qp_out, float *qc, const float *pp_in,
-                  const float *qp_in);
+                  const int topology[DIMENSIONS], dc_device_data *data,
+                  const float dx, const float dy, const float dz,
+                  const float dt);
+
+#endif // DC_PROPAGATE_H
 
 #ifdef __cplusplus
 }

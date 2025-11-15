@@ -370,15 +370,10 @@ void dc_send_data_to_coordinator(dc_process_t process) {
 }
 
 void dc_worker_process(dc_process_t *process) {
-  worker_requests_t send_requests;
-  send_requests.buffers_to_free = NULL;
-  send_requests.requests = NULL;
-  send_requests.count = 0;
-
-  worker_requests_t recv_requests;
-  recv_requests.buffers_to_free = NULL;
-  recv_requests.requests = NULL;
-  recv_requests.count = 0;
+  worker_requests_t all_send_requests;
+  all_send_requests.buffers_to_free = NULL;
+  all_send_requests.requests = NULL;
+  all_send_requests.count = 0;
 
   dc_log_info(process->rank, "Starting %u iterations with sizes %d %d %d",
               process->iterations, process->sizes[0], process->sizes[1],
@@ -396,40 +391,30 @@ void dc_worker_process(dc_process_t *process) {
 
     dc_device_data_copy_to_device_copies(data, process->sizes);
 
-    worker_halos_t new_pc_halos = dc_receive_halos(*process, PC_TAG);
-    worker_halos_t new_qc_halos = dc_receive_halos(*process, QC_TAG);
-    dc_concatenate_worker_requests(process->rank, &recv_requests,
-                                   &new_pc_halos.requests);
-    dc_concatenate_worker_requests(process->rank, &recv_requests,
-                                   &new_qc_halos.requests);
-
-    dc_send_halo_to_neighbours(*process, PC_TAG, data, data->pc,
-                               &send_requests);
-    dc_send_halo_to_neighbours(*process, QC_TAG, data, data->qc,
-                               &send_requests);
-
-    dc_compute_interior(process, data);
-
-    MPI_Waitall(recv_requests.count, recv_requests.requests,
-                MPI_STATUSES_IGNORE);
-    dc_free_worker_requests(&recv_requests);
-
-    dc_worker_insert_halos(process, &new_pc_halos, data, data->pc);
-    dc_worker_insert_halos(process, &new_qc_halos, data, data->qc);
+    worker_halos_t new_pp_halos = dc_receive_halos(*process, PP_TAG);
+    worker_halos_t new_qp_halos = dc_receive_halos(*process, QP_TAG);
 
     dc_compute_boundaries(process, data);
+    dc_send_halo_to_neighbours(*process, PP_TAG, data, data->pp,
+                               &all_send_requests);
+    dc_send_halo_to_neighbours(*process, QP_TAG, data, data->qp,
+                               &all_send_requests);
+    dc_compute_interior(process, data);
 
-    dc_device_swap_arrays(data);
-
-    MPI_Waitall(send_requests.count, send_requests.requests,
+    dc_concatenate_worker_requests(process->rank, &new_pp_halos.requests,
+                                   &new_qp_halos.requests);
+    MPI_Waitall(new_pp_halos.requests.count, new_pp_halos.requests.requests,
                 MPI_STATUSES_IGNORE);
-    dc_free_worker_requests(&send_requests);
-
-    dc_free_worker_halos(&new_pc_halos);
-    dc_free_worker_halos(&new_qc_halos);
+    dc_worker_insert_halos(process, &new_pp_halos, data, data->pp);
+    dc_worker_insert_halos(process, &new_qp_halos, data, data->qp);
+    dc_free_worker_halos(&new_pp_halos);
+    dc_free_worker_halos(&new_qp_halos);
+    dc_device_swap_arrays(data);
+    MPI_Waitall(all_send_requests.count, all_send_requests.requests,
+                MPI_STATUSES_IGNORE);
+    dc_free_worker_requests(&all_send_requests);
   }
 
-  // Update process pointers to final state before returning
   process->pp = data->pp;
   process->pc = data->pc;
   process->qp = data->qp;

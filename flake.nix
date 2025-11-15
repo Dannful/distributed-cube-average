@@ -78,27 +78,26 @@
           size_y=20
           size_z=20
           absorption=2
-          dx=0.1
-          dy=0.1
-          dz=0.1
-          dt=0.000110
-          tmax=0.00110
+          dx=0.01
+          dy=0.01
+          dz=0.01
+          dt=0.000001
+          tmax=0.00001
 
           echo "Running sequential version to generate ground truth..."
           OMP_NUM_THREADS=1 ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none ${dc}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/ground_truth.dc
 
           echo "Running OpenMP version..."
-          ${pkgs.openmpi}/bin/mpirun -np 3 --bind-to none ${dc}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/openmp_predicted.dc
+          ${pkgs.openmpi}/bin/mpirun -np 8 --bind-to none ${dc}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/openmp_predicted.dc
 
           echo "Comparing OpenMP with ground truth..."
           mv ./validation/openmp_predicted.dc ./validation/predicted.dc
           Rscript ./validation/CompareResults.R 0
 
           echo "Running CUDA version..."
-          ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none ${dc-cuda}/bin/dc-cuda --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/cuda_predicted.dc
+          ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none ${dc-cuda}/bin/dc-cuda --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
 
           echo "Comparing CUDA with ground truth..."
-          mv ./validation/cuda_predicted.dc ./validation/predicted.dc
 
           echo "--- Comparison with tolerance 1e-3 ---"
           Rscript ./validation/CompareResults.R 1e-3

@@ -10,7 +10,6 @@ extern "C" {
 #define DC_PROPAGATE_H
 
 #include "device_data.h"
-#include "precomp.h"
 #include "setup.h"
 
 void dc_propagate(const size_t start_coords[DIMENSIONS],

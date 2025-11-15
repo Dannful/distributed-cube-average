@@ -1,13 +1,15 @@
 #include "device_data.h"
-#include "log.h"
 #include "worker.h"
 #include <cuda_runtime.h>
+#include <cuda_runtime_api.h>
+#include <driver_types.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 static void check_cuda_error(cudaError_t err, int rank, const char *msg) {
   if (err != cudaSuccess) {
-    dc_log_error(rank, "CUDA Error: %s - %s", msg, cudaGetErrorString(err));
+    fprintf(stderr, "[%d] CUDA Error: %s - %s\n", rank, msg,
+            cudaGetErrorString(err));
     MPI_Finalize();
     exit(1);
   }
@@ -16,12 +18,24 @@ static void check_cuda_error(cudaError_t err, int rank, const char *msg) {
 dc_device_data *dc_device_data_init(dc_process_t *process) {
   dc_device_data *data = (dc_device_data *)malloc(sizeof(dc_device_data));
   if (data == NULL) {
-    dc_log_error(process->rank,
-                 "OOM: could not allocate memory for device_data in "
-                 "dc_device_data_init");
+    fprintf(stderr,
+            "[%d] OOM: could not allocate memory for device_data in "
+            "dc_device_data_init\n",
+            process->rank);
     MPI_Finalize();
     exit(1);
   }
+
+  int device_count;
+  check_cuda_error(cudaGetDeviceCount(&device_count), process->rank,
+                   "cudaGetDeviceCount");
+  const int device = 0;
+  cudaDeviceProp device_prop;
+  check_cuda_error(cudaGetDeviceProperties(&device_prop, device), process->rank,
+                   "cudaGetDeviceProperties");
+  check_cuda_error(cudaSetDevice(device), process->rank, "cudaSetDevice");
+  printf("CUDA source using device (%d) %s with compute capability %d.%d\n",
+         device, device_prop.name, device_prop.major, device_prop.minor);
 
   size_t total_size = dc_compute_count_from_sizes(process->sizes);
   size_t total_size_bytes = total_size * sizeof(float);
@@ -200,7 +214,7 @@ void dc_device_extract_halo_face(dc_device_data *data, float *buffer,
       make_cudaPitchedPtr(buffer, width * sizeof(float), width, height);
   params.extent = make_cudaExtent(width * sizeof(float), height, depth);
   params.kind = cudaMemcpyDeviceToHost;
-  cudaMemcpy3D(&params);
+  check_cuda_error(cudaMemcpy3D(&params), 0, "cudaMemcpy3D extract");
 }
 
 void dc_device_insert_halo_face(dc_device_data *data, const float *buffer,
@@ -222,15 +236,17 @@ void dc_device_insert_halo_face(dc_device_data *data, const float *buffer,
                                       sizes[0], sizes[1]);
   params.extent = make_cudaExtent(width * sizeof(float), height, depth);
   params.kind = cudaMemcpyHostToDevice;
-  cudaMemcpy3D(&params);
+  check_cuda_error(cudaMemcpy3D(&params), 0, "cudaMemcpy3D insert");
 }
 
 void dc_device_data_copy_to_device_copies(dc_device_data *data,
                                           const size_t sizes[DIMENSIONS]) {
   size_t total_size = dc_compute_count_from_sizes((size_t *)sizes);
   size_t total_size_bytes = total_size * sizeof(float);
-  cudaMemcpy(data->pp_copy, data->pp, total_size_bytes,
-             cudaMemcpyDeviceToDevice);
-  cudaMemcpy(data->qp_copy, data->qp, total_size_bytes,
-             cudaMemcpyDeviceToDevice);
+  check_cuda_error(cudaMemcpy(data->pp_copy, data->pp, total_size_bytes,
+                              cudaMemcpyDeviceToDevice),
+                   0, "cudaMemcpy pp_copy");
+  check_cuda_error(cudaMemcpy(data->qp_copy, data->qp, total_size_bytes,
+                              cudaMemcpyDeviceToDevice),
+                   0, "cudaMemcpy qp_copy");
 }

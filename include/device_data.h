@@ -4,6 +4,10 @@
 #include "precomp.h"
 #include "setup.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
   float *pp, *pc, *qp, *qc;
   float *pp_copy, *qp_copy;
@@ -43,5 +47,9 @@ void dc_device_insert_halo_face(dc_device_data *data, const float *buffer,
                                 const size_t end_coords[DIMENSIONS],
                                 const size_t sizes[DIMENSIONS],
                                 float *to_array);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // DC_DEVICE_DATA_H

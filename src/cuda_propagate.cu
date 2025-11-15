@@ -3,6 +3,7 @@
 #include <cuda_runtime.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <thread>
 
 __global__ void
 propagate_kernel(const size_t *start_coords, const size_t *end_coords,
@@ -14,10 +15,6 @@ propagate_kernel(const size_t *start_coords, const size_t *end_coords,
   const size_t x = start_coords[0] + blockIdx.x * blockDim.x + threadIdx.x;
   const size_t y = start_coords[1] + blockIdx.y * blockDim.y + threadIdx.y;
   const size_t z = start_coords[2] + blockIdx.z * blockDim.z + threadIdx.z;
-
-  if (x >= end_coords[0] || y >= end_coords[1] || z >= end_coords[2]) {
-    return;
-  }
 
   sample_compute(x, y, z, sizes, process_coordinates, topology, dx, dy, dz, dt,
                  pc, qc, pp_in, qp_in, pp_out, qp_out,
@@ -57,9 +54,8 @@ extern "C" void dc_propagate(const size_t start_coords[DIMENSIONS],
   const size_t ny = end_coords[1] - start_coords[1];
   const size_t nz = end_coords[2] - start_coords[2];
 
-  const dim3 numBlocks((nx + threadsPerBlock.x - 1) / threadsPerBlock.x,
-                       (ny + threadsPerBlock.y - 1) / threadsPerBlock.y,
-                       (nz + threadsPerBlock.z - 1) / threadsPerBlock.z);
+  const dim3 numBlocks(nx / threadsPerBlock.x, ny / threadsPerBlock.y,
+                       nz / threadsPerBlock.z);
 
   propagate_kernel<<<numBlocks, threadsPerBlock>>>(
       d_start_coords, d_end_coords, d_sizes, d_process_coordinates, d_topology,

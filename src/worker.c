@@ -384,9 +384,9 @@ void dc_worker_process(dc_process_t *process) {
   for (unsigned int i = 0; i < process->iterations; i++) {
     if (process->source_index != -1) {
       float source = dc_calculate_source(process->dt, i);
-      dc_device_add_source(data, process->source_index, source);
       dc_log_info(process->rank, "Inserting source %f at %d", source,
                   process->source_index);
+      dc_device_add_source(data, process->source_index, source);
     }
 
     dc_device_data_copy_to_device_copies(data, process->sizes);

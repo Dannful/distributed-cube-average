@@ -5,6 +5,10 @@
 #include "setup.h"
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if defined(__CUDACC__)
 #define HOST_DEVICE __host__ __device__
 #else
@@ -91,3 +95,7 @@ void dc_worker_swap_arrays(dc_process_t *process);
 void dc_worker_insert_halos(const dc_process_t *process,
                             const worker_halos_t *halos, dc_device_data *data,
                             float *to_array);
+
+#ifdef __cplusplus
+}
+#endif

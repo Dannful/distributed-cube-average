@@ -1,16 +1,16 @@
-#include <unistd.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include "log.h"
 
-void dc_log_info(int rank, char *message,...) {
+void dc_log_info(int rank, char *message, ...) {
   va_list args;
   va_start(args, message);
   char hostname[256];
   gethostname(hostname, sizeof(hostname));
   char worker_type[12] = {0};
-  if(rank == 0) {
+  if (rank == 0) {
     snprintf(worker_type, sizeof(worker_type), "Coordinator");
   } else {
     snprintf(worker_type, sizeof(worker_type), "Worker %d", rank);
@@ -25,7 +25,7 @@ void dc_log_error(int rank, char *message, ...) {
   char hostname[256];
   gethostname(hostname, sizeof(hostname));
   char worker_type[12] = {0};
-  if(rank == 0) {
+  if (rank == 0) {
     snprintf(worker_type, sizeof(worker_type), "Coordinator");
   } else {
     snprintf(worker_type, sizeof(worker_type), "Worker %d", rank);

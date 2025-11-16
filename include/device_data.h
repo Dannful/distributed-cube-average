@@ -1,9 +1,9 @@
 #ifndef DC_DEVICE_DATA_H
 #define DC_DEVICE_DATA_H
 
-#include "precomp.h"
-#include "definitions.h"
 #include "dc_process.h"
+#include "definitions.h"
+#include "precomp.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,13 +25,11 @@ typedef struct {
 void dc_device_data_copy_to_device_copies(dc_device_data *data,
                                           const size_t sizes[DIMENSIONS]);
 
-dc_device_data *
-dc_device_data_init(dc_process_t *process);
+dc_device_data *dc_device_data_init(dc_process_t *process);
 
 void dc_device_data_free(dc_device_data *data);
 
-void dc_device_data_get_results(dc_process_t *process,
-                                dc_device_data *data);
+void dc_device_data_get_results(dc_process_t *process, dc_device_data *data);
 
 void dc_device_swap_arrays(dc_device_data *data);
 

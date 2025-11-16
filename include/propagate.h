@@ -7,8 +7,8 @@ extern "C" {
 #ifndef DC_PROPAGATE_H
 #define DC_PROPAGATE_H
 
-#include "device_data.h"
 #include "definitions.h"
+#include "device_data.h"
 
 void dc_propagate(const size_t start_coords[DIMENSIONS],
                   const size_t end_coords[DIMENSIONS],

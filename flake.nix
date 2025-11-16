@@ -74,15 +74,15 @@
         '';
         comparison = pkgs.writeShellScriptBin "run-dc-comparison" ''
           export PATH=${pkgs.cudatoolkit}/bin:$PATH
-          size_x=20
-          size_y=20
-          size_z=20
+          size_x=52
+          size_y=52
+          size_z=52
           absorption=2
-          dx=1e-2
-          dy=1e-2
-          dz=1e-2
+          dx=1e-1
+          dy=1e-1
+          dz=1e-1
           dt=1e-6
-          tmax=1e-5
+          tmax=1e-4
 
           echo "Running sequential version to generate ground truth..."
           OMP_NUM_THREADS=1 ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none ${dc}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/ground_truth.dc

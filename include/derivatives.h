@@ -44,7 +44,8 @@ static inline HOST_DEVICE float der1(const float *p, int i, int s, float dinv) {
          dinv;
 }
 
-static inline HOST_DEVICE float der2(const float *p, int i, int s, float d2inv) {
+static inline HOST_DEVICE float der2(const float *p, int i, int s,
+                                     float d2inv) {
   return (K0 * p[i] + K1 * (p[i + s] + p[i - s]) +
           K2 * (p[i + 2 * s] + p[i - 2 * s]) +
           K3 * (p[i + 3 * s] + p[i - 3 * s]) +
@@ -52,7 +53,8 @@ static inline HOST_DEVICE float der2(const float *p, int i, int s, float d2inv) 
          d2inv;
 }
 
-static inline HOST_DEVICE float derCross(const float *p, int i, int s11, int s21, float dinv) {
+static inline HOST_DEVICE float derCross(const float *p, int i, int s11,
+                                         int s21, float dinv) {
   float term1 = L11 * (p[i + s21 + s11] - p[i + s21 - s11] - p[i - s21 + s11] +
                        p[i - s21 - s11]);
   float term2 = L12 * (p[i + s21 + (2 * s11)] - p[i + s21 - (2 * s11)] -

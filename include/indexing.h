@@ -3,9 +3,10 @@
 #include "definitions.h"
 #include <stddef.h>
 
-static inline HOST_DEVICE void dc_extract_coordinates(
-    size_t *position_x, size_t *position_y, size_t *position_z, size_t size_x,
-    size_t size_y, size_t size_z, int index) {
+static inline HOST_DEVICE void
+dc_extract_coordinates(size_t *position_x, size_t *position_y,
+                       size_t *position_z, size_t size_x, size_t size_y,
+                       size_t size_z, int index) {
   *position_x = index % size_x;
   *position_y = (index / size_x) % size_y;
   *position_z = index / (size_x * size_y);
@@ -38,7 +39,8 @@ dc_get_global_coordinates(const int worker_coordinates[DIMENSIONS],
   return global_index;
 }
 
-static inline size_t dc_compute_count_from_sizes(const size_t sizes[DIMENSIONS]) {
+static inline size_t
+dc_compute_count_from_sizes(const size_t sizes[DIMENSIONS]) {
   size_t count = 1;
   for (int i = 0; i < DIMENSIONS; i++) {
     count *= sizes[i];

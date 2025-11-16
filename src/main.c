@@ -6,10 +6,10 @@
 
 #include "boundary.h"
 #include "coordinator.h"
+#include "indexing.h"
 #include "log.h"
 #include "precomp.h"
 #include "setup.h"
-#include "indexing.h"
 #include "worker.h"
 
 static struct argp_option options[] = {
@@ -153,7 +153,8 @@ int main(int argc, char **argv) {
   dc_worker_process(&mpi_process, communicator);
   dc_send_data_to_coordinator(mpi_process, communicator);
   if (rank == COORDINATOR) {
-    dc_result_t result = dc_receive_data_from_workers(mpi_process, communicator, sx, sy, sz);
+    dc_result_t result =
+        dc_receive_data_from_workers(mpi_process, communicator, sx, sy, sz);
     FILE *output = fopen(arguments.output_file, "wb");
     fwrite(result.pc, sizeof(float), sx * sy * sz, output);
     fwrite(result.qc, sizeof(float), sx * sy * sz, output);

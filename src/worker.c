@@ -414,11 +414,6 @@ void dc_worker_process(dc_process_t *process, MPI_Comm comm) {
     dc_free_worker_requests(&all_send_requests);
   }
 
-  process->pp = data->pp;
-  process->pc = data->pc;
-  process->qp = data->qp;
-  process->qc = data->qc;
-
   dc_device_data_get_results(process, data);
   dc_device_data_free(data);
   dc_log_info(process->rank, "Processing complete.");

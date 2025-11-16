@@ -78,11 +78,11 @@
           size_y=20
           size_z=20
           absorption=2
-          dx=0.01
-          dy=0.01
-          dz=0.01
-          dt=0.000001
-          tmax=0.00001
+          dx=1e-2
+          dy=1e-2
+          dz=1e-2
+          dt=1e-6
+          tmax=1e-5
 
           echo "Running sequential version to generate ground truth..."
           OMP_NUM_THREADS=1 ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none ${dc}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/ground_truth.dc

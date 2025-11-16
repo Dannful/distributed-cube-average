@@ -1,5 +1,5 @@
 #include "device_data.h"
-#include "worker.h"
+#include "indexing.h"
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 #include <driver_types.h>
@@ -10,7 +10,6 @@ static void check_cuda_error(cudaError_t err, int rank, const char *msg) {
   if (err != cudaSuccess) {
     fprintf(stderr, "[%d] CUDA Error: %s - %s\n", rank, msg,
             cudaGetErrorString(err));
-    MPI_Finalize();
     exit(1);
   }
 }
@@ -22,7 +21,6 @@ dc_device_data *dc_device_data_init(dc_process_t *process) {
             "[%d] OOM: could not allocate memory for device_data in "
             "dc_device_data_init\n",
             process->rank);
-    MPI_Finalize();
     exit(1);
   }
 

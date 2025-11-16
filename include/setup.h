@@ -3,8 +3,7 @@
 #include "precomp.h"
 #include <mpi.h>
 
-#define DIMENSIONS 3
-#define NEIGHBOURHOOD 27
+#include "definitions.h"
 
 typedef enum {
   LEFT = 0,
@@ -15,20 +14,7 @@ typedef enum {
   BACK = 5
 } neighbour_direction_t;
 
-typedef struct {
-  MPI_Comm communicator;
-  int rank;
-  int coordinates[DIMENSIONS];
-  int neighbours[NEIGHBOURHOOD];
-  int topology[DIMENSIONS];
-  unsigned int iterations;
-  int source_index;
-  float dx, dy, dz, dt;
-  size_t sizes[DIMENSIONS];
-  dc_anisotropy_t anisotropy_vars;
-  dc_precomp_vars precomp_vars;
-  float *pp, *pc, *qp, *qc;
-} dc_process_t;
+#include "dc_process.h"
 
 void dc_mpi_world_init(MPI_Comm *communicator, const int topology[DIMENSIONS]);
 dc_process_t dc_process_init(MPI_Comm communicator, int rank,

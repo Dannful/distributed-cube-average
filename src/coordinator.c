@@ -4,18 +4,16 @@
 #include <string.h>
 
 #include "coordinator.h"
+#include "indexing.h"
 #include "log.h"
 #include "precomp.h"
-#include "setup.h"
 #include "stdlib.h"
-#include "worker.h"
 
 problem_data_t dc_initialize_problem(MPI_Comm comm,
                                      unsigned int topology[DIMENSIONS],
                                      unsigned int border, unsigned int workers,
                                      dc_arguments_t arguments) {
   problem_data_t result;
-  result.communicator = comm;
   result.num_workers = workers;
   result.dt = arguments.dt;
   result.iterations = ceil(arguments.time_max / arguments.dt);
@@ -138,7 +136,7 @@ void dc_determine_source(size_t size_x, size_t size_y, size_t size_z,
     exit(1);                                                                   \
   }
 
-void dc_partition_cube(problem_data_t *problem_data,
+void dc_partition_cube(problem_data_t *problem_data, MPI_Comm comm,
                        dc_precomp_vars precomp_vars) {
   size_t partition_size_x =
       (problem_data->size_x - 2 * STENCIL) / problem_data->topology[0];
@@ -171,7 +169,7 @@ void dc_partition_cube(problem_data_t *problem_data,
         int process_coordinates[DIMENSIONS] = {(int)worker_x, (int)worker_y,
                                                (int)worker_z};
         int worker;
-        MPI_Cart_rank(problem_data->communicator, process_coordinates, &worker);
+        MPI_Cart_rank(comm, process_coordinates, &worker);
         size_t worker_size_x = worker_x == problem_data->topology[0] - 1
                                    ? partition_size_x + remainder_x
                                    : partition_size_x;
@@ -303,51 +301,50 @@ void dc_partition_cube(problem_data_t *problem_data,
   }
 }
 
-void dc_send_data_to_workers(problem_data_t problem_data) {
+void dc_send_data_to_workers(problem_data_t problem_data, MPI_Comm comm) {
   for (size_t worker = 0; worker < problem_data.num_workers; worker++) {
     if (worker == COORDINATOR)
       continue;
-    MPI_Send(&problem_data.source_index[worker], 1, MPI_INT, worker, 0,
-             problem_data.communicator);
-    MPI_Send(&problem_data.iterations, 1, MPI_UINT32_T, worker, 0,
-             problem_data.communicator);
+    MPI_Send(&problem_data.source_index[worker], 1, MPI_INT, worker, 0, comm);
+    MPI_Send(&problem_data.iterations, 1, MPI_UINT32_T, worker, 0, comm);
     MPI_Send(problem_data.worker_sizes[worker], DIMENSIONS, MPI_UNSIGNED_LONG,
-             worker, 0, problem_data.communicator);
+             worker, 0, comm);
     size_t count =
         dc_compute_count_from_sizes(problem_data.worker_sizes[worker]);
     MPI_Send(problem_data.pp_workers[worker], count, MPI_FLOAT, worker, 0,
-             problem_data.communicator);
+             comm);
     MPI_Send(problem_data.pc_workers[worker], count, MPI_FLOAT, worker, 0,
-             problem_data.communicator);
+             comm);
     MPI_Send(problem_data.qp_workers[worker], count, MPI_FLOAT, worker, 0,
-             problem_data.communicator);
+             comm);
     MPI_Send(problem_data.qc_workers[worker], count, MPI_FLOAT, worker, 0,
-             problem_data.communicator);
+             comm);
     MPI_Send(problem_data.precomp_vars_workers[worker]->ch1dxx, count,
-             MPI_FLOAT, worker, 0, problem_data.communicator);
+             MPI_FLOAT, worker, 0, comm);
     MPI_Send(problem_data.precomp_vars_workers[worker]->ch1dyy, count,
-             MPI_FLOAT, worker, 0, problem_data.communicator);
+             MPI_FLOAT, worker, 0, comm);
     MPI_Send(problem_data.precomp_vars_workers[worker]->ch1dzz, count,
-             MPI_FLOAT, worker, 0, problem_data.communicator);
+             MPI_FLOAT, worker, 0, comm);
     MPI_Send(problem_data.precomp_vars_workers[worker]->ch1dxy, count,
-             MPI_FLOAT, worker, 0, problem_data.communicator);
+             MPI_FLOAT, worker, 0, comm);
     MPI_Send(problem_data.precomp_vars_workers[worker]->ch1dyz, count,
-             MPI_FLOAT, worker, 0, problem_data.communicator);
+             MPI_FLOAT, worker, 0, comm);
     MPI_Send(problem_data.precomp_vars_workers[worker]->ch1dxz, count,
-             MPI_FLOAT, worker, 0, problem_data.communicator);
+             MPI_FLOAT, worker, 0, comm);
     MPI_Send(problem_data.precomp_vars_workers[worker]->v2px, count, MPI_FLOAT,
-             worker, 0, problem_data.communicator);
+             worker, 0, comm);
     MPI_Send(problem_data.precomp_vars_workers[worker]->v2pz, count, MPI_FLOAT,
-             worker, 0, problem_data.communicator);
+             worker, 0, comm);
     MPI_Send(problem_data.precomp_vars_workers[worker]->v2sz, count, MPI_FLOAT,
-             worker, 0, problem_data.communicator);
+             worker, 0, comm);
     MPI_Send(problem_data.precomp_vars_workers[worker]->v2pn, count, MPI_FLOAT,
-             worker, 0, problem_data.communicator);
+             worker, 0, comm);
   }
 }
 
 dc_result_t dc_receive_data_from_workers(dc_process_t coordinator_process,
-                                         size_t cube_size_x, size_t cube_size_y,
+                                         MPI_Comm comm, size_t cube_size_x,
+                                         size_t cube_size_y,
                                          size_t cube_size_z) {
   dc_result_t result;
   result.pc =
@@ -381,8 +378,7 @@ dc_result_t dc_receive_data_from_workers(dc_process_t coordinator_process,
            worker_z++) {
         int worker_coordinates[DIMENSIONS] = {worker_x, worker_y, worker_z};
         int worker_rank;
-        MPI_Cart_rank(coordinator_process.communicator, worker_coordinates,
-                      &worker_rank);
+        MPI_Cart_rank(comm, worker_coordinates, &worker_rank);
         size_t worker_sizes[DIMENSIONS] = {0};
         float *pc = NULL;
         float *qc = NULL;
@@ -395,7 +391,7 @@ dc_result_t dc_receive_data_from_workers(dc_process_t coordinator_process,
           worker_count = dc_compute_count_from_sizes(worker_sizes);
         } else {
           MPI_Recv(worker_sizes, DIMENSIONS, MPI_UNSIGNED_LONG, worker_rank, 0,
-                   coordinator_process.communicator, MPI_STATUSES_IGNORE);
+                   comm, MPI_STATUSES_IGNORE);
           worker_count = dc_compute_count_from_sizes(worker_sizes);
           pc = malloc(sizeof(float) * worker_count);
           if (pc == NULL) {
@@ -415,10 +411,10 @@ dc_result_t dc_receive_data_from_workers(dc_process_t coordinator_process,
             MPI_Finalize();
             exit(1);
           }
-          MPI_Recv(pc, worker_count, MPI_FLOAT, worker_rank, 0,
-                   coordinator_process.communicator, MPI_STATUSES_IGNORE);
-          MPI_Recv(qc, worker_count, MPI_FLOAT, worker_rank, 0,
-                   coordinator_process.communicator, MPI_STATUSES_IGNORE);
+          MPI_Recv(pc, worker_count, MPI_FLOAT, worker_rank, 0, comm,
+                   MPI_STATUSES_IGNORE);
+          MPI_Recv(qc, worker_count, MPI_FLOAT, worker_rank, 0, comm,
+                   MPI_STATUSES_IGNORE);
         }
         for (size_t z = STENCIL; z < worker_sizes[2] - STENCIL; z++) {
           for (size_t y = STENCIL; y < worker_sizes[1] - STENCIL; y++) {

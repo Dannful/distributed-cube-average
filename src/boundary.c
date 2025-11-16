@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include "boundary.h"
-#include "worker.h"
+#include "indexing.h"
 
 void randomVelocityBoundary(int sx, int sy, int sz, int nx, int ny, int nz,
                             int bord, int absorb, float *vpz, float *vsv,

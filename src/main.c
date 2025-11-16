@@ -9,6 +9,7 @@
 #include "log.h"
 #include "precomp.h"
 #include "setup.h"
+#include "indexing.h"
 #include "worker.h"
 
 static struct argp_option options[] = {
@@ -116,9 +117,9 @@ int main(int argc, char **argv) {
     problem_data_t problem_data = dc_initialize_problem(
         communicator, (unsigned int *)topology, STENCIL, size, arguments);
     dc_log_info(rank, "Partitioning cube...");
-    dc_partition_cube(&problem_data, mpi_process.precomp_vars);
+    dc_partition_cube(&problem_data, communicator, mpi_process.precomp_vars);
     dc_log_info(rank, "Partition completed. Sending data to workers...");
-    dc_send_data_to_workers(problem_data);
+    dc_send_data_to_workers(problem_data, communicator);
     memcpy(mpi_process.sizes, problem_data.worker_sizes[0],
            sizeof(size_t) * DIMENSIONS);
     size_t coordinator_size =
@@ -145,14 +146,14 @@ int main(int argc, char **argv) {
     dc_free_problem_data_mem(&problem_data);
   } else {
     dc_log_info(rank, "Awaiting data from coordinator...");
-    dc_worker_receive_data(&mpi_process);
+    dc_worker_receive_data(&mpi_process, communicator);
     dc_log_info(rank, "Data received from coordinator.");
   }
   dc_log_info(rank, "Starting worker process...");
-  dc_worker_process(&mpi_process);
-  dc_send_data_to_coordinator(mpi_process);
+  dc_worker_process(&mpi_process, communicator);
+  dc_send_data_to_coordinator(mpi_process, communicator);
   if (rank == COORDINATOR) {
-    dc_result_t result = dc_receive_data_from_workers(mpi_process, sx, sy, sz);
+    dc_result_t result = dc_receive_data_from_workers(mpi_process, communicator, sx, sy, sz);
     FILE *output = fopen(arguments.output_file, "wb");
     fwrite(result.pc, sizeof(float), sx * sy * sz, output);
     fwrite(result.qc, sizeof(float), sx * sy * sz, output);

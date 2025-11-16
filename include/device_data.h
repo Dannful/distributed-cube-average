@@ -2,7 +2,8 @@
 #define DC_DEVICE_DATA_H
 
 #include "precomp.h"
-#include "setup.h"
+#include "definitions.h"
+#include "dc_process.h"
 
 #ifdef __cplusplus
 extern "C" {

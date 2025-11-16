@@ -1,7 +1,5 @@
 #pragma once
 
-#include "setup.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -10,7 +8,7 @@ extern "C" {
 #define DC_PROPAGATE_H
 
 #include "device_data.h"
-#include "setup.h"
+#include "definitions.h"
 
 void dc_propagate(const size_t start_coords[DIMENSIONS],
                   const size_t end_coords[DIMENSIONS],

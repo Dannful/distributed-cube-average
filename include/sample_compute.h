@@ -1,7 +1,8 @@
 #pragma once
 
 #include "derivatives.h"
-#include "worker.h"
+#include "indexing.h"
+#include "precomp.h"
 
 static inline HOST_DEVICE void
 sample_compute(size_t x, size_t y, size_t z, const size_t *sizes,

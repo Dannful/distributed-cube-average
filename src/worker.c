@@ -7,18 +7,18 @@
 #include "calculate_source.h"
 #include "coordinator.h"
 #include "device_data.h"
+#include "indexing.h"
 #include "log.h"
 #include "propagate.h"
-#include "setup.h"
 #include "worker.h"
 
-void dc_worker_receive_data(dc_process_t *process) {
-  MPI_Recv(&process->source_index, 1, MPI_INT, COORDINATOR, MPI_ANY_TAG,
-           process->communicator, MPI_STATUS_IGNORE);
+void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm) {
+  MPI_Recv(&process->source_index, 1, MPI_INT, COORDINATOR, MPI_ANY_TAG, comm,
+           MPI_STATUS_IGNORE);
   MPI_Recv(&process->iterations, 1, MPI_UINT32_T, COORDINATOR, MPI_ANY_TAG,
-           process->communicator, MPI_STATUS_IGNORE);
+           comm, MPI_STATUS_IGNORE);
   MPI_Recv(process->sizes, DIMENSIONS, MPI_UNSIGNED_LONG, COORDINATOR,
-           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
 
   size_t count = dc_compute_count_from_sizes(process->sizes);
   process->pp = (float *)malloc(count * sizeof(float));
@@ -54,14 +54,14 @@ void dc_worker_receive_data(dc_process_t *process) {
     exit(1);
   }
 
-  MPI_Recv(process->pp, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG,
-           process->communicator, MPI_STATUS_IGNORE);
-  MPI_Recv(process->pc, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG,
-           process->communicator, MPI_STATUS_IGNORE);
-  MPI_Recv(process->qp, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG,
-           process->communicator, MPI_STATUS_IGNORE);
-  MPI_Recv(process->qc, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG,
-           process->communicator, MPI_STATUS_IGNORE);
+  MPI_Recv(process->pp, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG, comm,
+           MPI_STATUS_IGNORE);
+  MPI_Recv(process->pc, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG, comm,
+           MPI_STATUS_IGNORE);
+  MPI_Recv(process->qp, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG, comm,
+           MPI_STATUS_IGNORE);
+  MPI_Recv(process->qc, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG, comm,
+           MPI_STATUS_IGNORE);
 
   process->precomp_vars.ch1dxx = (float *)malloc(count * sizeof(float));
   if (process->precomp_vars.ch1dxx == NULL) {
@@ -141,28 +141,28 @@ void dc_worker_receive_data(dc_process_t *process) {
   }
 
   MPI_Recv(process->precomp_vars.ch1dxx, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
   MPI_Recv(process->precomp_vars.ch1dyy, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
   MPI_Recv(process->precomp_vars.ch1dzz, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
   MPI_Recv(process->precomp_vars.ch1dxy, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
   MPI_Recv(process->precomp_vars.ch1dyz, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
   MPI_Recv(process->precomp_vars.ch1dxz, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
   MPI_Recv(process->precomp_vars.v2px, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
   MPI_Recv(process->precomp_vars.v2pz, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
   MPI_Recv(process->precomp_vars.v2sz, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
   MPI_Recv(process->precomp_vars.v2pn, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, process->communicator, MPI_STATUS_IGNORE);
+           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
 }
 
-void dc_send_halo_to_neighbours(dc_process_t process, int tag,
+void dc_send_halo_to_neighbours(dc_process_t process, MPI_Comm comm, int tag,
                                 dc_device_data *data, float *from,
                                 worker_requests_t *requests) {
   worker_requests_t reqs;
@@ -248,14 +248,14 @@ void dc_send_halo_to_neighbours(dc_process_t process, int tag,
                                 process.sizes, from);
 
     reqs.buffers_to_free[reqs.count] = send_buffer;
-    MPI_Isend(send_buffer, data_size, MPI_FLOAT, neighbour_rank, tag,
-              process.communicator, &reqs.requests[reqs.count]);
+    MPI_Isend(send_buffer, data_size, MPI_FLOAT, neighbour_rank, tag, comm,
+              &reqs.requests[reqs.count]);
     reqs.count++;
   }
   dc_concatenate_worker_requests(process.rank, requests, &reqs);
 }
 
-worker_halos_t dc_receive_halos(dc_process_t process, int tag) {
+worker_halos_t dc_receive_halos(dc_process_t process, MPI_Comm comm, int tag) {
   worker_halos_t result;
   size_t radius = STENCIL;
   result.halo_count = 0;
@@ -315,7 +315,7 @@ worker_halos_t dc_receive_halos(dc_process_t process, int tag) {
     }
 
     MPI_Irecv(result.halo_data[face_index], recv_data_size, MPI_FLOAT,
-              neighbour_rank, tag, process.communicator,
+              neighbour_rank, tag, comm,
               &result.requests.requests[result.requests.count]);
 
     result.halo_count++;
@@ -358,18 +358,17 @@ void dc_compute_interior(const dc_process_t *process, dc_device_data *data) {
                process->dt);
 }
 
-void dc_send_data_to_coordinator(dc_process_t process) {
+void dc_send_data_to_coordinator(dc_process_t process, MPI_Comm comm) {
   if (process.rank == COORDINATOR)
     return;
-  MPI_Send(process.sizes, DIMENSIONS, MPI_UNSIGNED_LONG, COORDINATOR, 0,
-           process.communicator);
+  MPI_Send(process.sizes, DIMENSIONS, MPI_UNSIGNED_LONG, COORDINATOR, 0, comm);
   MPI_Send(process.pc, dc_compute_count_from_sizes(process.sizes), MPI_FLOAT,
-           COORDINATOR, 0, process.communicator);
+           COORDINATOR, 0, comm);
   MPI_Send(process.qc, dc_compute_count_from_sizes(process.sizes), MPI_FLOAT,
-           COORDINATOR, 0, process.communicator);
+           COORDINATOR, 0, comm);
 }
 
-void dc_worker_process(dc_process_t *process) {
+void dc_worker_process(dc_process_t *process, MPI_Comm comm) {
   worker_requests_t all_send_requests;
   all_send_requests.buffers_to_free = NULL;
   all_send_requests.requests = NULL;
@@ -391,13 +390,13 @@ void dc_worker_process(dc_process_t *process) {
 
     dc_device_data_copy_to_device_copies(data, process->sizes);
 
-    worker_halos_t new_pp_halos = dc_receive_halos(*process, PP_TAG);
-    worker_halos_t new_qp_halos = dc_receive_halos(*process, QP_TAG);
+    worker_halos_t new_pp_halos = dc_receive_halos(*process, comm, PP_TAG);
+    worker_halos_t new_qp_halos = dc_receive_halos(*process, comm, QP_TAG);
 
     dc_compute_boundaries(process, data);
-    dc_send_halo_to_neighbours(*process, PP_TAG, data, data->pp,
+    dc_send_halo_to_neighbours(*process, comm, PP_TAG, data, data->pp,
                                &all_send_requests);
-    dc_send_halo_to_neighbours(*process, QP_TAG, data, data->qp,
+    dc_send_halo_to_neighbours(*process, comm, QP_TAG, data, data->qp,
                                &all_send_requests);
     dc_compute_interior(process, data);
 
@@ -527,14 +526,6 @@ void dc_concatenate_worker_requests(int rank, worker_requests_t *target,
   source->requests = NULL;
   source->buffers_to_free = NULL;
   source->count = 0;
-}
-
-size_t dc_compute_count_from_sizes(size_t sizes[DIMENSIONS]) {
-  size_t count = 1;
-  for (int i = 0; i < DIMENSIONS; i++) {
-    count *= sizes[i];
-  }
-  return count;
 }
 
 void dc_worker_swap_arrays(dc_process_t *process) {

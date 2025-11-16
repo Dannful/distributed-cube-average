@@ -15,7 +15,6 @@ dc_process_t dc_process_init(MPI_Comm communicator, int rank,
                              size_t sz, float dx, float dy, float dz,
                              float dt) {
   dc_process_t process;
-  process.communicator = communicator;
   process.rank = rank;
   process.dx = dx;
   process.dy = dy;
@@ -49,7 +48,7 @@ dc_process_t dc_process_init(MPI_Comm communicator, int rank,
           process.neighbours[face_index] = MPI_PROC_NULL;
           continue;
         }
-        MPI_Cart_rank(process.communicator, target_coords,
+        MPI_Cart_rank(communicator, target_coords,
                       process.neighbours + face_index);
       }
     }

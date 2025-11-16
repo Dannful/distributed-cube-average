@@ -1,6 +1,7 @@
 #include "device_data.h"
+#include "indexing.h"
 #include "log.h"
-#include "worker.h"
+#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

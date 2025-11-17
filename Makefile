@@ -17,7 +17,10 @@ CUDA_LDFLAGS = -L/usr/local/cuda/lib64 -lcudart
 SOURCES_C_COMMON = $(filter-out $(wildcard $(SRCDIR)/*_propagate.c) $(SRCDIR)/device_data.c $(SRCDIR)/derivatives.c $(SRCDIR)/sample.c, $(wildcard $(SRCDIR)/*.c))
 
 # Add backend-specific sources and flags
-ifeq ($(BACKEND), openmp)
+ifeq ($(BACKEND), $(filter $(BACKEND), openmp simgrid))
+	ifeq ($(BACKEND), simgrid)
+		CC := smpicc
+	endif
 	SOURCES_C := $(SOURCES_C_COMMON) $(SRCDIR)/openmp_propagate.c $(SRCDIR)/device_data.c
 	SOURCES_CUDA :=
 	CFLAGS += -fopenmp
@@ -26,7 +29,7 @@ else ifeq ($(BACKEND), cuda)
 	SOURCES_C := $(SOURCES_C_COMMON)
 	SOURCES_CUDA := $(SRCDIR)/cuda_propagate.cu $(SRCDIR)/device_data.cu
 else
-	$(error Unsupported backend: $(BACKEND). Currently, only 'openmp' or 'cuda' are supported)
+	$(error Unsupported backend: $(BACKEND). Currently, only 'openmp', 'simgrid' or 'cuda' are supported)
 endif
 
 OBJECTS_C = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SOURCES_C))

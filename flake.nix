@@ -21,11 +21,24 @@
         pname = "dc";
         version = "0.1.0";
         src = ./.;
-        nativeBuildInputs = with pkgs; [gnumake openmpi akypuera];
+        nativeBuildInputs = with pkgs; [gnumake openmpi mpiP];
         buildPhase = "make all";
         installPhase = ''
           mkdir -p $out/bin
           cp bin/dc $out/bin
+        '';
+      };
+      dc-simgrid = pkgs.stdenv.mkDerivation {
+        pname = "dc";
+        version = "0.1.0";
+        src = ./.;
+        nativeBuildInputs = with pkgs; [gnumake openmpi simgrid];
+        buildPhase = "make all BACKEND=simgrid";
+        installPhase = ''
+          mkdir -p $out/bin
+          cp bin/dc $out/bin
+          cp platform.xml $out/
+          cp hostfile.txt $out/
         '';
       };
 
@@ -33,14 +46,17 @@
         pname = "dc-cuda";
         version = "0.1.0";
         src = ./.;
-        nativeBuildInputs = with pkgs; [gnumake openmpi akypuera cudatoolkit];
+        nativeBuildInputs = with pkgs; [gnumake openmpi mpiP cudatoolkit];
         buildPhase = "make all BACKEND=cuda";
         installPhase = ''
           mkdir -p $out/bin
-          cp bin/dc $out/bin/dc-cuda
+          cp bin/dc $out/bin/dc
         '';
       };
 
+      mpiP = import ./mpiP.nix {
+        inherit pkgs;
+      };
       rEnv = pkgs.rWrapper.override {
         packages = with pkgs.rPackages; [
           languageserver
@@ -57,11 +73,10 @@
           pkgs.openmpi
           pkgs.clang-tools
           pkgs.llvmPackages.openmp
+          pkgs.simgrid
           rEnv
           akypuera
           pajeng
-          dc
-          dc-cuda
         ];
         shellHook = ''
           export PATH=${pkgs.clang-tools}/bin/clangd:$PATH
@@ -70,7 +85,30 @@
       };
       packages = {
         script = pkgs.writeShellScriptBin "run-dc" ''
-          ${pkgs.openmpi}/bin/mpirun -np 8 --bind-to none ${dc}/bin/dc --size-x=100 --size-y=100 --size-z=100 --absorption=0.1 --dx=0.1 --dy=0.1 --dz=0.1 --dt=0.000110 --time-max=0.00110 --output-file=./validation/predicted.dc
+          size_x=52
+          size_y=52
+          size_z=52
+          absorption=2
+          dx=1e-1
+          dy=1e-1
+          dz=1e-1
+          dt=1e-6
+          tmax=1e-4
+
+          ${pkgs.openmpi}/bin/mpirun -np 8 --bind-to none ${dc}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
+        '';
+        simgrid = pkgs.writeShellScriptBin "run-simgrid" ''
+          size_x=52
+          size_y=52
+          size_z=52
+          absorption=2
+          dx=1e-1
+          dy=1e-1
+          dz=1e-1
+          dt=1e-6
+          tmax=1e-4
+
+          ${pkgs.simgrid}/bin/smpirun -platform ${dc-simgrid}/platform.xml --cfg=smpi/display-timing:yes -trace --cfg=tracing/filename:lu.S.4.trace -hostfile ${dc-simgrid}/hostfile.txt ${dc-simgrid}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
         '';
         comparison = pkgs.writeShellScriptBin "run-dc-comparison" ''
           export PATH=${pkgs.cudatoolkit}/bin:$PATH
@@ -119,9 +157,9 @@
           type = "app";
           program = "${self.packages.${system}.script}/bin/run-dc";
         };
-        cuda = {
+        simgrid = {
           type = "app";
-          program = "${self.packages.${system}.script}/bin/run-dc";
+          program = "${self.packages.${system}.simgrid}/bin/run-simgrid";
         };
         comparison = {
           type = "app";

@@ -4,3 +4,4 @@ result
 nohup.out
 *.dc
 *.rst
+*.trace

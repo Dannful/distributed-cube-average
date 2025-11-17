@@ -1,0 +1,15 @@
+<?xml version='1.0'?>
+<!DOCTYPE platform SYSTEM "https://simgrid.org/simgrid.dtd">
+<platform version="4.1">
+  <zone id="AS5-4" routing="Full">
+    <cluster
+      id="cluster"
+      prefix="host"
+      suffix=""
+      core="1"
+      radical="0-7"
+      speed="1Gf"
+      bw="100Mbps"
+      lat="20us" />
+  </zone>
+</platform>

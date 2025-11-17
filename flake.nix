@@ -74,6 +74,7 @@
           pkgs.clang-tools
           pkgs.llvmPackages.openmp
           pkgs.simgrid
+          pkgs.vite
           rEnv
           akypuera
           pajeng

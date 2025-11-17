@@ -1,6 +1,5 @@
 #pragma once
 
-#include "precomp.h"
 #include <mpi.h>
 
 #include "definitions.h"

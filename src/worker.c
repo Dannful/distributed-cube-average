@@ -13,12 +13,12 @@
 #include "worker.h"
 
 void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm) {
-  MPI_Recv(&process->source_index, 1, MPI_INT, COORDINATOR, MPI_ANY_TAG, comm,
+  MPI_Recv(&process->source_index, 1, MPI_INT, COORDINATOR, 0, comm,
            MPI_STATUS_IGNORE);
-  MPI_Recv(&process->iterations, 1, MPI_UINT32_T, COORDINATOR, MPI_ANY_TAG,
-           comm, MPI_STATUS_IGNORE);
-  MPI_Recv(process->sizes, DIMENSIONS, MPI_UNSIGNED_LONG, COORDINATOR,
-           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
+  MPI_Recv(&process->iterations, 1, MPI_UINT32_T, COORDINATOR, 0, comm,
+           MPI_STATUS_IGNORE);
+  MPI_Recv(process->sizes, DIMENSIONS, MPI_UNSIGNED_LONG, COORDINATOR, 0, comm,
+           MPI_STATUS_IGNORE);
 
   size_t count = dc_compute_count_from_sizes(process->sizes);
   process->pp = (float *)malloc(count * sizeof(float));
@@ -54,13 +54,13 @@ void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm) {
     exit(1);
   }
 
-  MPI_Recv(process->pp, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG, comm,
+  MPI_Recv(process->pp, count, MPI_FLOAT, COORDINATOR, 0, comm,
            MPI_STATUS_IGNORE);
-  MPI_Recv(process->pc, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG, comm,
+  MPI_Recv(process->pc, count, MPI_FLOAT, COORDINATOR, 0, comm,
            MPI_STATUS_IGNORE);
-  MPI_Recv(process->qp, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG, comm,
+  MPI_Recv(process->qp, count, MPI_FLOAT, COORDINATOR, 0, comm,
            MPI_STATUS_IGNORE);
-  MPI_Recv(process->qc, count, MPI_FLOAT, COORDINATOR, MPI_ANY_TAG, comm,
+  MPI_Recv(process->qc, count, MPI_FLOAT, COORDINATOR, 0, comm,
            MPI_STATUS_IGNORE);
 
   process->precomp_vars.ch1dxx = (float *)malloc(count * sizeof(float));
@@ -140,26 +140,26 @@ void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm) {
     exit(1);
   }
 
-  MPI_Recv(process->precomp_vars.ch1dxx, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
-  MPI_Recv(process->precomp_vars.ch1dyy, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
-  MPI_Recv(process->precomp_vars.ch1dzz, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
-  MPI_Recv(process->precomp_vars.ch1dxy, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
-  MPI_Recv(process->precomp_vars.ch1dyz, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
-  MPI_Recv(process->precomp_vars.ch1dxz, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
-  MPI_Recv(process->precomp_vars.v2px, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
-  MPI_Recv(process->precomp_vars.v2pz, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
-  MPI_Recv(process->precomp_vars.v2sz, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
-  MPI_Recv(process->precomp_vars.v2pn, count, MPI_FLOAT, COORDINATOR,
-           MPI_ANY_TAG, comm, MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.ch1dxx, count, MPI_FLOAT, COORDINATOR, 0, comm,
+           MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.ch1dyy, count, MPI_FLOAT, COORDINATOR, 0, comm,
+           MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.ch1dzz, count, MPI_FLOAT, COORDINATOR, 0, comm,
+           MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.ch1dxy, count, MPI_FLOAT, COORDINATOR, 0, comm,
+           MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.ch1dyz, count, MPI_FLOAT, COORDINATOR, 0, comm,
+           MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.ch1dxz, count, MPI_FLOAT, COORDINATOR, 0, comm,
+           MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.v2px, count, MPI_FLOAT, COORDINATOR, 0, comm,
+           MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.v2pz, count, MPI_FLOAT, COORDINATOR, 0, comm,
+           MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.v2sz, count, MPI_FLOAT, COORDINATOR, 0, comm,
+           MPI_STATUS_IGNORE);
+  MPI_Recv(process->precomp_vars.v2pn, count, MPI_FLOAT, COORDINATOR, 0, comm,
+           MPI_STATUS_IGNORE);
 }
 
 void dc_send_halo_to_neighbours(dc_process_t process, MPI_Comm comm, int tag,

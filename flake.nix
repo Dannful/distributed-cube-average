@@ -86,9 +86,9 @@
       };
       packages = {
         script = pkgs.writeShellScriptBin "run-dc" ''
-          size_x=52
-          size_y=52
-          size_z=52
+          size_x=100
+          size_y=100
+          size_z=100
           absorption=2
           dx=1e-1
           dy=1e-1
@@ -109,7 +109,9 @@
           dt=1e-6
           tmax=1e-4
 
-          ${pkgs.simgrid}/bin/smpirun -platform ${dc-simgrid}/platform.xml --cfg=smpi/display-timing:yes -trace --cfg=tracing/filename:lu.S.4.trace -hostfile ${dc-simgrid}/hostfile.txt ${dc-simgrid}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
+          ${pkgs.simgrid}/bin/smpirun -platform ${dc-simgrid}/platform.xml --cfg=smpi/display-timing:yes -trace --cfg=tracing/filename:dc.trace -hostfile ${dc-simgrid}/hostfile.txt ${dc-simgrid}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
+          ${pajeng}/bin/pj_dump dc.trace | grep ^State > dc.csv
+          Rscript ./plot.R
         '';
         comparison = pkgs.writeShellScriptBin "run-dc-comparison" ''
           export PATH=${pkgs.cudatoolkit}/bin:$PATH

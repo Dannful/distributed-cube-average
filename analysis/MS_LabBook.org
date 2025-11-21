@@ -611,3 +611,25 @@ df.iteration |>
   - If doesnt work, fallback to CPU-only with larger clusters such as
     - Nancy gros
     - Grenoble dahu
+** 2025-11-21
+*** Homogeneous scenarios with the same amount of GPUs in the same nodes
+*** SMPI: live execution (how to make it faster because emulation is sequential)
+https://simgrid.org/doc/latest/Tutorial_MPI_Applications.html#lab-3-execution-sampling-on-matrix-multiplication-example
+
+https://simgrid.org/doc/latest/app_smpi.html#toward-faster-simulations
+*** SMPI tracing using
+--cfg=precision/timing:1e-9 \
+	--cfg=tracing/precision:9 \
+
+=pj_dump -l 9=
+
+--cfg=smpi/host-speed:auto \
+*** Lille chuc
+https://www.grid5000.fr/w/Lille:Hardware#chuc
+*** G5K account
+https://www.grid5000.fr/w/Grid5000:Get_an_account
+UFRGS
+https://www.grid5000.fr/w/Special:G5KRequestAccountUMS
+Selecionar grupo 'ufrgs'
+*** How to run the simulation
+nix run .#simgrid

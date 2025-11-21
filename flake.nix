@@ -41,6 +41,19 @@
           cp hostfile.txt $out/
         '';
       };
+      dc-simgrid-cuda = pkgs.stdenv.mkDerivation {
+        pname = "dc";
+        version = "0.1.0";
+        src = ./.;
+        nativeBuildInputs = with pkgs; [gnumake openmpi simgrid cudatoolkit];
+        buildPhase = "make all BACKEND=simgrid_cuda";
+        installPhase = ''
+          mkdir -p $out/bin
+          cp bin/dc $out/bin
+          cp platform.xml $out/
+          cp hostfile.txt $out/
+        '';
+      };
 
       dc-cuda = pkgs.stdenv.mkDerivation {
         pname = "dc-cuda";
@@ -99,6 +112,20 @@
           ${pkgs.openmpi}/bin/mpirun -np 8 --bind-to none ${dc}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
         '';
         simgrid = pkgs.writeShellScriptBin "run-simgrid" ''
+          BACKEND=$1
+
+          if [ "$BACKEND" == "cuda" ]; then
+            echo "Using CUDA backend..."
+            APP_DIR=${dc-simgrid-cuda}
+          elif [ "$BACKEND" == "openmp" ]; then
+            echo "Using OpenMP backend..."
+            APP_DIR=${dc-simgrid}
+          else
+            echo "Error: Missing or invalid argument."
+            echo "Usage: nix run .#simgrid -- [openmp|cuda]"
+            exit 1
+          fi
+
           size_x=52
           size_y=52
           size_z=52
@@ -109,7 +136,8 @@
           dt=1e-6
           tmax=1e-4
 
-          ${pkgs.simgrid}/bin/smpirun -platform ${dc-simgrid}/platform.xml --cfg=smpi/display-timing:yes --cfg=precision/timing:1e-9 --cfg=tracing/precision:9 --cfg=smpi/host-speed:auto -trace --cfg=tracing/filename:dc.trace -hostfile ${dc-simgrid}/hostfile.txt ${dc-simgrid}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
+          ${pkgs.simgrid}/bin/smpirun -platform $APP_DIR/platform.xml --cfg=smpi/display-timing:yes --cfg=precision/timing:1e-9 --cfg=tracing/precision:9 --cfg=smpi/host-speed:auto -trace --cfg=tracing/filename:dc.trace -hostfile $APP_DIR/hostfile.txt $APP_DIR/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
+
           ${pajeng}/bin/pj_dump -l 9 dc.trace | grep ^State > dc.csv
           Rscript ./plot.R
         '';

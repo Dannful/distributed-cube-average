@@ -109,8 +109,8 @@
           dt=1e-6
           tmax=1e-4
 
-          ${pkgs.simgrid}/bin/smpirun -platform ${dc-simgrid}/platform.xml --cfg=smpi/display-timing:yes -trace --cfg=tracing/filename:dc.trace -hostfile ${dc-simgrid}/hostfile.txt ${dc-simgrid}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
-          ${pajeng}/bin/pj_dump dc.trace | grep ^State > dc.csv
+          ${pkgs.simgrid}/bin/smpirun -platform ${dc-simgrid}/platform.xml --cfg=smpi/display-timing:yes --cfg=precision/timing:1e-9 --cfg=tracing/precision:9 --cfg=smpi/host-speed:auto -trace --cfg=tracing/filename:dc.trace -hostfile ${dc-simgrid}/hostfile.txt ${dc-simgrid}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
+          ${pajeng}/bin/pj_dump -l 9 dc.trace | grep ^State > dc.csv
           Rscript ./plot.R
         '';
         comparison = pkgs.writeShellScriptBin "run-dc-comparison" ''

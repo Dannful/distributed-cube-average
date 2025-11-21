@@ -10,7 +10,7 @@ df |>
 mutate(Container = as.integer(gsub("rank-", "", Container)), Value = gsub("^PMPI_",
     "MPI_", Value)) |>
     # Rename some columns so it can better fit MPI terminology
-rename(Rank = Container, Operation = Value) -> df.states
+rename(Rank = Container, Operation = as.factor(Value)) -> df.states
 
 df.states |>
   filter(Operation == "MPI_Waitall") |>
@@ -38,5 +38,5 @@ df.states |>
           "pt"), legend.box.margin = margin(0, 0, 0, 0), legend.title = element_text(size = 10)) ->
     plot
 
-# Save the plot in a PNG file (dimensions in inches)
+# Save the plot in a PDF file (dimensions in inches)
 ggsave("smpi.pdf", plot, width = 10, height = 3)

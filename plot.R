@@ -16,7 +16,8 @@ read_csv("dc.csv",
     mutate(Container = as.integer(gsub("rank-", "", Container))) |>
     mutate(Value = gsub("^PMPI_", "MPI_", Value)) |>
     # Rename some columns so it can better fit MPI terminology
-    rename(Rank = Container, Operation = as.factor(Value)) -> df.states
+    mutate(Rank = Container) |>
+    mutate(Operation = as.factor(Value)) -> df.states
 
 # Let's disregard this for now
 

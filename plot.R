@@ -44,7 +44,9 @@ df.states |>
     mutate(C.Start = End) |>
     mutate(C.End = lead(Start)) |>
     mutate(C.Duration = C.End - C.Start) |>
-    summarize(Compute.Cost = sum(C.Duration, na.rm=TRUE))
+    summarize(Compute.Cost = sum(C.Duration, na.rm=TRUE)) |>
+    pull(Compute.Cost) |>
+    summary()
 
 # Draw the Gantt Chart
 df.states |>

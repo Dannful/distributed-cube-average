@@ -36,6 +36,15 @@ read_csv("dc.csv",
 #    filter(Start > df.start) |>
 #    filter(End < df.end)
 
+df.states |>
+    select(-Nature, -Container, -Duration) |>
+    group_by(Rank) |>
+    arrange(Start) |>
+    mutate(C.Start = End) |>
+    mutate(C.End = lead(Start)) |>
+    mutate(C.Duration = C.End - C.Start) |>
+    summarize(Compute.Cost = sum(C.Duration, na.rm=TRUE))
+
 # Draw the Gantt Chart
 df.states |>
     ggplot() + # Each MPI operation is becoming a rectangle ggplot() +

@@ -36,6 +36,7 @@ read_csv("dc.csv",
 #    filter(Start > df.start) |>
 #    filter(End < df.end)
 
+# The "Compute Cost" per rank
 df.states |>
     select(-Nature, -Container, -Duration) |>
     group_by(Rank) |>

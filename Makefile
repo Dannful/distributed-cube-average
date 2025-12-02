@@ -27,6 +27,8 @@ ifeq ($(BACKEND), $(filter $(BACKEND), openmp simgrid))
     ifeq ($(BACKEND), simgrid)
         CC := smpicc
         CFLAGS += -D_SMPI_ADD_SEMANTICS 
+		else
+				CFLAGS += -laky
     endif
     SOURCES_C := $(SOURCES_C_COMMON) $(SRCDIR)/openmp_propagate.c $(SRCDIR)/device_data.c
     SOURCES_CUDA :=
@@ -38,6 +40,7 @@ else ifeq ($(BACKEND), cuda)
     SOURCES_C := $(SOURCES_C_COMMON)
     SOURCES_CUDA := $(SRCDIR)/cuda_propagate.cu $(SRCDIR)/device_data.cu
     LDFLAGS += $(CUDA_LINK_LIBS)
+		CFLAGS += -laky
 
 # 3. SimGrid + CUDA (Simulated MPI + GPU)
 else ifeq ($(BACKEND), simgrid_cuda)

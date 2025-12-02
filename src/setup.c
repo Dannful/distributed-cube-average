@@ -1,4 +1,5 @@
 #include <mpi.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "setup.h"
@@ -11,9 +12,9 @@ void dc_mpi_world_init(MPI_Comm *communicator, const int topology[DIMENSIONS]) {
 }
 
 dc_process_t dc_process_init(MPI_Comm communicator, int rank,
-                             int topology[DIMENSIONS], size_t sx, size_t sy,
-                             size_t sz, float dx, float dy, float dz,
-                             float dt) {
+                             size_t num_workers, int topology[DIMENSIONS],
+                             size_t sx, size_t sy, size_t sz, float dx,
+                             float dy, float dz, float dt) {
   dc_process_t process;
   process.rank = rank;
   process.dx = dx;
@@ -21,6 +22,16 @@ dc_process_t dc_process_init(MPI_Comm communicator, int rank,
   process.dz = dz;
   process.dt = dt;
   process.source_index = -1;
+  process.num_workers = num_workers;
+
+  process.hostnames =
+
+      calloc(num_workers, sizeof(char) * MPI_MAX_PROCESSOR_NAME);
+  char hostname[MPI_MAX_PROCESSOR_NAME] = {0};
+  int length;
+  MPI_Get_processor_name(hostname, &length);
+  MPI_Allgather(hostname, MPI_MAX_PROCESSOR_NAME, MPI_CHAR, process.hostnames,
+                MPI_MAX_PROCESSOR_NAME, MPI_CHAR, communicator);
   memcpy(process.topology, topology, sizeof(int) * DIMENSIONS);
   MPI_Cart_coords(communicator, rank, DIMENSIONS, process.coordinates);
 

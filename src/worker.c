@@ -459,6 +459,9 @@ void dc_worker_free(dc_process_t process) {
   free(process.pc);
   free(process.qp);
   free(process.qc);
+
+  free(process.hostnames);
+  process.hostnames = NULL;
 }
 
 void dc_concatenate_worker_requests(int rank, worker_requests_t *target,

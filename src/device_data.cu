@@ -1,3 +1,4 @@
+#include "dc_process.h"
 #include "device_data.h"
 #include "indexing.h"
 #include <cuda_runtime.h>
@@ -14,6 +15,23 @@ static void check_cuda_error(cudaError_t err, int rank, const char *msg) {
   }
 }
 
+int select_device(dc_process_t *process) {
+  int device_count;
+  check_cuda_error(cudaGetDeviceCount(&device_count), process->rank,
+                   "cudaGetDeviceCount");
+  const int max_hostname_length = 256;
+  char *current_hostname =
+      process->hostnames + max_hostname_length * process->rank;
+  size_t current_index = 0;
+  for (int i = 0; i < process->num_workers && i != process->rank; i++) {
+    char *hostname = process->hostnames + max_hostname_length * i;
+    if (strcmp(current_hostname, hostname) == 0) {
+      current_index++;
+    }
+  }
+  return current_index % device_count;
+}
+
 dc_device_data *dc_device_data_init(dc_process_t *process) {
   dc_device_data *data = (dc_device_data *)malloc(sizeof(dc_device_data));
   if (data == NULL) {
@@ -24,10 +42,7 @@ dc_device_data *dc_device_data_init(dc_process_t *process) {
     exit(1);
   }
 
-  int device_count;
-  check_cuda_error(cudaGetDeviceCount(&device_count), process->rank,
-                   "cudaGetDeviceCount");
-  const int device = 0;
+  const int device = select_device(process);
   cudaDeviceProp device_prop;
   check_cuda_error(cudaGetDeviceProperties(&device_prop, device), process->rank,
                    "cudaGetDeviceProperties");

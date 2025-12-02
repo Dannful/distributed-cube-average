@@ -17,5 +17,6 @@ typedef enum {
 
 void dc_mpi_world_init(MPI_Comm *communicator, const int topology[DIMENSIONS]);
 dc_process_t dc_process_init(MPI_Comm communicator, int rank,
-                             int topology[DIMENSIONS], size_t sx, size_t sy,
-                             size_t sz, float dx, float dy, float dz, float dt);
+                             size_t num_workers, int topology[DIMENSIONS],
+                             size_t sx, size_t sy, size_t sz, float dx,
+                             float dy, float dz, float dt);

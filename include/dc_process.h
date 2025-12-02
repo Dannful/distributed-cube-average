@@ -16,4 +16,6 @@ typedef struct {
   dc_anisotropy_t anisotropy_vars;
   dc_precomp_vars precomp_vars;
   float *pp, *pc, *qp, *qc;
+  char *hostnames;
+  size_t num_workers;
 } dc_process_t;

@@ -98,8 +98,8 @@ int main(int argc, char **argv) {
       arguments.size_z + 2 * arguments.absorption_size + 2 * STENCIL;
 
   dc_process_t mpi_process =
-      dc_process_init(communicator, rank, topology, sx, sy, sz, arguments.dx,
-                      arguments.dy, arguments.dz, arguments.dt);
+      dc_process_init(communicator, rank, size, topology, sx, sy, sz,
+                      arguments.dx, arguments.dy, arguments.dz, arguments.dt);
   mpi_process.anisotropy_vars = dc_compute_anisotropy_vars(sx, sy, sz);
 
   double start_time = MPI_Wtime();

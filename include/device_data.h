@@ -1,5 +1,4 @@
-#ifndef DC_DEVICE_DATA_H
-#define DC_DEVICE_DATA_H
+#pragma once
 
 #include "dc_process.h"
 #include "definitions.h"
@@ -50,5 +49,3 @@ void dc_device_insert_halo_face(dc_device_data *data, const float *buffer,
 #ifdef __cplusplus
 }
 #endif
-
-#endif // DC_DEVICE_DATA_H

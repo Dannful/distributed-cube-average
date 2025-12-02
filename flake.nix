@@ -21,7 +21,7 @@
         pname = "dc";
         version = "0.1.0";
         src = ./.;
-        nativeBuildInputs = with pkgs; [gnumake openmpi mpiP];
+        nativeBuildInputs = with pkgs; [gnumake openmpi mpiP akypuera];
         buildPhase = "make all";
         installPhase = ''
           mkdir -p $out/bin
@@ -59,7 +59,7 @@
         pname = "dc-cuda";
         version = "0.1.0";
         src = ./.;
-        nativeBuildInputs = with pkgs; [gnumake openmpi mpiP cudatoolkit];
+        nativeBuildInputs = with pkgs; [gnumake openmpi mpiP cudatoolkit akypuera];
         buildPhase = "make all BACKEND=cuda";
         installPhase = ''
           mkdir -p $out/bin
@@ -99,6 +99,20 @@
       };
       packages = {
         script = pkgs.writeShellScriptBin "run-dc" ''
+          BACKEND=$1
+
+          if [ "$BACKEND" == "cuda" ]; then
+            echo "Using CUDA backend..."
+            APP_DIR=${dc-cuda}
+          elif [ "$BACKEND" == "openmp" ]; then
+            echo "Using OpenMP backend..."
+            APP_DIR=${dc}
+          else
+            echo "Error: Missing or invalid argument."
+            echo "Usage: nix run .#default -- [openmp|cuda]"
+            exit 1
+          fi
+
           size_x=100
           size_y=100
           size_z=100
@@ -109,7 +123,7 @@
           dt=1e-6
           tmax=1e-4
 
-          ${pkgs.openmpi}/bin/mpirun -np 8 --bind-to none ${dc}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
+          ${pkgs.openmpi}/bin/mpirun -np 8 --bind-to none $APP_DIR/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
         '';
         simgrid = pkgs.writeShellScriptBin "run-simgrid" ''
           BACKEND=$1

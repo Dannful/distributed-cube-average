@@ -5,3 +5,5 @@ nohup.out
 *.dc
 *.rst
 *.trace
+smpi*
+*.csv

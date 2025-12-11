@@ -125,10 +125,11 @@
           dt=1e-6
           tmax=1e-4
 
-          ${pkgs.openmpi}/bin/mpirun -np 8 --bind-to none $APP_DIR/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
+          ${pkgs.openmpi}/bin/mpirun -np 6 --bind-to none $APP_DIR/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
         '';
         simgrid = pkgs.writeShellScriptBin "run-simgrid" ''
           BACKEND=$1
+          SIZE=$2
 
           if [ "$BACKEND" == "cuda" ]; then
             echo "Using CUDA backend..."
@@ -142,10 +143,15 @@
             exit 1
           fi
 
-          size_x=52
-          size_y=52
-          size_z=52
           absorption=2
+          size_x=$(( SIZE - 2 * absorption - 8 ))
+          size_y=$size_x
+          size_z=$size_y
+          if (( SIZE % 32 != 0 || SIZE <= 0 )); then
+            echo "Error: size must be divisible by 32 and positive"
+            exit 1
+          fi
+
           dx=1e-1
           dy=1e-1
           dz=1e-1
@@ -174,14 +180,14 @@
           OMP_NUM_THREADS=1 ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none ${dc}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/ground_truth.dc
 
           echo "Running OpenMP version..."
-          ${pkgs.openmpi}/bin/mpirun -np 8 --bind-to none ${dc}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/openmp_predicted.dc
+          ${pkgs.openmpi}/bin/mpirun -np 6 --bind-to none ${dc}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/openmp_predicted.dc
 
           echo "Comparing OpenMP with ground truth..."
           mv ./validation/openmp_predicted.dc ./validation/predicted.dc
           Rscript ./validation/CompareResults.R 0
 
           echo "Running CUDA version..."
-          ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none ${dc-cuda}/bin/dc-cuda --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
+          ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none ${dc-cuda}/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
 
           echo "Comparing CUDA with ground truth..."
 

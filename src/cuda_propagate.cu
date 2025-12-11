@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define THREADS_PER_BLOCK 16
+
 __global__ void
 propagate_kernel(const size_t *start_coords, const size_t *end_coords,
                  const size_t *sizes, const int *process_coordinates,
@@ -13,15 +15,16 @@ propagate_kernel(const size_t *start_coords, const size_t *end_coords,
                  const float *pp_in, const float *qp_in) {
   const size_t x = start_coords[0] + blockIdx.x * blockDim.x + threadIdx.x;
   const size_t y = start_coords[1] + blockIdx.y * blockDim.y + threadIdx.y;
-  const size_t z = start_coords[2] + blockIdx.z * blockDim.z + threadIdx.z;
 
-  if (x >= end_coords[0] || y >= end_coords[1] || z >= end_coords[2]) {
+  if (x >= end_coords[0] || y >= end_coords[1]) {
     return;
   }
 
-  sample_compute(x, y, z, sizes, process_coordinates, topology, dx, dy, dz, dt,
-                 pc, qc, pp_in, qp_in, pp_out, qp_out,
-                 (dc_precomp_vars *)precomp_vars);
+  for (size_t z = start_coords[2]; z < end_coords[2]; z++) {
+    sample_compute(x, y, z, sizes, process_coordinates, topology, dx, dy, dz,
+                   dt, pc, qc, pp_in, qp_in, pp_out, qp_out,
+                   (dc_precomp_vars *)precomp_vars);
+  }
 }
 
 extern "C" void dc_propagate(const size_t start_coords[DIMENSIONS],
@@ -52,14 +55,12 @@ extern "C" void dc_propagate(const size_t start_coords[DIMENSIONS],
   cudaMemcpy(d_topology, topology, sizeof(int) * DIMENSIONS,
              cudaMemcpyHostToDevice);
 
-  const dim3 threadsPerBlock(8, 8, 8);
+  const dim3 threadsPerBlock(THREADS_PER_BLOCK, THREADS_PER_BLOCK);
   const size_t nx = end_coords[0] - start_coords[0];
   const size_t ny = end_coords[1] - start_coords[1];
   const size_t nz = end_coords[2] - start_coords[2];
 
-  const dim3 numBlocks((nx + threadsPerBlock.x - 1) / threadsPerBlock.x,
-                       (ny + threadsPerBlock.y - 1) / threadsPerBlock.y,
-                       (nz + threadsPerBlock.z - 1) / threadsPerBlock.z);
+  const dim3 numBlocks(nx / threadsPerBlock.x, ny / threadsPerBlock.y);
 
   propagate_kernel<<<numBlocks, threadsPerBlock>>>(
       d_start_coords, d_end_coords, d_sizes, d_process_coordinates, d_topology,

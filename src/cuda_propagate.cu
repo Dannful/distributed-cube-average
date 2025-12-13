@@ -58,7 +58,6 @@ extern "C" void dc_propagate(const size_t start_coords[DIMENSIONS],
   const dim3 threadsPerBlock(THREADS_PER_BLOCK, THREADS_PER_BLOCK);
   const size_t nx = end_coords[0] - start_coords[0];
   const size_t ny = end_coords[1] - start_coords[1];
-  const size_t nz = end_coords[2] - start_coords[2];
 
   const dim3 numBlocks(nx / threadsPerBlock.x, ny / threadsPerBlock.y);
 

@@ -1,12 +1,23 @@
 {
-  inputs = {utils.url = "github:numtide/flake-utils";};
+  inputs = {
+    utils.url = "github:numtide/flake-utils";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
+    nixpkgs-cuda.url = "github:nixos/nixpkgs/nixos-24.11";
+  };
   outputs = {
     self,
     nixpkgs,
+    nixpkgs-cuda,
     utils,
   }:
     utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs {
+        inherit system;
+        config = {
+          allowUnfree = true;
+        };
+      };
+      pkgs-cuda = import nixpkgs-cuda {
         inherit system;
         config = {
           allowUnfree = true;
@@ -41,11 +52,11 @@
           cp hostfile.txt $out/
         '';
       };
-      dc-simgrid-cuda = pkgs.stdenv.mkDerivation {
+      dc-simgrid-cuda = pkgs-cuda.cudaPackages.backendStdenv.mkDerivation {
         pname = "dc";
         version = "0.1.0";
         src = ./.;
-        nativeBuildInputs = with pkgs; [gnumake openmpi simgrid cudatoolkit];
+        nativeBuildInputs = [pkgs.openmpi pkgs.simgrid pkgs-cuda.cudatoolkit];
         buildPhase = "make all BACKEND=simgrid_cuda";
         installPhase = ''
           mkdir -p $out/bin
@@ -55,11 +66,11 @@
         '';
       };
 
-      dc-cuda = pkgs.stdenv.mkDerivation {
+      dc-cuda = pkgs-cuda.cudaPackages.backendStdenv.mkDerivation {
         pname = "dc-cuda";
         version = "0.1.0";
         src = ./.;
-        nativeBuildInputs = with pkgs; [gnumake openmpi mpiP cudatoolkit akypuera];
+        nativeBuildInputs = [pkgs.openmpi pkgs-cuda.cudatoolkit akypuera];
         buildPhase = "make all BACKEND=cuda";
         installPhase = ''
           mkdir -p $out/bin
@@ -83,7 +94,7 @@
     in {
       devShell = pkgs.mkShell {
         buildInputs = [
-          pkgs.cudatoolkit
+          pkgs-cuda.cudatoolkit
           pkgs.openmpi
           pkgs.clang-tools
           pkgs.llvmPackages.openmp
@@ -96,7 +107,7 @@
         ];
         shellHook = ''
           export PATH=${pkgs.clang-tools}/bin/clangd:$PATH
-          export CUDA_PATH=${pkgs.cudatoolkit}
+          export CUDA_PATH=${pkgs-cuda.cudatoolkit}
         '';
       };
       packages = {
@@ -205,6 +216,7 @@
         '';
         default = dc;
         cuda = dc-cuda;
+        simgrid-cuda = dc-simgrid-cuda;
       };
       apps = {
         default = {

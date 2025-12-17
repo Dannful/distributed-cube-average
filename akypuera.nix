@@ -1,5 +1,4 @@
-{ pkgs ? import <nixpkgs> { } }:
-
+{pkgs ? import <nixpkgs> {}}:
 pkgs.stdenv.mkDerivation rec {
   pname = "akypuera";
   version = "0.1.0";
@@ -12,11 +11,11 @@ pkgs.stdenv.mkDerivation rec {
     fetchSubmodules = true;
   };
 
-  cmakeFlags = [ "DC_MAKE_SKIP_BUILD_RPATH=ON" ];
+  nativeBuildInputs = [pkgs.cmake pkgs.gnumake pkgs.gcc];
 
-  nativeBuildInputs = [ pkgs.cmake pkgs.gnumake pkgs.gcc ];
+  cmakeFlags = ["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"];
 
-  buildInputs = [ pkgs.openmpi pkgs.gcc ];
+  buildInputs = [pkgs.openmpi pkgs.gcc];
 
   installPhase = ''
     runHook preInstall

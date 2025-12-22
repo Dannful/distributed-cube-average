@@ -32,7 +32,7 @@
         pname = "dc";
         version = "0.1.0";
         src = ./.;
-        nativeBuildInputs = with pkgs; [gnumake openmpi mpiP akypuera];
+        nativeBuildInputs = with pkgs; [gnumake openmpi akypuera];
         buildPhase = "make all";
         installPhase = ''
           mkdir -p $out/bin
@@ -78,9 +78,6 @@
         '';
       };
 
-      mpiP = import ./mpiP.nix {
-        inherit pkgs;
-      };
       rEnv = pkgs.rWrapper.override {
         packages = with pkgs.rPackages; [
           languageserver
@@ -216,7 +213,6 @@
         '';
         default = dc;
         cuda = dc-cuda;
-        simgrid-cuda = dc-simgrid-cuda;
       };
       apps = {
         default = {

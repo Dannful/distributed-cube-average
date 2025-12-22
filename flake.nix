@@ -2,12 +2,10 @@
   inputs = {
     utils.url = "github:numtide/flake-utils";
     nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
-    nixpkgs-cuda.url = "github:nixos/nixpkgs/nixos-24.11";
   };
   outputs = {
     self,
     nixpkgs,
-    nixpkgs-cuda,
     utils,
   }:
     utils.lib.eachDefaultSystem (system: let
@@ -17,13 +15,6 @@
           allowUnfree = true;
         };
       };
-      pkgs-cuda = import nixpkgs-cuda {
-        inherit system;
-        config = {
-          allowUnfree = true;
-        };
-      };
-
       akypuera = import ./akypuera.nix {inherit pkgs;};
 
       pajeng = import ./pajeng.nix {inherit pkgs;};
@@ -52,11 +43,11 @@
           cp hostfile.txt $out/
         '';
       };
-      dc-simgrid-cuda = pkgs-cuda.cudaPackages.backendStdenv.mkDerivation {
+      dc-simgrid-cuda = pkgs.cudaPackages.backendStdenv.mkDerivation {
         pname = "dc";
         version = "0.1.0";
         src = ./.;
-        nativeBuildInputs = [pkgs.openmpi pkgs.simgrid pkgs-cuda.cudatoolkit];
+        nativeBuildInputs = with pkgs; [openmpi simgrid cudatoolkit];
         buildPhase = "make all BACKEND=simgrid_cuda";
         unpackPhase = ''
           mkdir source
@@ -71,11 +62,11 @@
         '';
       };
 
-      dc-cuda = pkgs-cuda.cudaPackages.backendStdenv.mkDerivation {
+      dc-cuda = pkgs.cudaPackages.backendStdenv.mkDerivation {
         pname = "dc-cuda";
         version = "0.1.0";
         src = ./.;
-        nativeBuildInputs = [pkgs.openmpi pkgs-cuda.cudatoolkit akypuera];
+        nativeBuildInputs = [pkgs.openmpi pkgs.cudatoolkit akypuera];
         buildPhase = "make all BACKEND=cuda";
         unpackPhase = ''
           mkdir source
@@ -101,7 +92,7 @@
     in {
       devShell = pkgs.mkShell {
         buildInputs = [
-          pkgs-cuda.cudatoolkit
+          pkgs.cudatoolkit
           pkgs.openmpi
           pkgs.clang-tools
           pkgs.llvmPackages.openmp
@@ -114,7 +105,7 @@
         ];
         shellHook = ''
           export PATH=${pkgs.clang-tools}/bin/clangd:$PATH
-          export CUDA_PATH=${pkgs-cuda.cudatoolkit}
+          export CUDA_PATH=${pkgs.cudatoolkit}
         '';
       };
       packages = {

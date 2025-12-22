@@ -58,6 +58,11 @@
         src = ./.;
         nativeBuildInputs = [pkgs.openmpi pkgs.simgrid pkgs-cuda.cudatoolkit];
         buildPhase = "make all BACKEND=simgrid_cuda";
+        unpackPhase = ''
+          mkdir source
+          cp -r --no-preserve=mode,ownership $src/* source/
+          cd source
+        '';
         installPhase = ''
           mkdir -p $out/bin
           cp bin/dc $out/bin
@@ -72,6 +77,11 @@
         src = ./.;
         nativeBuildInputs = [pkgs.openmpi pkgs-cuda.cudatoolkit akypuera];
         buildPhase = "make all BACKEND=cuda";
+        unpackPhase = ''
+          mkdir source
+          cp -r --no-preserve=mode,ownership $src/* source/
+          cd source
+        '';
         installPhase = ''
           mkdir -p $out/bin
           cp bin/dc $out/bin/dc

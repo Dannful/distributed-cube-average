@@ -143,6 +143,39 @@
           if [ "$BACKEND" == "cuda" ]; then
             echo "Using CUDA backend..."
             APP_DIR=${dc-simgrid-cuda}
+
+            DRIVER_SANDBOX=$(mktemp -d)
+            trap "rm -rf $DRIVER_SANDBOX" EXIT
+            POSSIBLE_PATHS=(
+              "/usr/lib/x86_64-linux-gnu"
+              "/usr/lib64"
+              "/usr/lib/wsl/lib"
+              "/usr/lib"
+            )
+
+            FOUND_DRIVER=0
+            for libdir in "''${POSSIBLE_PATHS[@]}"; do
+              if [ -e "$libdir/libcuda.so.1" ]; then
+                echo "Found host CUDA driver in: $libdir"
+
+                ln -sf "$libdir/libcuda.so.1" "$DRIVER_SANDBOX/libcuda.so.1"
+                ln -sf "$libdir/libcuda.so.1" "$DRIVER_SANDBOX/libcuda.so"
+
+                if [ -e "$libdir/libnvidia-ptxjitcompiler.so.1" ]; then
+                    ln -sf "$libdir/libnvidia-ptxjitcompiler.so.1" "$DRIVER_SANDBOX/libnvidia-ptxjitcompiler.so.1"
+                fi
+
+                FOUND_DRIVER=1
+                break
+              fi
+            done
+
+            if [ "$FOUND_DRIVER" -eq 1 ]; then
+              export LD_LIBRARY_PATH="$DRIVER_SANDBOX:$LD_LIBRARY_PATH"
+            else
+              echo "WARNING: Could not find host libcuda.so.1. If you're not running on a NixOS, the simulation might crash."
+            fi
+
           elif [ "$BACKEND" == "openmp" ]; then
             echo "Using OpenMP backend..."
             APP_DIR=${dc-simgrid}
@@ -156,6 +189,7 @@
           size_x=$(( SIZE - 2 * absorption - 8 ))
           size_y=$size_x
           size_z=$size_y
+
           if (( SIZE % 32 != 0 || SIZE <= 0 )); then
             echo "Error: size must be divisible by 32 and positive"
             exit 1
@@ -168,10 +202,22 @@
           tmax=1e-4
 
           export OMP_NUM_THREADS=1
-          ${pkgs.simgrid}/bin/smpirun -platform $APP_DIR/platform.xml --cfg=smpi/display-timing:yes --cfg=precision/timing:1e-9 --cfg=tracing/precision:9 --cfg=smpi/host-speed:auto -trace --cfg=tracing/filename:dc.trace -hostfile $APP_DIR/hostfile.txt $APP_DIR/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
+
+          ${pkgs.simgrid}/bin/smpirun -platform $APP_DIR/platform.xml \
+            --cfg=smpi/display-timing:yes \
+            --cfg=precision/timing:1e-9 \
+            --cfg=tracing/precision:9 \
+            --cfg=smpi/host-speed:auto \
+            -trace --cfg=tracing/filename:dc.trace \
+            -hostfile $APP_DIR/hostfile.txt \
+            $APP_DIR/bin/dc \
+            --size-x=$size_x --size-y=$size_y --size-z=$size_z \
+            --absorption=$absorption \
+            --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax \
+            --output-file=./validation/predicted.dc
 
           ${pajeng}/bin/pj_dump -l 9 dc.trace | grep ^State > dc.csv
-          Rscript ./plot.R
+          ${rEnv}/bin/Rscript ./plot.R
         '';
         comparison = pkgs.writeShellScriptBin "run-dc-comparison" ''
           export PATH=${pkgs.cudatoolkit}/bin:$PATH

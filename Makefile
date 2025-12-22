@@ -1,73 +1,61 @@
-CC = mpicc
-NVCC = nvcc
+CC       = mpicc
+NVCC     = nvcc
 BACKEND ?= openmp
-ARCH ?= sm_89
+ARCH    ?= sm_89
 
-# Try to detect SimGrid path if not provided, defaults to /usr
-SIMGRID_PATH ?= /usr
-
-SRCDIR = src
-INCDIR = include
+SRCDIR   = src
+INCDIR   = include
 BUILDDIR = bin
-OBJDIR = $(BUILDDIR)/obj
+OBJDIR   = $(BUILDDIR)/obj
 
-CFLAGS = -I$(INCDIR) -Wall -O3
-LDFLAGS = -lm
+CFLAGS   = -I$(INCDIR) -Wall -O3
+LDFLAGS  = -lm
 
-# Standard NVCC flags
-CUDA_CFLAGS = -I$(INCDIR) -gencode arch=compute_$(subst sm_,,$(ARCH)),code=$(ARCH) -allow-unsupported-compiler
-
+CUDA_CFLAGS    = -I$(INCDIR) -gencode arch=compute_$(subst sm_,,$(ARCH)),code=$(ARCH) -allow-unsupported-compiler
 CUDA_LINK_LIBS = -L/usr/local/cuda/lib64 -lcudart
 
-# Generic sources, common to all backends
 SOURCES_C_COMMON = $(filter-out $(wildcard $(SRCDIR)/*_propagate.c) $(SRCDIR)/device_data.c $(SRCDIR)/derivatives.c $(SRCDIR)/sample.c, $(wildcard $(SRCDIR)/*.c))
 
-# 1. OpenMP or Standard SimGrid (CPU-only)
-ifeq ($(BACKEND), $(filter $(BACKEND), openmp simgrid))
-    ifeq ($(BACKEND), simgrid)
-        CC := smpicc
-        CFLAGS += -D_SMPI_ADD_SEMANTICS 
-		else
-				CFLAGS += -laky
-    endif
-    SOURCES_C := $(SOURCES_C_COMMON) $(SRCDIR)/openmp_propagate.c $(SRCDIR)/device_data.c
+ifeq ($(BACKEND), openmp)
+    SOURCES_C    := $(SOURCES_C_COMMON) $(SRCDIR)/openmp_propagate.c $(SRCDIR)/device_data.c
     SOURCES_CUDA :=
-    CFLAGS += -fopenmp
-    LDFLAGS += -fopenmp
+    CFLAGS       += -fopenmp
+    LDFLAGS      += -fopenmp -laky
 
-# 2. Native CUDA (Default MPI + GPU)
+else ifeq ($(BACKEND), simgrid)
+    CC           := smpicc
+    SOURCES_C    := $(SOURCES_C_COMMON) $(SRCDIR)/openmp_propagate.c $(SRCDIR)/device_data.c
+    SOURCES_CUDA :=
+    CFLAGS       += -D_SMPI_ADD_SEMANTICS
+
 else ifeq ($(BACKEND), cuda)
-    SOURCES_C := $(SOURCES_C_COMMON)
+    SOURCES_C    := $(SOURCES_C_COMMON)
     SOURCES_CUDA := $(SRCDIR)/cuda_propagate.cu $(SRCDIR)/device_data.cu
-    LDFLAGS += $(CUDA_LINK_LIBS)
-		CFLAGS += -laky
+    LDFLAGS      += $(CUDA_LINK_LIBS) -laky
 
-# 3. SimGrid + CUDA (Simulated MPI + GPU)
 else ifeq ($(BACKEND), simgrid_cuda)
-    CC := smpicc
-    SOURCES_C := $(SOURCES_C_COMMON)
+    CC           := smpicc
+    SOURCES_C    := $(SOURCES_C_COMMON)
     SOURCES_CUDA := $(SRCDIR)/cuda_propagate.cu $(SRCDIR)/device_data.cu
     
-    CUDA_CFLAGS += -I$(SIMGRID_PATH)/include
-    CUDA_CFLAGS += -ccbin g++ 
-    CFLAGS += -D_SMPI_ADD_SEMANTICS
-    CUDA_CFLAGS += -D_SMPI_ADD_SEMANTICS
-    
-    LDFLAGS += $(CUDA_LINK_LIBS)
+    CUDA_CFLAGS  += -Xcompiler -fPIC
+    CFLAGS       += -D_SMPI_ADD_SEMANTICS
+    CUDA_CFLAGS  += -D_SMPI_ADD_SEMANTICS
+    CUDA_CFLAGS  += -ccbin g++
+    LDFLAGS      += -L/usr/local/cuda/lib64 -lcudart_static -lstdc++ -lpthread -ldl -lrt
 
 else
-    $(error Unsupported backend: $(BACKEND). Supported: 'openmp', 'simgrid', 'cuda', 'simgrid_cuda')
+    $(error Unsupported backend: $(BACKEND). Supported: openmp, simgrid, cuda, simgrid_cuda)
 endif
 
-OBJECTS_C = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SOURCES_C))
+OBJECTS_C    = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SOURCES_C))
 OBJECTS_CUDA = $(patsubst $(SRCDIR)/%.cu,$(OBJDIR)/%.o,$(SOURCES_CUDA))
-OBJECTS = $(OBJECTS_C) $(OBJECTS_CUDA)
 
 TARGET = $(BUILDDIR)/dc
 
 all: $(TARGET)
 
-$(TARGET): $(OBJECTS)
+$(TARGET): $(OBJECTS_C) $(OBJECTS_CUDA)
 	@mkdir -p $(@D)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
@@ -80,7 +68,6 @@ $(OBJECTS_CUDA): $(OBJDIR)/%.o: $(SRCDIR)/%.cu
 	$(NVCC) -c $< -o $@ $(CUDA_CFLAGS)
 
 clean:
-	@echo "Cleaning compilation files..."
 	rm -rf $(BUILDDIR)
 
 .PHONY: all clean

@@ -246,16 +246,16 @@
 
           echo "Comparing CUDA with ground truth..."
 
-          echo "--- Comparison with tolerance 1e-3 ---"
+          echo "Comparison with tolerance 1e-3"
           Rscript ./validation/CompareResults.R 1e-3
 
-          echo "--- Comparison with tolerance 1e-5 ---"
+          echo "Comparison with tolerance 1e-5"
           Rscript ./validation/CompareResults.R 1e-5
 
-          echo "--- Comparison with tolerance 1e-7 ---"
+          echo "Comparison with tolerance 1e-7"
           Rscript ./validation/CompareResults.R 1e-7
 
-          echo "--- Comparison with tolerance 0 (exact) ---"
+          echo "Exact comparison"
           Rscript ./validation/CompareResults.R 0
         '';
         default = dc;

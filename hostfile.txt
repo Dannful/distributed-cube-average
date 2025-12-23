@@ -4,5 +4,3 @@ host2:1
 host3:1
 host4:1
 host5:1
-host6:1
-host7:1

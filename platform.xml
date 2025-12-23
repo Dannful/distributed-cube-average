@@ -7,9 +7,9 @@
       prefix="host"
       suffix=""
       core="1"
-      radical="0-7"
+      radical="0-5"
       speed="1Gf"
-      bw="100Mbps"
-      lat="20us" />
+      bw="1Gbps"
+      lat="60us" />
   </zone>
 </platform>

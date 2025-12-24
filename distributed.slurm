@@ -9,7 +9,6 @@
 
 MACHINEFILE="nodes.slurm"
 srun -l hostname | sort -n | awk '{print $2}' >$MACHINEFILE
-nix build .#cuda
 mpirun -np $SLURM_NTASKS \
   -machinefile $MACHINEFILE \
   --mca btl ^openib \

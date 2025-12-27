@@ -268,6 +268,14 @@
             --bind-to none \
             ${dc-cuda}/bin/dc --size-x=20 --size-y=20 --size_z=20 --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc
         '';
+        cei = pkgs.writeShellScriptBin "cei" ''
+          ${pkgs.openmpi}/bin/mpirun -np $1 \
+            -machinefile $2 \
+            --mca btl ^openib \
+            --mca btl_tcp_if_include 192.168.0.30/24 \
+            --bind-to none \
+            ${dc}/bin/dc --size-x=20 --size-y=20 --size_z=20 --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc
+        '';
       };
       apps = {
         default = {
@@ -285,6 +293,10 @@
         tupi = {
           type = "app";
           program = "${self.packages.${system}.tupi}/bin/tupi";
+        };
+        cei = {
+          type = "app";
+          program = "${self.packages.${system}.cei}/bin/cei";
         };
       };
     });

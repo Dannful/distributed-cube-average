@@ -136,7 +136,7 @@
 
           ${pkgs.openmpi}/bin/mpirun -np 6 --bind-to none $APP_DIR/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
         '';
-        cuda = pkgs.writeShellScriptBin "run-cuda" ''
+        cuda = pkgs.writeShellScriptBin "dc" ''
           DRIVER_SANDBOX=$(mktemp -d)
           trap "rm -rf $DRIVER_SANDBOX" EXIT
           POSSIBLE_PATHS=(

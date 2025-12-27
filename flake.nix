@@ -136,6 +136,41 @@
 
           ${pkgs.openmpi}/bin/mpirun -np 6 --bind-to none $APP_DIR/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
         '';
+        cuda = pkgs.writeShellScriptBin "run-cuda" ''
+          DRIVER_SANDBOX=$(mktemp -d)
+          trap "rm -rf $DRIVER_SANDBOX" EXIT
+          POSSIBLE_PATHS=(
+            "/usr/lib/x86_64-linux-gnu"
+            "/usr/lib64"
+            "/usr/lib/wsl/lib"
+            "/usr/lib"
+          )
+
+          FOUND_DRIVER=0
+          for libdir in "''${POSSIBLE_PATHS[@]}"; do
+            if [ -e "$libdir/libcuda.so.1" ]; then
+              echo "Found host CUDA driver in: $libdir"
+
+              ln -sf "$libdir/libcuda.so.1" "$DRIVER_SANDBOX/libcuda.so.1"
+              ln -sf "$libdir/libcuda.so.1" "$DRIVER_SANDBOX/libcuda.so"
+
+              if [ -e "$libdir/libnvidia-ptxjitcompiler.so.1" ]; then
+                  ln -sf "$libdir/libnvidia-ptxjitcompiler.so.1" "$DRIVER_SANDBOX/libnvidia-ptxjitcompiler.so.1"
+              fi
+
+              FOUND_DRIVER=1
+              break
+            fi
+          done
+
+          if [ "$FOUND_DRIVER" -eq 1 ]; then
+            export LD_LIBRARY_PATH="$DRIVER_SANDBOX:$LD_LIBRARY_PATH"
+          else
+            echo "WARNING: Could not find host libcuda.so.1. If you're not running on a NixOS, the simulation might crash."
+          fi
+
+          ${dc-cuda}/bin/dc $@
+        '';
         simgrid = pkgs.writeShellScriptBin "run-simgrid" ''
           BACKEND=$1
           SIZE=$2
@@ -259,7 +294,6 @@
           Rscript ./validation/CompareResults.R 0
         '';
         default = dc;
-        cuda = dc-cuda;
         tupi = pkgs.writeShellScriptBin "tupi" ''
           ${pkgs.openmpi}/bin/mpirun -np $1 \
             -machinefile $2 \

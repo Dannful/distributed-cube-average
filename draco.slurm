@@ -13,6 +13,6 @@ nix build
 mpirun -np $SLURM_NTASKS \
   -machinefile $MACHINEFILE \
   --mca btl ^openib \
-  --mca btl_tcp_if_include 192.168.0.30/24 \
+  --mca btl_tcp_if_include eno2 \
   --bind-to none \
-  nix shell -c ./result/bin/dc --size-x=20 --size-y=20 --size_z=20 --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc
+  nix shell -c ./result/bin/dc --size-x=20 --size-y=20 --size-z=20 --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc

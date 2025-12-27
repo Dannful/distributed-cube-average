@@ -298,18 +298,6 @@
           type = "app";
           program = "${self.packages.${system}.comparison}/bin/run-dc-comparison";
         };
-        tupi = {
-          type = "app";
-          program = "${self.packages.${system}.tupi}/bin/tupi";
-        };
-        cei = {
-          type = "app";
-          program = "${self.packages.${system}.cei}/bin/cei";
-        };
-        draco = {
-          type = "app";
-          program = "${self.packages.${system}.draco}/bin/draco";
-        };
       };
     });
 }

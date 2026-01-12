@@ -108,6 +108,10 @@ in
     ${selectAppLogic}
     shift 2
     
+    if [ "$PROFILE" == "mpip" ]; then
+       export MPIP="-k 2 -f ./dc.mpiP"
+    fi
+
     echo "Running direct binary execution (no mpirun): $APP_DIR/bin/dc $@"
     exec $APP_DIR/bin/dc "$@"
   '';

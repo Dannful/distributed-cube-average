@@ -104,6 +104,14 @@ in
     ${postProcessLogic}
   '';
 
+  dc = pkgs.writeShellScriptBin "dc" ''
+    ${selectAppLogic}
+    shift 2
+    
+    echo "Running direct binary execution (no mpirun): $APP_DIR/bin/dc $@"
+    exec $APP_DIR/bin/dc "$@"
+  '';
+
   run-simgrid = pkgs.writeShellScriptBin "run-simgrid" ''
     BACKEND=$1
     SIZE=$2

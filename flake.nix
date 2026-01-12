@@ -70,6 +70,10 @@
           type = "app";
           program = "${scripts.run-dc-comparison}/bin/run-dc-comparison";
         };
+        dc = {
+          type = "app";
+          program = "${scripts.dc}/bin/dc";
+        };
       };
     });
 }

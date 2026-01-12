@@ -9,7 +9,7 @@
 
 MACHINEFILE="nodes.slurm"
 srun -l hostname | sort -n | awk '{print $2 " slots=1"}' >$MACHINEFILE
-nix build .#dc-cuda-mpip
+nix build .#dc
 for i in 32 64 128 256 512; do
   i=$((i - 12))
   mpirun -np $SLURM_NTASKS \

@@ -9,7 +9,9 @@
 
 MACHINEFILE="nodes.slurm"
 srun -l hostname | sort -n | awk '{print $2 " slots=1"}' >$MACHINEFILE
+
 nix build .#dc
+
 for i in 32 64 128 256 512; do
   i=$((i - 12))
   mpirun -np $SLURM_NTASKS \
@@ -17,5 +19,10 @@ for i in 32 64 128 256 512; do
     --mca btl ^openib \
     --mca btl_tcp_if_include 192.168.30.0/24 \
     --bind-to none \
-    nix shell -c ./result/bin/dc --size-x=$i --size-y=$i --size-z=$i --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc
+    nix shell -c ./result/bin/dc cuda mpip --size-x=$i --size-y=$i --size-z=$i --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc >dc.mpiP 2>&1
+
+  path="analysis/$(date +'%Y-%m-%d')/$((i + 12))"
+  mkdir -p "$path"
+  mv *.mpiP "$path" 2>/dev/null
 done
+

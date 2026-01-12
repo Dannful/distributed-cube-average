@@ -19,7 +19,7 @@ for i in 32 64 128 256 512; do
     --mca btl ^openib \
     --mca btl_tcp_if_include eno2 \
     --bind-to none \
-    nix shell -c ./result/bin/dc openmp mpip --size-x=$i --size-y=$i --size-z=$i --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc
+    nix shell -c ./result/bin/dc openmp mpip --size-x=$i --size-y=$i --size-z=$i --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc >dc.mpiP 2>&1
 
   path="analysis/$(date +'%Y-%m-%d')/$((i + 12))"
   mkdir -p "$path"

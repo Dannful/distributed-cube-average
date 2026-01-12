@@ -109,7 +109,7 @@ in
     shift 2
     
     if [ "$PROFILE" == "mpip" ]; then
-       export MPIP="-k 2 -f ./dc.mpiP"
+       export MPIP="-k 2 -f $(pwd)/dc.mpiP"
     fi
 
     echo "Running direct binary execution (no mpirun): $APP_DIR/bin/dc $@"

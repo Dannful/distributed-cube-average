@@ -1,9 +1,10 @@
 .direnv
 bin
 result
-nohup.out
 *.dc
 *.rst
 *.trace
 smpi*
 *.csv
+*.output
+nohup.out

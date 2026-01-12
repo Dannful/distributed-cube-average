@@ -15,9 +15,9 @@
           allowUnfree = true;
         };
       };
-      akypuera = import ./akypuera.nix {inherit pkgs;};
-      pajeng = import ./pajeng.nix {inherit pkgs;};
-      mpiP = import ./mpiP.nix {inherit pkgs;};
+      akypuera = import ./nix/akypuera.nix {inherit pkgs;};
+      pajeng = import ./nix/pajeng.nix {inherit pkgs;};
+      mpiP = import ./nix/mpiP.nix {inherit pkgs;};
 
       rEnv = pkgs.rWrapper.override {
         packages = with pkgs.rPackages; [

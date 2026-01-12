@@ -24,17 +24,17 @@ if (is_mpip) {
   # Find Time section
   # @ Time (seconds)
   # @   App    MPI    %
-  time_idx <- grep("^@ Time (seconds)", lines)
+  time_idx <- grep("^@ Time \\(seconds\\)", lines)
   
   if (length(time_idx) > 0) {
     # Extract lines that look like data: "@   1.23   0.45  36.59"
     # We search in the lines following the header
     subset_lines <- lines[time_idx:length(lines)]
-    data_lines <- subset_lines[grep("^@ \s*[0-9.]+\s+[0-9.]+\s+[0-9.]+", subset_lines)]
+    data_lines <- subset_lines[grep("^@ \\s*[0-9.]+\\s+[0-9.]+\\s+[0-9.]+", subset_lines)]
     
     if (length(data_lines) > 0) {
       # Parse the first data line found (assuming aggregate or representative)
-      parsed_data <- str_match(data_lines[1], "^@ \s*([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)")
+      parsed_data <- str_match(data_lines[1], "^@ \\s*([0-9.]+)\\s+([0-9.]+)\\s+([0-9.]+)")
       
       if (!any(is.na(parsed_data))) {
         total_time <- as.numeric(parsed_data[2])

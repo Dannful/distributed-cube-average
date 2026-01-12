@@ -1,6 +1,7 @@
 CC       = mpicc
 NVCC     = nvcc
 BACKEND ?= openmp
+PROFILE ?= none
 ARCH    ?= sm_89
 
 SRCDIR   = src
@@ -16,11 +17,18 @@ CUDA_LINK_LIBS = -L/usr/local/cuda/lib64 -lcudart
 
 SOURCES_C_COMMON = $(filter-out $(wildcard $(SRCDIR)/*_propagate.c) $(SRCDIR)/device_data.c $(SRCDIR)/derivatives.c $(SRCDIR)/sample.c, $(wildcard $(SRCDIR)/*.c))
 
+# Profile configuration
+ifeq ($(PROFILE), mpip)
+    LDFLAGS += -lmpiP
+else ifeq ($(PROFILE), akypuera)
+    LDFLAGS += -laky
+endif
+
 ifeq ($(BACKEND), openmp)
     SOURCES_C    := $(SOURCES_C_COMMON) $(SRCDIR)/openmp_propagate.c $(SRCDIR)/device_data.c
     SOURCES_CUDA :=
     CFLAGS       += -fopenmp
-    LDFLAGS      += -fopenmp -laky
+    LDFLAGS      += -fopenmp
 
 else ifeq ($(BACKEND), simgrid)
     CC           := smpicc
@@ -31,7 +39,7 @@ else ifeq ($(BACKEND), simgrid)
 else ifeq ($(BACKEND), cuda)
     SOURCES_C    := $(SOURCES_C_COMMON)
     SOURCES_CUDA := $(SRCDIR)/cuda_propagate.cu $(SRCDIR)/device_data.cu
-    LDFLAGS      += $(CUDA_LINK_LIBS) -laky
+    LDFLAGS      += $(CUDA_LINK_LIBS)
 
 else ifeq ($(BACKEND), simgrid_cuda)
     CC           := smpicc

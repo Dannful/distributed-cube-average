@@ -150,12 +150,13 @@ if (is_mpip) {
     filter(Rank == 0, Duration > 0)
   
   if (nrow(df.overall) > 0) {
-    true_start <- max(df.overall |>
-      filter(Operation == "MPI_Send") |>
-      select(Start))
-      
-    if (is.infinite(true_start) || is.na(true_start) || nrow(df.overall |> filter(Operation == "MPI_Send")) == 0) {
-        true_start <- min(df.overall$Start)
+    # Check for MPI_Send operations first to avoid max() warning on empty set
+    df.sends <- df.overall |> filter(Operation == "MPI_Send")
+    
+    if (nrow(df.sends) > 0) {
+      true_start <- max(df.sends$Start)
+    } else {
+      true_start <- min(df.overall$Start)
     }
 
     df.overall <- df.overall |>

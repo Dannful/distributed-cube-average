@@ -146,19 +146,19 @@ if (is_mpip) {
   mid_breaks <- seq(min_rank + 0.5, max_rank + 0.5, by = 1)
   makespan <- max(df.states$End)
 
-  df.overall <- df.states |
+  df.overall <- df.states |>
     filter(Rank == 0, Duration > 0)
   
   if (nrow(df.overall) > 0) {
-    true_start <- max(df.overall |
-      filter(Operation == "MPI_Send") |
+    true_start <- max(df.overall |>
+      filter(Operation == "MPI_Send") |>
       select(Start))
       
     if (is.infinite(true_start) || is.na(true_start) || nrow(df.overall |> filter(Operation == "MPI_Send")) == 0) {
         true_start <- min(df.overall$Start)
     }
 
-    df.overall <- df.overall |
+    df.overall <- df.overall |>
       filter(Start >= true_start) |>
       select(Start, End, Duration)
     
@@ -177,7 +177,7 @@ if (is_mpip) {
   }
 
   # Draw the Gantt Chart
-  df.states |
+  df.states |>
     filter(Operation != "MPI_Allgather") |> 
     filter(Operation != "MPI_Finalize") |> 
     filter(Operation != "MPI_Init") |> 

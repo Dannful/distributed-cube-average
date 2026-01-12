@@ -22,36 +22,84 @@ if (is_mpip) {
   print(paste("Detected mpiP output in:", input_file))
   
   # Find Time section
-  # @ Time (seconds)
-  # @   App    MPI    %
-  time_idx <- grep("^@ Time \\(seconds\\)", lines)
+  # Header: @--- MPI Time (seconds) ----------------...
+  # Table:
+  # Task    AppTime    MPITime     MPI%
+  #    0      0.362     0.0704    19.46
+  # ...
+  #    *       2.15      0.487    22.65
+  time_idx <- grep("@.*Time.*seconds", lines)
   
   if (length(time_idx) > 0) {
-    # Extract lines that look like data: "@   1.23   0.45  36.59"
-    # We search in the lines following the header
-    subset_lines <- lines[time_idx:length(lines)]
-    data_lines <- subset_lines[grep("^@ \\s*[0-9.]+\\s+[0-9.]+\\s+[0-9.]+", subset_lines)]
+    # Look for the aggregate line (Task *) in the subsequent lines
+    # It usually starts with whitespace and a *
+    subset_lines <- lines[time_idx:min(time_idx+50, length(lines))]
     
-    if (length(data_lines) > 0) {
-      # Parse the first data line found (assuming aggregate or representative)
-      parsed_data <- str_match(data_lines[1], "^@ \\s*([0-9.]+)\\s+([0-9.]+)\\s+([0-9.]+)")
+    # Regex to match: spaces * spaces number spaces number ...
+    # Example: "   *       2.15      0.487    22.65"
+    agg_line_idx <- grep("^\\s*\\*\\s+[0-9.]+\\s+[0-9.]+", subset_lines)
+    
+    if (length(agg_line_idx) > 0) {
+      agg_line <- subset_lines[agg_line_idx[1]]
+      # Extract numbers: AppTime, MPITime
+      # Group 1: AppTime, Group 2: MPITime
+      parsed_data <- str_match(agg_line, "^\\s*\\*\\s+([0-9.]+)\\s+([0-9.]+)")
       
       if (!any(is.na(parsed_data))) {
+        # Note: In this mpiP output, AppTime is total app time, MPITime is time in MPI.
+        # But for "Task *", it is the SUM across all tasks.
+        # We might want the average or just report what is there.
+        # Typically "Task *" is the aggregate. 
+        # Wait, if we want wall-clock time, we should look at Task 0 or Max AppTime.
+        # However, let's stick to the extracted values first.
+        
+        # Actually, for "Task *", AppTime is often the Sum of AppTimes.
+        # Let's try to find the max total time if possible, or just use the aggregate as "Total core-seconds".
+        
+        # Let's assume the user wants the standard metrics derived from these.
         total_time <- as.numeric(parsed_data[2])
         mpi_time <- as.numeric(parsed_data[3])
         
         computation_time <- total_time - mpi_time
-        computation_percentage <- computation_time / total_time
+        
+        # Protect against division by zero
+        if (total_time > 0) {
+            computation_percentage <- computation_time / total_time
+        } else {
+            computation_percentage <- 0
+        }
         
         print(paste0("Total time: ", total_time))
         print(paste0("MPI time: ", mpi_time))
         print(paste0("Computation time: ", computation_time))
         print(paste0("Total coverage: ", computation_percentage))
       } else {
-        print("Error parsing data line in Time section.")
+        print("Error parsing aggregate line in Time section.")
       }
     } else {
-      print("No data lines found in Time section.")
+      # Fallback: Try to find "Task 0" if aggregate "*" is missing
+      task0_line_idx <- grep("^\\s*0\\s+[0-9.]+\\s+[0-9.]+", subset_lines)
+       if (length(task0_line_idx) > 0) {
+          print("Note: Aggregate line (*) not found, using Task 0.")
+          agg_line <- subset_lines[task0_line_idx[1]]
+          parsed_data <- str_match(agg_line, "^\\s*0\\s+([0-9.]+)\\s+([0-9.]+)")
+          if (!any(is.na(parsed_data))) {
+            total_time <- as.numeric(parsed_data[2])
+            mpi_time <- as.numeric(parsed_data[3])
+            computation_time <- total_time - mpi_time
+             if (total_time > 0) {
+                computation_percentage <- computation_time / total_time
+            } else {
+                computation_percentage <- 0
+            }
+            print(paste0("Total time: ", total_time))
+            print(paste0("MPI time: ", mpi_time))
+            print(paste0("Computation time: ", computation_time))
+            print(paste0("Total coverage: ", computation_percentage))
+          }
+       } else {
+          print("No data lines found in Time section.")
+       }
     }
   } else {
     print("No Time section found in mpiP output.")

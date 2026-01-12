@@ -24,7 +24,7 @@ if (is_mpip) {
   # Find Time section
   # @ Time (seconds)
   # @   App    MPI    %
-  time_idx <- grep("^@ Time \(seconds\)", lines)
+  time_idx <- grep("^@ Time (seconds)", lines)
   
   if (length(time_idx) > 0) {
     # Extract lines that look like data: "@   1.23   0.45  36.59"
@@ -141,18 +141,18 @@ if (is_mpip) {
       ),
       color = "grey85",
       linewidth = 0.1
-    ) +
+    ) + 
     geom_rect(
       aes(
         xmin = Start, xmax = End,
         ymin = Rank, ymax = Rank + 0.9,
         fill = Operation
       ) 
-    ) +
+    ) + 
     scale_y_continuous(
       breaks = mid_breaks,
       labels = seq(min_rank, max_rank, by = 1)
-    ) +
+    ) + 
     xlab("Time [seconds]") +
     ylab("Rank [count]") +
     scale_fill_manual(
@@ -170,14 +170,14 @@ if (is_mpip) {
         "MPI_Isend",
         "MPI_Waitall"
       )
-    ) +
+    ) + 
     geom_text(
       data = data.frame(x = makespan, y = (max_rank - min_rank) / 2),
       aes(x = x, y = y, label = paste0(round(makespan, 0))),
       inherit.aes = FALSE,
       angle = 90,
       size = 2.5
-    ) +
+    ) + 
     theme_bw(base_size = 10) +
     guides(fill = guide_legend(nrow = 1)) +
     theme(

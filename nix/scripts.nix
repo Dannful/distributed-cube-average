@@ -58,12 +58,15 @@ let
   postProcessLogic = ''
     echo "Starting post-processing for profile: $PROFILE"
     if [ "$PROFILE" == "mpip" ]; then
-       MPIP_FILE=$(ls dc.mpiP* 2>/dev/null | head -n 1)
+       MPIP_FILE=$(ls *.mpiP* 2>/dev/null | head -n 1)
        if [ -n "$MPIP_FILE" ]; then
          echo "Processing mpiP file: $MPIP_FILE"
          ${rEnv}/bin/Rscript ./plot.R $MPIP_FILE
+       elif [ -f "dc.output" ]; then
+         echo "No .mpiP file found. Attempting to parse dc.output..."
+         ${rEnv}/bin/Rscript ./plot.R dc.output
        else
-         echo "Warning: No mpiP output found (dc.mpiP*). Directory listing:"
+         echo "Warning: No mpiP output found (checked *.mpiP* and dc.output)."
          ls -la
        fi
     elif [ "$PROFILE" == "akypuera" ]; then
@@ -86,7 +89,7 @@ in
     ARGS="$@"
     
     # Cleanup
-    rm -f dc.mpiP* *.rst dc.trace dc.csv
+    rm -f dc.mpiP* *.rst dc.trace dc.csv dc.output
 
     # Environment
     MPI_ARGS=""
@@ -96,7 +99,7 @@ in
     fi
 
     echo "Running $APP_DIR/bin/dc with args: $ARGS"
-    ${pkgs.openmpi}/bin/mpirun -np 6 --bind-to none $MPI_ARGS $APP_DIR/bin/dc $ARGS
+    ${pkgs.openmpi}/bin/mpirun -np 6 --bind-to none $MPI_ARGS $APP_DIR/bin/dc $ARGS | tee dc.output
 
     ${postProcessLogic}
   '';
@@ -215,7 +218,7 @@ in
     shift 4
     ARGS="$@"
 
-    rm -f dc.mpiP* *.rst dc.trace dc.csv
+    rm -f dc.mpiP* *.rst dc.trace dc.csv dc.output
     
     MPI_ARGS=""
     if [ "$PROFILE" == "mpip" ]; then 
@@ -230,7 +233,7 @@ in
       --mca btl_tcp_if_include 192.168.0.30/24 \
       --bind-to none \
       $MPI_ARGS \
-      $APP_DIR/bin/dc $ARGS
+      $APP_DIR/bin/dc $ARGS | tee dc.output
     
     ${postProcessLogic}
   '';
@@ -242,7 +245,7 @@ in
     shift 4
     ARGS="$@"
 
-    rm -f dc.mpiP* *.rst dc.trace dc.csv
+    rm -f dc.mpiP* *.rst dc.trace dc.csv dc.output
     
     MPI_ARGS=""
     if [ "$PROFILE" == "mpip" ]; then 
@@ -257,7 +260,7 @@ in
       --mca btl_tcp_if_include 192.168.0.30/24 \
       --bind-to none \
       $MPI_ARGS \
-      $APP_DIR/bin/dc $ARGS
+      $APP_DIR/bin/dc $ARGS | tee dc.output
 
     ${postProcessLogic}
   '';
@@ -269,7 +272,7 @@ in
     shift 4
     ARGS="$@"
 
-    rm -f dc.mpiP* *.rst dc.trace dc.csv
+    rm -f dc.mpiP* *.rst dc.trace dc.csv dc.output
     
     MPI_ARGS=""
     if [ "$PROFILE" == "mpip" ]; then 
@@ -284,7 +287,7 @@ in
       --mca btl_tcp_if_include 192.168.0.30/24 \
       --bind-to none \
       $MPI_ARGS \
-      $APP_DIR/bin/dc $ARGS
+      $APP_DIR/bin/dc $ARGS | tee dc.output
 
     ${postProcessLogic}
   '';

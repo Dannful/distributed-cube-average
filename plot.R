@@ -12,14 +12,14 @@ if (!file.exists(input_file)) {
 }
 
 # Determine file type
-first_lines <- readLines(input_file, n = 20)
-is_mpip <- any(grepl("^@ MPIP Summary", first_lines)) || any(grepl("^@ Command :", first_lines))
+# Read file to detect format. 
+# We read the whole file (or enough of it) because mpiP output might be at the end of a log.
+lines <- readLines(input_file)
+is_mpip <- any(grepl("^@ MPIP Summary", lines)) || any(grepl("^@ Command :", lines))
 
 if (is_mpip) {
   # --- mpiP Parsing ---
   print(paste("Detected mpiP output in:", input_file))
-  
-  lines <- readLines(input_file)
   
   # Find Time section
   # @ Time (seconds)

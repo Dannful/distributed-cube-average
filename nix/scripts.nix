@@ -63,7 +63,8 @@ let
          echo "Processing mpiP file: $MPIP_FILE"
          ${rEnv}/bin/Rscript ./plot.R $MPIP_FILE
        else
-         echo "Warning: No mpiP output found (dc.mpiP*)."
+         echo "Warning: No mpiP output found (dc.mpiP*). Directory listing:"
+         ls -la
        fi
     elif [ "$PROFILE" == "akypuera" ]; then
        if ls rastro-*.rst 1> /dev/null 2>&1; then
@@ -88,12 +89,14 @@ in
     rm -f dc.mpiP* *.rst dc.trace dc.csv
 
     # Environment
+    MPI_ARGS=""
     if [ "$PROFILE" == "mpip" ]; then
        export MPIP="-k 2 -f ./dc.mpiP"
+       MPI_ARGS="-x MPIP"
     fi
 
     echo "Running $APP_DIR/bin/dc with args: $ARGS"
-    ${pkgs.openmpi}/bin/mpirun -np 6 --bind-to none $APP_DIR/bin/dc $ARGS
+    ${pkgs.openmpi}/bin/mpirun -np 6 --bind-to none $MPI_ARGS $APP_DIR/bin/dc $ARGS
 
     ${postProcessLogic}
   '';
@@ -105,10 +108,6 @@ in
     # Map backend to packages (simgrid ones)
     if [ "$BACKEND" == "cuda" ]; then
       APP_DIR=${packages.dc-simgrid-cuda}
-      # Inject CUDA setup if needed, similar to above but simgrid specific
-      # ... reusing the sandbox logic is good practice but kept simple here as per original
-      # For brevity/consistency, let's assume simgrid-cuda works as defined in previous working version
-      # But we need to support the CUDA driver setup again if we want it to work.
       
       DRIVER_SANDBOX=$(mktemp -d)
       trap "rm -rf $DRIVER_SANDBOX" EXIT
@@ -169,6 +168,11 @@ in
     DC_OMP=${packages.dc-omp-mpip}
     DC_CUDA=${packages.dc-cuda-mpip}
 
+    # Ensure MPIP is NOT active for ground truth if we reuse mpip binary, but cleaner to use plain if we had it.
+    # But we reused mpip binary. Let's unset MPIP env var to be safe or set it to /dev/null if possible.
+    # Or just ignore the output.
+    export MPIP="-g" # Disable mpiP report generation
+
     echo "Running sequential version..."
     OMP_NUM_THREADS=1 ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none $DC_OMP/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/ground_truth.dc
 
@@ -212,7 +216,12 @@ in
     ARGS="$@"
 
     rm -f dc.mpiP* *.rst dc.trace dc.csv
-    if [ "$PROFILE" == "mpip" ]; then export MPIP="-k 2 -f ./dc.mpiP"; fi
+    
+    MPI_ARGS=""
+    if [ "$PROFILE" == "mpip" ]; then 
+       export MPIP="-k 2 -f ./dc.mpiP"
+       MPI_ARGS="-x MPIP"
+    fi
 
     echo "Running on Tupi: backend=$BACKEND profile=$PROFILE np=$NP machinefile=$MACHINEFILE"
     ${pkgs.openmpi}/bin/mpirun -np $NP \
@@ -220,6 +229,7 @@ in
       --mca btl ^openib \
       --mca btl_tcp_if_include 192.168.0.30/24 \
       --bind-to none \
+      $MPI_ARGS \
       $APP_DIR/bin/dc $ARGS
     
     ${postProcessLogic}
@@ -233,7 +243,12 @@ in
     ARGS="$@"
 
     rm -f dc.mpiP* *.rst dc.trace dc.csv
-    if [ "$PROFILE" == "mpip" ]; then export MPIP="-k 2 -f ./dc.mpiP"; fi
+    
+    MPI_ARGS=""
+    if [ "$PROFILE" == "mpip" ]; then 
+       export MPIP="-k 2 -f ./dc.mpiP"
+       MPI_ARGS="-x MPIP"
+    fi
 
     echo "Running on Cei: backend=$BACKEND profile=$PROFILE np=$NP machinefile=$MACHINEFILE"
     ${pkgs.openmpi}/bin/mpirun -np $NP \
@@ -241,6 +256,7 @@ in
       --mca btl ^openib \
       --mca btl_tcp_if_include 192.168.0.30/24 \
       --bind-to none \
+      $MPI_ARGS \
       $APP_DIR/bin/dc $ARGS
 
     ${postProcessLogic}
@@ -254,7 +270,12 @@ in
     ARGS="$@"
 
     rm -f dc.mpiP* *.rst dc.trace dc.csv
-    if [ "$PROFILE" == "mpip" ]; then export MPIP="-k 2 -f ./dc.mpiP"; fi
+    
+    MPI_ARGS=""
+    if [ "$PROFILE" == "mpip" ]; then 
+       export MPIP="-k 2 -f ./dc.mpiP"
+       MPI_ARGS="-x MPIP"
+    fi
 
     echo "Running on Draco: backend=$BACKEND profile=$PROFILE np=$NP machinefile=$MACHINEFILE"
     ${pkgs.openmpi}/bin/mpirun -np $NP \
@@ -262,6 +283,7 @@ in
       --mca btl ^openib \
       --mca btl_tcp_if_include 192.168.0.30/24 \
       --bind-to none \
+      $MPI_ARGS \
       $APP_DIR/bin/dc $ARGS
 
     ${postProcessLogic}

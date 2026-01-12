@@ -1,11 +1,12 @@
 { pkgs, mpiP, akypuera }:
 let
-  mkDc = { backend, profile, name, extraNativeBuildInputs ? [], extraLdFlags ? "" }:
+  mkDc = { backend, profile, name, extraBuildInputs ? [], extraNativeBuildInputs ? [] }:
     pkgs.stdenv.mkDerivation {
       pname = name;
       version = "0.1.0";
       src = ../.;
-      nativeBuildInputs = with pkgs; [gnumake openmpi] ++ extraNativeBuildInputs;
+      nativeBuildInputs = with pkgs; [gnumake] ++ extraNativeBuildInputs;
+      buildInputs = with pkgs; [openmpi] ++ extraBuildInputs;
       buildPhase = "make all BACKEND=${backend} PROFILE=${profile}";
       installPhase = ''
         mkdir -p $out/bin
@@ -13,12 +14,13 @@ let
       '';
     };
   
-  mkDcCuda = { backend, profile, name, extraNativeBuildInputs ? [], extraLdFlags ? "" }:
+  mkDcCuda = { backend, profile, name, extraBuildInputs ? [], extraNativeBuildInputs ? [] }:
     pkgs.cudaPackages.backendStdenv.mkDerivation {
       pname = name;
       version = "0.1.0";
       src = ../.;
-      nativeBuildInputs = [pkgs.openmpi pkgs.cudatoolkit] ++ extraNativeBuildInputs;
+      nativeBuildInputs = [pkgs.cudatoolkit] ++ extraNativeBuildInputs;
+      buildInputs = [pkgs.openmpi] ++ extraBuildInputs;
       buildPhase = "make all BACKEND=${backend} PROFILE=${profile}";
       unpackPhase = ''
         mkdir source
@@ -37,14 +39,14 @@ in
     name = "dc-omp-mpip";
     backend = "openmp";
     profile = "mpip";
-    extraNativeBuildInputs = [ mpiP ];
+    extraBuildInputs = [ mpiP ];
   };
 
   dc-omp-aky = mkDc {
     name = "dc-omp-aky";
     backend = "openmp";
     profile = "akypuera";
-    extraNativeBuildInputs = [ akypuera ];
+    extraBuildInputs = [ akypuera ];
   };
 
   # CUDA variants
@@ -52,22 +54,23 @@ in
     name = "dc-cuda-mpip";
     backend = "cuda";
     profile = "mpip";
-    extraNativeBuildInputs = [ mpiP ];
+    extraBuildInputs = [ mpiP ];
   };
 
   dc-cuda-aky = mkDcCuda {
     name = "dc-cuda-aky";
     backend = "cuda";
     profile = "akypuera";
-    extraNativeBuildInputs = [ akypuera ];
+    extraBuildInputs = [ akypuera ];
   };
 
-  # SimGrid variants (unchanged)
+  # SimGrid variants
   dc-simgrid = pkgs.stdenv.mkDerivation {
     pname = "dc-simgrid";
     version = "0.1.0";
     src = ../.;
-    nativeBuildInputs = with pkgs; [gnumake openmpi simgrid];
+    nativeBuildInputs = with pkgs; [gnumake simgrid];
+    buildInputs = with pkgs; [openmpi];
     buildPhase = "make all BACKEND=simgrid";
     installPhase = ''
       mkdir -p $out/bin
@@ -81,7 +84,8 @@ in
     pname = "dc-simgrid-cuda";
     version = "0.1.0";
     src = ../.;
-    nativeBuildInputs = with pkgs; [openmpi simgrid cudatoolkit];
+    nativeBuildInputs = with pkgs; [simgrid cudatoolkit];
+    buildInputs = with pkgs; [openmpi];
     buildPhase = "make all BACKEND=simgrid_cuda";
     unpackPhase = ''
       mkdir source

@@ -115,4 +115,69 @@ in
     echo "Running direct binary execution (no mpirun): $APP_DIR/bin/dc $@"
     exec $APP_DIR/bin/dc "$@"
   '';
-}
+
+  run-simgrid = pkgs.writeShellScriptBin "run-simgrid" ''
+    BACKEND=$1
+    shift 1
+    ARGS="$@"
+
+    APP_DIR=""
+    if [ "$BACKEND" == "openmp" ]; then
+      APP_DIR=${packages.dc-simgrid}
+    elif [ "$BACKEND" == "cuda" ]; then
+      APP_DIR=${packages.dc-simgrid-cuda}
+      
+      DRIVER_SANDBOX=$(mktemp -d)
+      trap "rm -rf $DRIVER_SANDBOX" EXIT
+      POSSIBLE_PATHS=(
+        "/usr/lib/x86_64-linux-gnu"
+        "/usr/lib64"
+        "/usr/lib/wsl/lib"
+        "/usr/lib"
+      )
+      FOUND_DRIVER=0
+      for libdir in "''${POSSIBLE_PATHS[@]}"; do
+        if [ -e "$libdir/libcuda.so.1" ]; then
+          echo "Found host CUDA driver in: $libdir"
+          ln -sf "$libdir/libcuda.so.1" "$DRIVER_SANDBOX/libcuda.so.1"
+          ln -sf "$libdir/libcuda.so.1" "$DRIVER_SANDBOX/libcuda.so"
+          if [ -e "$libdir/libnvidia-ptxjitcompiler.so.1" ]; then
+              ln -sf "$libdir/libnvidia-ptxjitcompiler.so.1" "$DRIVER_SANDBOX/libnvidia-ptxjitcompiler.so.1"
+          fi
+          FOUND_DRIVER=1
+          break
+        fi
+      done
+      if [ "$FOUND_DRIVER" -eq 1 ]; then
+        export LD_LIBRARY_PATH="$DRIVER_SANDBOX:$LD_LIBRARY_PATH"
+      else
+        echo "WARNING: Could not find host libcuda.so.1. Simulation might crash."
+      fi
+    else
+      echo "Usage: run-simgrid [openmp|cuda] [args...]"
+      exit 1
+    fi
+
+    rm -f dc.trace dc.csv smpi.html smpi.png
+
+    export OMP_NUM_THREADS=1
+
+    echo "Running SimGrid ($BACKEND) with args: $ARGS"
+    ${pkgs.simgrid}/bin/smpirun -platform $APP_DIR/platform.xml \
+      --cfg=smpi/display-timing:yes \
+      --cfg=precision/timing:1e-9 \
+      --cfg=tracing/precision:9 \
+      --cfg=smpi/host-speed:auto \
+      -trace --cfg=tracing/filename:dc.trace \
+      -hostfile $APP_DIR/hostfile.txt \
+      $APP_DIR/bin/dc $ARGS
+
+    if [ -f "dc.trace" ]; then
+        ${pajeng}/bin/pj_dump -l 9 dc.trace | grep ^State > dc.csv
+        ${rEnv}/bin/Rscript ./plot.R dc.csv
+    else
+        echo "No trace generated."
+    fi
+  '';
+
+  run-dc-comparison = pkgs.writeShellScriptBin "run-dc-comparison" ''

@@ -26,49 +26,46 @@ if (is_mpip) {
         # Look for the aggregate line (Task *) in the subsequent lines
         subset_lines <- lines[time_idx:min(time_idx + 50, length(lines))]
 
-        agg_line_idx <- grep("^\\s*\\*\\s+[0-9.]+\\s+[0-9.]+", subset_lines)
+        agg_line_idx <- grep("^\\s*\\*\\s+[0-9.]+\\s+[0-9.]+\\s+([0-9.]+)$", subset_lines)
 
         if (length(agg_line_idx) > 0) {
             agg_line <- subset_lines[agg_line_idx[1]]
-            parsed_data <- str_match(agg_line, "^\\s*\\*\\s+([0-9.]+)\\s+([0-9.]+)")
+            print(agg_line)
+            # Extract numbers: AppTime, MPITime, MPI%
+            parsed_data <- str_match(agg_line, "^\\s*\\*\\s+([0-9.]+)\\s+([0-9.]+)\\s+([0-9.]+)$")
 
             if (!any(is.na(parsed_data))) {
                 total_time <- as.numeric(parsed_data[2])
                 mpi_time <- as.numeric(parsed_data[3])
+                mpi_percent <- as.numeric(parsed_data[4])
 
-                computation_time <- total_time - mpi_time
-
-                if (total_time > 0) {
-                  computation_percentage <- computation_time/total_time
-                } else {
-                  computation_percentage <- 0
-                }
+                # Computation percentage = 1 - (MPI% / 100)
+                computation_percentage <- (100 - mpi_percent)/100
 
                 print(paste0("Total time: ", total_time))
                 print(paste0("MPI time: ", mpi_time))
-                print(paste0("Computation time: ", computation_time))
+                print(paste0("Computation time: ", total_time - mpi_time))  # Keep original calculation for consistency in printing
                 print(paste0("Total coverage: ", computation_percentage))
             } else {
                 print("Error parsing aggregate line in Time section.")
             }
         } else {
-            task0_line_idx <- grep("^\\s*0\\s+[0-9.]+\\s+[0-9.]+", subset_lines)
+            task0_line_idx <- grep("^\\s*0\\s+[0-9.]+\\s+[0-9.]+\\s+([0-9.]+)$",
+                subset_lines)
             if (length(task0_line_idx) > 0) {
                 print("Note: Aggregate line (*) not found, using Task 0.")
                 agg_line <- subset_lines[task0_line_idx[1]]
-                parsed_data <- str_match(agg_line, "^\\s*0\\s+([0-9.]+)\\s+([0-9.]+)")
+                parsed_data <- str_match(agg_line, "^\\s*0\\s+([0-9.]+)\\s+([0-9.]+)\\s+([0-9.]+)$")
                 if (!any(is.na(parsed_data))) {
                   total_time <- as.numeric(parsed_data[2])
                   mpi_time <- as.numeric(parsed_data[3])
-                  computation_time <- total_time - mpi_time
-                  if (total_time > 0) {
-                    computation_percentage <- computation_time/total_time
-                  } else {
-                    computation_percentage <- 0
-                  }
+                  mpi_percent <- as.numeric(parsed_data[4])
+
+                  computation_percentage <- (100 - mpi_percent)/100
+
                   print(paste0("Total time: ", total_time))
                   print(paste0("MPI time: ", mpi_time))
-                  print(paste0("Computation time: ", computation_time))
+                  print(paste0("Computation time: ", total_time - mpi_time))
                   print(paste0("Total coverage: ", computation_percentage))
                 }
             } else {
@@ -78,7 +75,6 @@ if (is_mpip) {
     } else {
         print("No Time section found in mpiP output.")
     }
-
 } else {
     print(paste("Detected CSV/Paje output in:", input_file))
 

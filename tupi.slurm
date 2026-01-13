@@ -19,9 +19,13 @@ for i in 32 64 128 256 512; do
     --mca btl ^openib \
     --mca btl_tcp_if_include 192.168.30.0/24 \
     --bind-to none \
-    nix shell -c ./result/bin/dc cuda mpip --size-x=$i --size-y=$i --size-z=$i --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc >dc.mpiP 2>&1
+    nix shell -c ./result/bin/dc cuda mpip --size-x=$i --size-y=$i --size-z=$i --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc >execution.log 2>&1
+
+  # Extract mpiP report from the log (everything from "@ mpiP" to the end)
+  sed -n '/^@ mpiP/,$p' execution.log >dc.mpiP
 
   path="analysis/$(date +'%Y-%m-%d')/$((i + 12))"
   mkdir -p "$path"
   mv *.mpiP "$path" 2>/dev/null
+  rm -f execution.log
 done

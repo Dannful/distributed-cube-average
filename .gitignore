@@ -8,3 +8,6 @@ smpi*
 *.csv
 *.output
 nohup.out
+*.err
+*.out
+/nodes.slurm

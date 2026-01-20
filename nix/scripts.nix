@@ -28,6 +28,7 @@
          "/usr/lib64"
          "/usr/lib/wsl/lib"
          "/usr/lib"
+         "/run/opengl-driver/lib"
        )
        FOUND_DRIVER=0
        for libdir in "''${POSSIBLE_PATHS[@]}"; do
@@ -138,6 +139,7 @@ in {
         "/usr/lib64"
         "/usr/lib/wsl/lib"
         "/usr/lib"
+        "/run/opengl-driver/lib"
       )
       FOUND_DRIVER=0
       for libdir in "''${POSSIBLE_PATHS[@]}"; do

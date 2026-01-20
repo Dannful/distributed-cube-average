@@ -12,20 +12,24 @@ srun -l hostname | sort -n | awk '{print $2 " slots=1"}' >$MACHINEFILE
 
 nix build .#dc
 
-for i in 32 64 128 256 512; do
-  i=$((i - 12))
-  mpirun -np $SLURM_NTASKS \
-    -machinefile $MACHINEFILE \
-    --mca btl ^openib \
-    --mca btl_tcp_if_include 192.168.30.0/24 \
-    --bind-to none \
-    nix shell -c ./result/bin/dc cuda mpip --size-x=$i --size-y=$i --size-z=$i --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc >execution.log 2>&1
+current_date=$(date +'%Y-%m-%d')
 
-  # Extract mpiP report from the log (everything from "@ mpiP" to the end)
-  sed -n '/^@ mpiP/,$p' execution.log >dc.mpiP
+for i in {1..60}; do
+  for j in 32 64 128 256 512; do
+    j=$((j - 12))
+    mpirun -np $SLURM_NTASKS \
+      -machinefile $MACHINEFILE \
+      --mca btl ^openib \
+      --mca btl_tcp_if_include 192.168.30.0/24 \
+      --bind-to none \
+      nix shell -c ./result/bin/dc cuda mpip --size-x=$j --size-y=$j --size-z=$j --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc >execution.log 2>&1
 
-  path="analysis/$(date +'%Y-%m-%d')/$((i + 12))"
-  mkdir -p "$path"
-  mv *.mpiP "$path" 2>/dev/null
-  rm -f execution.log
+    # Extract mpiP report from the log (everything from "@ mpiP" to the end)
+    sed -n '/^@ mpiP/,$p' execution.log >dc.mpiP
+
+    path="analysis/$current_date/$i/$((j + 12))"
+    mkdir -p "$path"
+    mv *.mpiP "$path" 2>/dev/null
+    rm -f execution.log
+  done
 done

@@ -1,6 +1,15 @@
-{ pkgs, mpiP, akypuera }:
-let
-  mkDc = { backend, profile, name, extraBuildInputs ? [], extraNativeBuildInputs ? [] }:
+{
+  pkgs,
+  mpiP,
+  akypuera,
+}: let
+  mkDc = {
+    backend,
+    profile,
+    name,
+    extraBuildInputs ? [],
+    extraNativeBuildInputs ? [],
+  }:
     pkgs.stdenv.mkDerivation {
       pname = name;
       version = "0.1.0";
@@ -13,8 +22,14 @@ let
         cp bin/dc $out/bin
       '';
     };
-  
-  mkDcCuda = { backend, profile, name, extraBuildInputs ? [], extraNativeBuildInputs ? [] }:
+
+  mkDcCuda = {
+    backend,
+    profile,
+    name,
+    extraBuildInputs ? [],
+    extraNativeBuildInputs ? [],
+  }:
     pkgs.cudaPackages.backendStdenv.mkDerivation {
       pname = name;
       version = "0.1.0";
@@ -32,21 +47,20 @@ let
         cp bin/dc $out/bin/dc
       '';
     };
-in
-{
+in {
   # OpenMP variants
   dc-omp-mpip = mkDc {
     name = "dc-omp-mpip";
     backend = "openmp";
     profile = "mpip";
-    extraBuildInputs = [ mpiP ];
+    extraBuildInputs = [mpiP];
   };
 
   dc-omp-aky = mkDc {
     name = "dc-omp-aky";
     backend = "openmp";
     profile = "akypuera";
-    extraBuildInputs = [ akypuera ];
+    extraBuildInputs = [akypuera];
   };
 
   # CUDA variants
@@ -54,14 +68,14 @@ in
     name = "dc-cuda-mpip";
     backend = "cuda";
     profile = "mpip";
-    extraBuildInputs = [ mpiP ];
+    extraBuildInputs = [mpiP];
   };
 
   dc-cuda-aky = mkDcCuda {
     name = "dc-cuda-aky";
     backend = "cuda";
     profile = "akypuera";
-    extraBuildInputs = [ akypuera ];
+    extraBuildInputs = [akypuera];
   };
 
   # SimGrid variants

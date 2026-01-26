@@ -1,0 +1,1006 @@
+@ mpiP
+@ Command : /nix/store/lhcvq6lqrvgfwfpkmhw79pai4swpsx9l-dc-cuda-mpip-0.1.0/bin/dc --size-x=52 --size-y=52 --size-z=52 --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc 
+@ Version                  : 3.5.0
+@ MPIP Build date          : Jan  1 1980, 00:00:00
+@ Start time               : 2026 01 20 21:06:38
+@ Stop time                : 2026 01 20 21:06:38
+@ Timer Used               : gettimeofday
+@ MPIP env var             : -k 2 -f /home/users/vdspadotto/git/distributed-cube-average/dc.mpiP
+@ Collector Rank           : 0
+@ Collector PID            : 393018
+@ Final Output Dir         : /home/users/vdspadotto/git/distributed-cube-average/dc.mpiP
+@ Report generation        : Single collector task
+@ MPI Task Assignment      : 0 poti1
+@ MPI Task Assignment      : 1 poti2
+@ MPI Task Assignment      : 2 poti3
+@ MPI Task Assignment      : 3 poti4
+@ MPI Task Assignment      : 4 poti5
+
+---------------------------------------------------------------------------
+@--- MPI Time (seconds) ---------------------------------------------------
+---------------------------------------------------------------------------
+Task    AppTime    MPITime     MPI%
+   0      0.581      0.452    77.70
+   1      0.534      0.417    78.15
+   2      0.539      0.425    78.88
+   3      0.544      0.376    69.04
+   4      0.551       0.45    81.74
+   *       2.75       2.12    77.11
+---------------------------------------------------------------------------
+@--- Callsites: 157 -------------------------------------------------------
+---------------------------------------------------------------------------
+ ID Lev File/Address        Line Parent_Funct             MPI_Call
+  1   0 0x7f7fc0f66cfb           [unknown]                Waitall
+  1   1 0x7f7fc0f6e489           [unknown]                
+  2   0 0x7f7fc0f6446b           [unknown]                Send
+  2   1 0x7f7fc0f6c80e           [unknown]                
+  3   0 0x7f7fc0f6446b           [unknown]                Send
+  3   1 0x7f7fc0f6c80e           [unknown]                
+  4   0 0x7f7fc0f6446b           [unknown]                Send
+  4   1 0x7f7fc0f6c80e           [unknown]                
+  5   0 0x7f7fc0f5ac1b           [unknown]                Allgather
+  5   1 0x7f7fc0f6722c           [unknown]                
+  6   0 0x7f7fc0f6446b           [unknown]                Send
+  6   1 0x7f7fc0f6c80e           [unknown]                
+  7   0 0x7f7fc0f62c13           [unknown]                Recv
+  7   1 0x7f7fc0f6b891           [unknown]                
+  8   0 0x7f7fc0f5cb37           [unknown]                Cart_create
+  8   1 0x7f7fc0f68297           [unknown]                
+  9   0 0x7f7fc0f6446b           [unknown]                Send
+  9   1 0x7f7fc0f6c80e           [unknown]                
+ 10   0 0x7f7fc0f6446b           [unknown]                Send
+ 10   1 0x7f7fc0f6c80e           [unknown]                
+ 11   0 0x7f7fc0f6446b           [unknown]                Send
+ 11   1 0x7f7fc0f6c80e           [unknown]                
+ 12   0 0x7f7fc0f6221b           [unknown]                Isend
+ 12   1 0x7f7fc0f6b271           [unknown]                
+ 13   0 0x7f7fc0f6221b           [unknown]                Isend
+ 13   1 0x7f7fc0f6b271           [unknown]                
+ 14   0 0x7f7fc0f6446b           [unknown]                Send
+ 14   1 0x7f7fc0f6c80e           [unknown]                
+ 15   0 0x7f7fc0f5d10b           [unknown]                Cart_rank
+ 15   1 0x7f7fc0f685ea           [unknown]                
+ 16   0 0x7f7fc0f5d10b           [unknown]                Cart_rank
+ 16   1 0x7f7fc0f685ea           [unknown]                
+ 17   0 0x7f7fc0f61d03           [unknown]                Irecv
+ 17   1 0x7f7fc0f6af51           [unknown]                
+ 18   0 0x7f7fc0f6446b           [unknown]                Send
+ 18   1 0x7f7fc0f6c80e           [unknown]                
+ 19   0 0x7f7fc0f6446b           [unknown]                Send
+ 19   1 0x7f7fc0f6c80e           [unknown]                
+ 20   0 0x7f7fc0f5d10b           [unknown]                Cart_rank
+ 20   1 0x7f7fc0f685ea           [unknown]                
+ 21   0 0x7f7fc0f6446b           [unknown]                Send
+ 21   1 0x7f7fc0f6c80e           [unknown]                
+ 22   0 0x7f7fc0f61d03           [unknown]                Irecv
+ 22   1 0x7f7fc0f6af51           [unknown]                
+ 23   0 0x7f7fc0f6446b           [unknown]                Send
+ 23   1 0x7f7fc0f6c80e           [unknown]                
+ 24   0 0x7f7fc0f66cfb           [unknown]                Waitall
+ 24   1 0x7f7fc0f6e489           [unknown]                
+ 25   0 0x7f7fc0f6446b           [unknown]                Send
+ 25   1 0x7f7fc0f6c80e           [unknown]                
+ 26   0 0x7f7fc0f62c13           [unknown]                Recv
+ 26   1 0x7f7fc0f6b891           [unknown]                
+ 27   0 0x7f7fc0f5c927           [unknown]                Cart_coords
+ 27   1 0x7f7fc0f6818e           [unknown]                
+ 28   0 0x7f7fc0f6446b           [unknown]                Send
+ 28   1 0x7f7fc0f6c80e           [unknown]                
+ 29   0 0x7f7fc0f6446b           [unknown]                Send
+ 29   1 0x7f7fc0f6c80e           [unknown]                
+ 30   0 0x7f7fc0f62c13           [unknown]                Recv
+ 30   1 0x7f7fc0f6b891           [unknown]                
+ 31   0 0x7f7fc0f6446b           [unknown]                Send
+ 31   1 0x7f7fc0f6c80e           [unknown]                
+ 32   0 0x7f7fc0f5efab           [unknown]                Dims_create
+ 32   1 0x7f7fc0f69560           [unknown]                
+ 33   0 0x7f7fc0f6446b           [unknown]                Send
+ 33   1 0x7f7fc0f6c80e           [unknown]                
+ 34   0 0x7f30c6224c13           [unknown]                Recv
+ 34   1 0x7f30c622d891           [unknown]                
+ 35   0 0x7f30c6228cfb           [unknown]                Waitall
+ 35   1 0x7f30c6230489           [unknown]                
+ 36   0 0x7f30c622646b           [unknown]                Send
+ 36   1 0x7f30c622e80e           [unknown]                
+ 37   0 0x7f30c6224c13           [unknown]                Recv
+ 37   1 0x7f30c622d891           [unknown]                
+ 38   0 0x7f30c621cc1b           [unknown]                Allgather
+ 38   1 0x7f30c622922c           [unknown]                
+ 39   0 0x7f30c6224c13           [unknown]                Recv
+ 39   1 0x7f30c622d891           [unknown]                
+ 40   0 0x7f30c621eb37           [unknown]                Cart_create
+ 40   1 0x7f30c622a297           [unknown]                
+ 41   0 0x7f30c6224c13           [unknown]                Recv
+ 41   1 0x7f30c622d891           [unknown]                
+ 42   0 0x7f30c622421b           [unknown]                Isend
+ 42   1 0x7f30c622d271           [unknown]                
+ 43   0 0x7f30c622421b           [unknown]                Isend
+ 43   1 0x7f30c622d271           [unknown]                
+ 44   0 0x7f30c6224c13           [unknown]                Recv
+ 44   1 0x7f30c622d891           [unknown]                
+ 45   0 0x7f30c6224c13           [unknown]                Recv
+ 45   1 0x7f30c622d891           [unknown]                
+ 46   0 0x7f30c6224c13           [unknown]                Recv
+ 46   1 0x7f30c622d891           [unknown]                
+ 47   0 0x7f30c622646b           [unknown]                Send
+ 47   1 0x7f30c622e80e           [unknown]                
+ 48   0 0x7f30c6223d03           [unknown]                Irecv
+ 48   1 0x7f30c622cf51           [unknown]                
+ 49   0 0x7f30c621f10b           [unknown]                Cart_rank
+ 49   1 0x7f30c622a5ea           [unknown]                
+ 50   0 0x7f30c6224c13           [unknown]                Recv
+ 50   1 0x7f30c622d891           [unknown]                
+ 51   0 0x7f30c6224c13           [unknown]                Recv
+ 51   1 0x7f30c622d891           [unknown]                
+ 52   0 0x7f30c6223d03           [unknown]                Irecv
+ 52   1 0x7f30c622cf51           [unknown]                
+ 53   0 0x7f30c6224c13           [unknown]                Recv
+ 53   1 0x7f30c622d891           [unknown]                
+ 54   0 0x7f30c6224c13           [unknown]                Recv
+ 54   1 0x7f30c622d891           [unknown]                
+ 55   0 0x7f30c6228cfb           [unknown]                Waitall
+ 55   1 0x7f30c6230489           [unknown]                
+ 56   0 0x7f30c621e927           [unknown]                Cart_coords
+ 56   1 0x7f30c622a18e           [unknown]                
+ 57   0 0x7f30c6224c13           [unknown]                Recv
+ 57   1 0x7f30c622d891           [unknown]                
+ 58   0 0x7f30c6224c13           [unknown]                Recv
+ 58   1 0x7f30c622d891           [unknown]                
+ 59   0 0x7f30c6224c13           [unknown]                Recv
+ 59   1 0x7f30c622d891           [unknown]                
+ 60   0 0x7f30c622646b           [unknown]                Send
+ 60   1 0x7f30c622e80e           [unknown]                
+ 61   0 0x7f30c6224c13           [unknown]                Recv
+ 61   1 0x7f30c622d891           [unknown]                
+ 62   0 0x7f30c6220fab           [unknown]                Dims_create
+ 62   1 0x7f30c622b560           [unknown]                
+ 63   0 0x7f30c6224c13           [unknown]                Recv
+ 63   1 0x7f30c622d891           [unknown]                
+ 64   0 0x7f30c6224c13           [unknown]                Recv
+ 64   1 0x7f30c622d891           [unknown]                
+ 65   0 0x7fbab681cc13           [unknown]                Recv
+ 65   1 0x7fbab6825891           [unknown]                
+ 66   0 0x7fbab6820cfb           [unknown]                Waitall
+ 66   1 0x7fbab6828489           [unknown]                
+ 67   0 0x7fbab681e46b           [unknown]                Send
+ 67   1 0x7fbab682680e           [unknown]                
+ 68   0 0x7fbab681cc13           [unknown]                Recv
+ 68   1 0x7fbab6825891           [unknown]                
+ 69   0 0x7fbab6814c1b           [unknown]                Allgather
+ 69   1 0x7fbab682122c           [unknown]                
+ 70   0 0x7fbab681cc13           [unknown]                Recv
+ 70   1 0x7fbab6825891           [unknown]                
+ 71   0 0x7fbab6816b37           [unknown]                Cart_create
+ 71   1 0x7fbab6822297           [unknown]                
+ 72   0 0x7fbab681cc13           [unknown]                Recv
+ 72   1 0x7fbab6825891           [unknown]                
+ 73   0 0x7fbab681c21b           [unknown]                Isend
+ 73   1 0x7fbab6825271           [unknown]                
+ 74   0 0x7fbab681c21b           [unknown]                Isend
+ 74   1 0x7fbab6825271           [unknown]                
+ 75   0 0x7fbab681cc13           [unknown]                Recv
+ 75   1 0x7fbab6825891           [unknown]                
+ 76   0 0x7fbab681cc13           [unknown]                Recv
+ 76   1 0x7fbab6825891           [unknown]                
+ 77   0 0x7fbab681cc13           [unknown]                Recv
+ 77   1 0x7fbab6825891           [unknown]                
+ 78   0 0x7fbab681e46b           [unknown]                Send
+ 78   1 0x7fbab682680e           [unknown]                
+ 79   0 0x7fbab681bd03           [unknown]                Irecv
+ 79   1 0x7fbab6824f51           [unknown]                
+ 80   0 0x7fbab681710b           [unknown]                Cart_rank
+ 80   1 0x7fbab68225ea           [unknown]                
+ 81   0 0x7fbab681cc13           [unknown]                Recv
+ 81   1 0x7fbab6825891           [unknown]                
+ 82   0 0x7fbab681cc13           [unknown]                Recv
+ 82   1 0x7fbab6825891           [unknown]                
+ 83   0 0x7fbab681bd03           [unknown]                Irecv
+ 83   1 0x7fbab6824f51           [unknown]                
+ 84   0 0x7fbab681cc13           [unknown]                Recv
+ 84   1 0x7fbab6825891           [unknown]                
+ 85   0 0x7fbab681cc13           [unknown]                Recv
+ 85   1 0x7fbab6825891           [unknown]                
+ 86   0 0x7fbab6820cfb           [unknown]                Waitall
+ 86   1 0x7fbab6828489           [unknown]                
+ 87   0 0x7fbab681cc13           [unknown]                Recv
+ 87   1 0x7fbab6825891           [unknown]                
+ 88   0 0x7fbab6816927           [unknown]                Cart_coords
+ 88   1 0x7fbab682218e           [unknown]                
+ 89   0 0x7fbab681cc13           [unknown]                Recv
+ 89   1 0x7fbab6825891           [unknown]                
+ 90   0 0x7fbab681cc13           [unknown]                Recv
+ 90   1 0x7fbab6825891           [unknown]                
+ 91   0 0x7fbab681e46b           [unknown]                Send
+ 91   1 0x7fbab682680e           [unknown]                
+ 92   0 0x7fbab681cc13           [unknown]                Recv
+ 92   1 0x7fbab6825891           [unknown]                
+ 93   0 0x7fbab6818fab           [unknown]                Dims_create
+ 93   1 0x7fbab6823560           [unknown]                
+ 94   0 0x7fbab681cc13           [unknown]                Recv
+ 94   1 0x7fbab6825891           [unknown]                
+ 95   0 0x7fbab681cc13           [unknown]                Recv
+ 95   1 0x7fbab6825891           [unknown]                
+ 96   0 0x7fc2e4d9fcfb           [unknown]                Waitall
+ 96   1 0x7fc2e4da7489           [unknown]                
+ 97   0 0x7fc2e4d9bc13           [unknown]                Recv
+ 97   1 0x7fc2e4da4891           [unknown]                
+ 98   0 0x7fc2e4d9d46b           [unknown]                Send
+ 98   1 0x7fc2e4da580e           [unknown]                
+ 99   0 0x7fc2e4d93c1b           [unknown]                Allgather
+ 99   1 0x7fc2e4da022c           [unknown]                
+100   0 0x7fc2e4d9bc13           [unknown]                Recv
+100   1 0x7fc2e4da4891           [unknown]                
+101   0 0x7fc2e4d9bc13           [unknown]                Recv
+101   1 0x7fc2e4da4891           [unknown]                
+102   0 0x7fc2e4d9bc13           [unknown]                Recv
+102   1 0x7fc2e4da4891           [unknown]                
+103   0 0x7fc2e4d95b37           [unknown]                Cart_create
+103   1 0x7fc2e4da1297           [unknown]                
+104   0 0x7fc2e4d9b21b           [unknown]                Isend
+104   1 0x7fc2e4da4271           [unknown]                
+105   0 0x7fc2e4d9bc13           [unknown]                Recv
+105   1 0x7fc2e4da4891           [unknown]                
+106   0 0x7fc2e4d9b21b           [unknown]                Isend
+106   1 0x7fc2e4da4271           [unknown]                
+107   0 0x7fc2e4d9bc13           [unknown]                Recv
+107   1 0x7fc2e4da4891           [unknown]                
+108   0 0x7fc2e4d9bc13           [unknown]                Recv
+108   1 0x7fc2e4da4891           [unknown]                
+109   0 0x7fc2e4d9ad03           [unknown]                Irecv
+109   1 0x7fc2e4da3f51           [unknown]                
+110   0 0x7fc2e4d9d46b           [unknown]                Send
+110   1 0x7fc2e4da580e           [unknown]                
+111   0 0x7fc2e4d9610b           [unknown]                Cart_rank
+111   1 0x7fc2e4da15ea           [unknown]                
+112   0 0x7fc2e4d9bc13           [unknown]                Recv
+112   1 0x7fc2e4da4891           [unknown]                
+113   0 0x7fc2e4d9bc13           [unknown]                Recv
+113   1 0x7fc2e4da4891           [unknown]                
+114   0 0x7fc2e4d9ad03           [unknown]                Irecv
+114   1 0x7fc2e4da3f51           [unknown]                
+115   0 0x7fc2e4d9fcfb           [unknown]                Waitall
+115   1 0x7fc2e4da7489           [unknown]                
+116   0 0x7fc2e4d9bc13           [unknown]                Recv
+116   1 0x7fc2e4da4891           [unknown]                
+117   0 0x7fc2e4d9bc13           [unknown]                Recv
+117   1 0x7fc2e4da4891           [unknown]                
+118   0 0x7fc2e4d9bc13           [unknown]                Recv
+118   1 0x7fc2e4da4891           [unknown]                
+119   0 0x7fc2e4d95927           [unknown]                Cart_coords
+119   1 0x7fc2e4da118e           [unknown]                
+120   0 0x7fc2e4d9bc13           [unknown]                Recv
+120   1 0x7fc2e4da4891           [unknown]                
+121   0 0x7fc2e4d9bc13           [unknown]                Recv
+121   1 0x7fc2e4da4891           [unknown]                
+122   0 0x7fc2e4d9bc13           [unknown]                Recv
+122   1 0x7fc2e4da4891           [unknown]                
+123   0 0x7fc2e4d9d46b           [unknown]                Send
+123   1 0x7fc2e4da580e           [unknown]                
+124   0 0x7fc2e4d9bc13           [unknown]                Recv
+124   1 0x7fc2e4da4891           [unknown]                
+125   0 0x7fc2e4d97fab           [unknown]                Dims_create
+125   1 0x7fc2e4da2560           [unknown]                
+126   0 0x7fc2e4d9bc13           [unknown]                Recv
+126   1 0x7fc2e4da4891           [unknown]                
+127   0 0x7fb526bfac13           [unknown]                Recv
+127   1 0x7fb526c03891           [unknown]                
+128   0 0x7fb526bfecfb           [unknown]                Waitall
+128   1 0x7fb526c06489           [unknown]                
+129   0 0x7fb526bfc46b           [unknown]                Send
+129   1 0x7fb526c0480e           [unknown]                
+130   0 0x7fb526bfac13           [unknown]                Recv
+130   1 0x7fb526c03891           [unknown]                
+131   0 0x7fb526bf2c1b           [unknown]                Allgather
+131   1 0x7fb526bff22c           [unknown]                
+132   0 0x7fb526bfac13           [unknown]                Recv
+132   1 0x7fb526c03891           [unknown]                
+133   0 0x7fb526bf4b37           [unknown]                Cart_create
+133   1 0x7fb526c00297           [unknown]                
+134   0 0x7fb526bfac13           [unknown]                Recv
+134   1 0x7fb526c03891           [unknown]                
+135   0 0x7fb526bfa21b           [unknown]                Isend
+135   1 0x7fb526c03271           [unknown]                
+136   0 0x7fb526bfa21b           [unknown]                Isend
+136   1 0x7fb526c03271           [unknown]                
+137   0 0x7fb526bfac13           [unknown]                Recv
+137   1 0x7fb526c03891           [unknown]                
+138   0 0x7fb526bfac13           [unknown]                Recv
+138   1 0x7fb526c03891           [unknown]                
+139   0 0x7fb526bfac13           [unknown]                Recv
+139   1 0x7fb526c03891           [unknown]                
+140   0 0x7fb526bfc46b           [unknown]                Send
+140   1 0x7fb526c0480e           [unknown]                
+141   0 0x7fb526bf9d03           [unknown]                Irecv
+141   1 0x7fb526c02f51           [unknown]                
+142   0 0x7fb526bf510b           [unknown]                Cart_rank
+142   1 0x7fb526c005ea           [unknown]                
+143   0 0x7fb526bfac13           [unknown]                Recv
+143   1 0x7fb526c03891           [unknown]                
+144   0 0x7fb526bfac13           [unknown]                Recv
+144   1 0x7fb526c03891           [unknown]                
+145   0 0x7fb526bf9d03           [unknown]                Irecv
+145   1 0x7fb526c02f51           [unknown]                
+146   0 0x7fb526bfac13           [unknown]                Recv
+146   1 0x7fb526c03891           [unknown]                
+147   0 0x7fb526bfac13           [unknown]                Recv
+147   1 0x7fb526c03891           [unknown]                
+148   0 0x7fb526bfecfb           [unknown]                Waitall
+148   1 0x7fb526c06489           [unknown]                
+149   0 0x7fb526bf4927           [unknown]                Cart_coords
+149   1 0x7fb526c0018e           [unknown]                
+150   0 0x7fb526bfac13           [unknown]                Recv
+150   1 0x7fb526c03891           [unknown]                
+151   0 0x7fb526bfac13           [unknown]                Recv
+151   1 0x7fb526c03891           [unknown]                
+152   0 0x7fb526bfac13           [unknown]                Recv
+152   1 0x7fb526c03891           [unknown]                
+153   0 0x7fb526bfc46b           [unknown]                Send
+153   1 0x7fb526c0480e           [unknown]                
+154   0 0x7fb526bfac13           [unknown]                Recv
+154   1 0x7fb526c03891           [unknown]                
+155   0 0x7fb526bf6fab           [unknown]                Dims_create
+155   1 0x7fb526c01560           [unknown]                
+156   0 0x7fb526bfac13           [unknown]                Recv
+156   1 0x7fb526c03891           [unknown]                
+157   0 0x7fb526bfac13           [unknown]                Recv
+157   1 0x7fb526c03891           [unknown]                
+---------------------------------------------------------------------------
+@--- Aggregate Time (top twenty, descending, milliseconds) ----------------
+---------------------------------------------------------------------------
+Call                 Site       Time    App%    MPI%      Count    COV
+Waitall                86        330   12.00   15.57        100   0.00
+Waitall               148        236    8.59   11.15        100   0.00
+Waitall                24        190    6.91    8.97        100   0.00
+Recv                  105        190    6.90    8.95          1   0.00
+Waitall               115        174    6.34    8.22        100   0.00
+Recv                   44        150    5.46    7.08          1   0.00
+Waitall                55        139    5.05    6.55        100   0.00
+Recv                  137       51.3    1.87    2.42          1   0.00
+Send                   14       50.2    1.83    2.37          4   0.00
+Recv                  130       42.8    1.56    2.02          1   0.00
+Send                   19       32.9    1.20    1.55          4   0.00
+Recv                  127       24.9    0.91    1.18          1   0.00
+Cart_create             8       20.9    0.76    0.99          1   0.00
+Cart_create           103       20.8    0.76    0.98          1   0.00
+Cart_create            71       20.4    0.74    0.96          1   0.00
+Cart_create           133       20.4    0.74    0.96          1   0.00
+Cart_create            40       20.2    0.74    0.95          1   0.00
+Send                   98       16.7    0.61    0.79          1   0.00
+Recv                   75       14.7    0.54    0.69          1   0.00
+Send                   21       11.9    0.43    0.56          4   0.00
+---------------------------------------------------------------------------
+@--- Aggregate Sent Message Size (top twenty, descending, bytes) ----------
+---------------------------------------------------------------------------
+Call                 Site      Count      Total       Avrg  Sent%
+Isend                  43        200      1e+07   5.02e+04   9.99
+Isend                  42        200      1e+07   5.02e+04   9.99
+Isend                  74        200      1e+07   5.02e+04   9.99
+Isend                  73        200      1e+07   5.02e+04   9.99
+Isend                 135        200      1e+07   5.02e+04   9.99
+Isend                 136        200      1e+07   5.02e+04   9.99
+Isend                  13        100   5.02e+06   5.02e+04   4.99
+Isend                  12        100   5.02e+06   5.02e+04   4.99
+Isend                 106        100   5.02e+06   5.02e+04   4.99
+Isend                 104        100   5.02e+06   5.02e+04   4.99
+Send                   33          4   1.26e+06   3.15e+05   1.26
+Send                    6          4   1.26e+06   3.15e+05   1.26
+Send                    4          4   1.26e+06   3.15e+05   1.26
+Send                    2          4   1.26e+06   3.15e+05   1.26
+Send                    3          4   1.26e+06   3.15e+05   1.26
+Send                   14          4   1.26e+06   3.15e+05   1.26
+Send                   11          4   1.26e+06   3.15e+05   1.26
+Send                    9          4   1.26e+06   3.15e+05   1.26
+Send                   21          4   1.26e+06   3.15e+05   1.26
+Send                   19          4   1.26e+06   3.15e+05   1.26
+---------------------------------------------------------------------------
+@--- Callsite Time statistics (all, milliseconds): 157 --------------------
+---------------------------------------------------------------------------
+Name              Site Rank  Count      Max     Mean      Min   App%   MPI%
+Allgather            5    0      1     1.26     1.26     1.26   0.22   0.28
+Allgather            5    *      1     1.26     1.26     1.26   0.05   0.06
+
+Allgather           38    3      1    0.814    0.814    0.814   0.15   0.22
+Allgather           38    *      1    0.814    0.814    0.814   0.03   0.04
+
+Allgather           69    1      1     1.18     1.18     1.18   0.22   0.28
+Allgather           69    *      1     1.18     1.18     1.18   0.04   0.06
+
+Allgather           99    4      1     1.21     1.21     1.21   0.22   0.27
+Allgather           99    *      1     1.21     1.21     1.21   0.04   0.06
+
+Allgather          131    2      1     1.21     1.21     1.21   0.23   0.29
+Allgather          131    *      1     1.21     1.21     1.21   0.04   0.06
+
+Cart_coords         27    0      1    0.002    0.002    0.002   0.00   0.00
+Cart_coords         27    *      1    0.002    0.002    0.002   0.00   0.00
+
+Cart_coords         56    3      1    0.004    0.004    0.004   0.00   0.00
+Cart_coords         56    *      1    0.004    0.004    0.004   0.00   0.00
+
+Cart_coords         88    1      1    0.002    0.002    0.002   0.00   0.00
+Cart_coords         88    *      1    0.002    0.002    0.002   0.00   0.00
+
+Cart_coords        119    4      1    0.003    0.003    0.003   0.00   0.00
+Cart_coords        119    *      1    0.003    0.003    0.003   0.00   0.00
+
+Cart_coords        149    2      1    0.002    0.002    0.002   0.00   0.00
+Cart_coords        149    *      1    0.002    0.002    0.002   0.00   0.00
+
+Cart_create          8    0      1     20.9     20.9     20.9   3.59   4.62
+Cart_create          8    *      1     20.9     20.9     20.9   0.76   0.99
+
+Cart_create         40    3      1     20.2     20.2     20.2   3.72   5.38
+Cart_create         40    *      1     20.2     20.2     20.2   0.74   0.95
+
+Cart_create         71    1      1     20.4     20.4     20.4   3.83   4.90
+Cart_create         71    *      1     20.4     20.4     20.4   0.74   0.96
+
+Cart_create        103    4      1     20.8     20.8     20.8   3.78   4.63
+Cart_create        103    *      1     20.8     20.8     20.8   0.76   0.98
+
+Cart_create        133    2      1     20.4     20.4     20.4   3.79   4.80
+Cart_create        133    *      1     20.4     20.4     20.4   0.74   0.96
+
+Cart_rank           15    0      5    0.004   0.0026    0.002   0.00   0.00
+Cart_rank           15    *      5    0.004   0.0026    0.002   0.00   0.00
+
+Cart_rank           16    0      5    0.006   0.0024    0.001   0.00   0.00
+Cart_rank           16    *      5    0.006   0.0024    0.001   0.00   0.00
+
+Cart_rank           20    0      1    0.001    0.001    0.001   0.00   0.00
+Cart_rank           20    *      1    0.001    0.001    0.001   0.00   0.00
+
+Cart_rank           49    3      2    0.003    0.003    0.003   0.00   0.00
+Cart_rank           49    *      2    0.003    0.003    0.003   0.00   0.00
+
+Cart_rank           80    1      2    0.001    0.001    0.001   0.00   0.00
+Cart_rank           80    *      2    0.001    0.001    0.001   0.00   0.00
+
+Cart_rank          111    4      1    0.002    0.002    0.002   0.00   0.00
+Cart_rank          111    *      1    0.002    0.002    0.002   0.00   0.00
+
+Cart_rank          142    2      2    0.002    0.002    0.002   0.00   0.00
+Cart_rank          142    *      2    0.002    0.002    0.002   0.00   0.00
+
+Dims_create         32    0      1    0.016    0.016    0.016   0.00   0.00
+Dims_create         32    *      1    0.016    0.016    0.016   0.00   0.00
+
+Dims_create         62    3      1    0.024    0.024    0.024   0.00   0.01
+Dims_create         62    *      1    0.024    0.024    0.024   0.00   0.00
+
+Dims_create         93    1      1    0.019    0.019    0.019   0.00   0.00
+Dims_create         93    *      1    0.019    0.019    0.019   0.00   0.00
+
+Dims_create        125    4      1     0.02     0.02     0.02   0.00   0.00
+Dims_create        125    *      1     0.02     0.02     0.02   0.00   0.00
+
+Dims_create        155    2      1     0.02     0.02     0.02   0.00   0.00
+Dims_create        155    *      1     0.02     0.02     0.02   0.00   0.00
+
+Irecv               17    0    100    0.014  0.00139    0.001   0.02   0.03
+Irecv               17    *    100    0.014  0.00139    0.001   0.01   0.01
+
+Irecv               22    0    100    0.026  0.00176    0.001   0.03   0.04
+Irecv               22    *    100    0.026  0.00176    0.001   0.01   0.01
+
+Irecv               48    3    200    0.028  0.00209    0.001   0.08   0.11
+Irecv               48    *    200    0.028  0.00209    0.001   0.02   0.02
+
+Irecv               52    3    200     0.02  0.00241    0.001   0.09   0.13
+Irecv               52    *    200     0.02  0.00241    0.001   0.02   0.02
+
+Irecv               79    1    200    0.016  0.00183    0.001   0.07   0.09
+Irecv               79    *    200    0.016  0.00183    0.001   0.01   0.02
+
+Irecv               83    1    200    0.032  0.00188    0.001   0.07   0.09
+Irecv               83    *    200    0.032  0.00188    0.001   0.01   0.02
+
+Irecv              109    4    100    0.002  0.00139    0.001   0.03   0.03
+Irecv              109    *    100    0.002  0.00139    0.001   0.01   0.01
+
+Irecv              114    4    100    0.016  0.00154    0.001   0.03   0.03
+Irecv              114    *    100    0.016  0.00154    0.001   0.01   0.01
+
+Irecv              141    2    200    0.015  0.00143    0.001   0.05   0.07
+Irecv              141    *    200    0.015  0.00143    0.001   0.01   0.01
+
+Irecv              145    2    200    0.029  0.00156    0.001   0.06   0.07
+Irecv              145    *    200    0.029  0.00156    0.001   0.01   0.01
+
+Isend               12    0    100    0.036  0.00882    0.006   0.15   0.20
+Isend               12    *    100    0.036  0.00882    0.006   0.03   0.04
+
+Isend               13    0    100    0.039   0.0182    0.007   0.31   0.40
+Isend               13    *    100    0.039   0.0182    0.007   0.07   0.09
+
+Isend               42    3    200    0.041   0.0166    0.013   0.61   0.88
+Isend               42    *    200    0.041   0.0166    0.013   0.12   0.16
+
+Isend               43    3    200    0.058    0.037    0.016   1.36   1.97
+Isend               43    *    200    0.058    0.037    0.016   0.27   0.35
+
+Isend               73    1    200    0.047   0.0111    0.005   0.41   0.53
+Isend               73    *    200    0.047   0.0111    0.005   0.08   0.10
+
+Isend               74    1    200    0.056   0.0279    0.005   1.04   1.34
+Isend               74    *    200    0.056   0.0279    0.005   0.20   0.26
+
+Isend              104    4    100    0.018  0.00836    0.005   0.15   0.19
+Isend              104    *    100    0.018  0.00836    0.005   0.03   0.04
+
+Isend              106    4    100    0.031   0.0173    0.014   0.31   0.38
+Isend              106    *    100    0.031   0.0173    0.014   0.06   0.08
+
+Isend              135    2    200    0.032  0.00768    0.006   0.29   0.36
+Isend              135    *    200    0.032  0.00768    0.006   0.06   0.07
+
+Isend              136    2    200    0.044   0.0183    0.008   0.68   0.86
+Isend              136    *    200    0.044   0.0183    0.008   0.13   0.17
+
+Recv                 7    0      4    0.011    0.004    0.001   0.00   0.00
+Recv                 7    *      4    0.011    0.004    0.001   0.00   0.00
+
+Recv                26    0      4     2.88     2.77     2.73   1.91   2.45
+Recv                26    *      4     2.88     2.77     2.73   0.40   0.52
+
+Recv                30    0      4     2.87     2.77     2.73   1.91   2.46
+Recv                30    *      4     2.87     2.77     2.73   0.40   0.52
+
+Recv                34    3      1     3.11     3.11     3.11   0.57   0.83
+Recv                34    *      1     3.11     3.11     3.11   0.11   0.15
+
+Recv                37    3      1     2.73     2.73     2.73   0.50   0.73
+Recv                37    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv                39    3      1     2.73     2.73     2.73   0.50   0.73
+Recv                39    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv                41    3      1     2.74     2.74     2.74   0.50   0.73
+Recv                41    *      1     2.74     2.74     2.74   0.10   0.13
+
+Recv                44    3      1      150      150      150  27.58  39.96
+Recv                44    *      1      150      150      150   5.46   7.08
+
+Recv                45    3      1     4.15     4.15     4.15   0.76   1.10
+Recv                45    *      1     4.15     4.15     4.15   0.15   0.20
+
+Recv                46    3      1     2.74     2.74     2.74   0.50   0.73
+Recv                46    *      1     2.74     2.74     2.74   0.10   0.13
+
+Recv                50    3      1     2.73     2.73     2.73   0.50   0.73
+Recv                50    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv                51    3      1     2.77     2.77     2.77   0.51   0.74
+Recv                51    *      1     2.77     2.77     2.77   0.10   0.13
+
+Recv                53    3      1     2.73     2.73     2.73   0.50   0.73
+Recv                53    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv                54    3      1     2.73     2.73     2.73   0.50   0.73
+Recv                54    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv                57    3      1    0.004    0.004    0.004   0.00   0.00
+Recv                57    *      1    0.004    0.004    0.004   0.00   0.00
+
+Recv                58    3      1     2.74     2.74     2.74   0.50   0.73
+Recv                58    *      1     2.74     2.74     2.74   0.10   0.13
+
+Recv                59    3      1     2.73     2.73     2.73   0.50   0.73
+Recv                59    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv                61    3      1    0.002    0.002    0.002   0.00   0.00
+Recv                61    *      1    0.002    0.002    0.002   0.00   0.00
+
+Recv                63    3      1     2.74     2.74     2.74   0.50   0.73
+Recv                63    *      1     2.74     2.74     2.74   0.10   0.13
+
+Recv                64    3      1     2.75     2.75     2.75   0.50   0.73
+Recv                64    *      1     2.75     2.75     2.75   0.10   0.13
+
+Recv                65    1      1      3.1      3.1      3.1   0.58   0.74
+Recv                65    *      1      3.1      3.1      3.1   0.11   0.15
+
+Recv                68    1      1     2.73     2.73     2.73   0.51   0.65
+Recv                68    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv                70    1      1     2.73     2.73     2.73   0.51   0.65
+Recv                70    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv                72    1      1     2.73     2.73     2.73   0.51   0.65
+Recv                72    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv                75    1      1     14.7     14.7     14.7   2.76   3.53
+Recv                75    *      1     14.7     14.7     14.7   0.54   0.69
+
+Recv                76    1      1     2.75     2.75     2.75   0.51   0.66
+Recv                76    *      1     2.75     2.75     2.75   0.10   0.13
+
+Recv                77    1      1     2.73     2.73     2.73   0.51   0.65
+Recv                77    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv                81    1      1     2.73     2.73     2.73   0.51   0.65
+Recv                81    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv                82    1      1     2.73     2.73     2.73   0.51   0.65
+Recv                82    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv                84    1      1     2.73     2.73     2.73   0.51   0.65
+Recv                84    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv                85    1      1     2.73     2.73     2.73   0.51   0.65
+Recv                85    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv                87    1      1    0.002    0.002    0.002   0.00   0.00
+Recv                87    *      1    0.002    0.002    0.002   0.00   0.00
+
+Recv                89    1      1     2.74     2.74     2.74   0.51   0.66
+Recv                89    *      1     2.74     2.74     2.74   0.10   0.13
+
+Recv                90    1      1     2.76     2.76     2.76   0.52   0.66
+Recv                90    *      1     2.76     2.76     2.76   0.10   0.13
+
+Recv                92    1      1    0.001    0.001    0.001   0.00   0.00
+Recv                92    *      1    0.001    0.001    0.001   0.00   0.00
+
+Recv                94    1      1     2.74     2.74     2.74   0.51   0.66
+Recv                94    *      1     2.74     2.74     2.74   0.10   0.13
+
+Recv                95    1      1     2.74     2.74     2.74   0.51   0.66
+Recv                95    *      1     2.74     2.74     2.74   0.10   0.13
+
+Recv                97    4      1     2.87     2.87     2.87   0.52   0.64
+Recv                97    *      1     2.87     2.87     2.87   0.10   0.14
+
+Recv               100    4      1     2.87     2.87     2.87   0.52   0.64
+Recv               100    *      1     2.87     2.87     2.87   0.10   0.14
+
+Recv               101    4      1     2.87     2.87     2.87   0.52   0.64
+Recv               101    *      1     2.87     2.87     2.87   0.10   0.14
+
+Recv               102    4      1     2.86     2.86     2.86   0.52   0.64
+Recv               102    *      1     2.86     2.86     2.86   0.10   0.14
+
+Recv               105    4      1      190      190      190  34.47  42.17
+Recv               105    *      1      190      190      190   6.90   8.95
+
+Recv               107    4      1     2.91     2.91     2.91   0.53   0.65
+Recv               107    *      1     2.91     2.91     2.91   0.11   0.14
+
+Recv               108    4      1     4.37     4.37     4.37   0.79   0.97
+Recv               108    *      1     4.37     4.37     4.37   0.16   0.21
+
+Recv               112    4      1     2.86     2.86     2.86   0.52   0.64
+Recv               112    *      1     2.86     2.86     2.86   0.10   0.13
+
+Recv               113    4      1      2.9      2.9      2.9   0.53   0.64
+Recv               113    *      1      2.9      2.9      2.9   0.11   0.14
+
+Recv               116    4      1     2.86     2.86     2.86   0.52   0.64
+Recv               116    *      1     2.86     2.86     2.86   0.10   0.14
+
+Recv               117    4      1     2.86     2.86     2.86   0.52   0.64
+Recv               117    *      1     2.86     2.86     2.86   0.10   0.14
+
+Recv               118    4      1    0.002    0.002    0.002   0.00   0.00
+Recv               118    *      1    0.002    0.002    0.002   0.00   0.00
+
+Recv               120    4      1     2.87     2.87     2.87   0.52   0.64
+Recv               120    *      1     2.87     2.87     2.87   0.10   0.14
+
+Recv               121    4      1     2.87     2.87     2.87   0.52   0.64
+Recv               121    *      1     2.87     2.87     2.87   0.10   0.14
+
+Recv               122    4      1    0.002    0.002    0.002   0.00   0.00
+Recv               122    *      1    0.002    0.002    0.002   0.00   0.00
+
+Recv               124    4      1     2.86     2.86     2.86   0.52   0.64
+Recv               124    *      1     2.86     2.86     2.86   0.10   0.14
+
+Recv               126    4      1     2.88     2.88     2.88   0.52   0.64
+Recv               126    *      1     2.88     2.88     2.88   0.10   0.14
+
+Recv               127    2      1     24.9     24.9     24.9   4.62   5.86
+Recv               127    *      1     24.9     24.9     24.9   0.91   1.18
+
+Recv               130    2      1     42.8     42.8     42.8   7.93  10.05
+Recv               130    *      1     42.8     42.8     42.8   1.56   2.02
+
+Recv               132    2      1     2.76     2.76     2.76   0.51   0.65
+Recv               132    *      1     2.76     2.76     2.76   0.10   0.13
+
+Recv               134    2      1     2.76     2.76     2.76   0.51   0.65
+Recv               134    *      1     2.76     2.76     2.76   0.10   0.13
+
+Recv               137    2      1     51.3     51.3     51.3   9.52  12.06
+Recv               137    *      1     51.3     51.3     51.3   1.87   2.42
+
+Recv               138    2      1     2.74     2.74     2.74   0.51   0.64
+Recv               138    *      1     2.74     2.74     2.74   0.10   0.13
+
+Recv               139    2      1     4.24     4.24     4.24   0.79   1.00
+Recv               139    *      1     4.24     4.24     4.24   0.15   0.20
+
+Recv               143    2      1     2.74     2.74     2.74   0.51   0.64
+Recv               143    *      1     2.74     2.74     2.74   0.10   0.13
+
+Recv               144    2      1     2.73     2.73     2.73   0.51   0.64
+Recv               144    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv               146    2      1     2.73     2.73     2.73   0.51   0.64
+Recv               146    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv               147    2      1     2.73     2.73     2.73   0.51   0.64
+Recv               147    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv               150    2      1    0.002    0.002    0.002   0.00   0.00
+Recv               150    *      1    0.002    0.002    0.002   0.00   0.00
+
+Recv               151    2      1     2.73     2.73     2.73   0.51   0.64
+Recv               151    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv               152    2      1     2.74     2.74     2.74   0.51   0.64
+Recv               152    *      1     2.74     2.74     2.74   0.10   0.13
+
+Recv               154    2      1    0.001    0.001    0.001   0.00   0.00
+Recv               154    *      1    0.001    0.001    0.001   0.00   0.00
+
+Recv               156    2      1     2.73     2.73     2.73   0.51   0.64
+Recv               156    *      1     2.73     2.73     2.73   0.10   0.13
+
+Recv               157    2      1     2.75     2.75     2.75   0.51   0.65
+Recv               157    *      1     2.75     2.75     2.75   0.10   0.13
+
+Send                 2    0      4     2.86     2.78     2.73   1.91   2.46
+Send                 2    *      4     2.86     2.78     2.73   0.40   0.52
+
+Send                 3    0      4     2.91     2.77     2.73   1.91   2.46
+Send                 3    *      4     2.91     2.77     2.73   0.40   0.52
+
+Send                 4    0      4     2.86     2.77     2.74   1.91   2.45
+Send                 4    *      4     2.86     2.77     2.74   0.40   0.52
+
+Send                 6    0      4     2.86     2.76     2.71   1.90   2.44
+Send                 6    *      4     2.86     2.76     2.71   0.40   0.52
+
+Send                 9    0      4      2.9      2.8     2.76   1.93   2.48
+Send                 9    *      4      2.9      2.8     2.76   0.41   0.53
+
+Send                10    0      4    0.017   0.0075    0.004   0.01   0.01
+Send                10    *      4    0.017   0.0075    0.004   0.00   0.00
+
+Send                11    0      4     2.87     2.78     2.73   1.91   2.46
+Send                11    *      4     2.87     2.78     2.73   0.40   0.52
+
+Send                14    0      4     41.9     12.6     2.73   8.64  11.12
+Send                14    *      4     41.9     12.6     2.73   1.83   2.37
+
+Send                18    0      4    0.002    0.002    0.002   0.00   0.00
+Send                18    *      4    0.002    0.002    0.002   0.00   0.00
+
+Send                19    0      4     24.5     8.21     2.72   5.65   7.27
+Send                19    *      4     24.5     8.21     2.72   1.20   1.55
+
+Send                21    0      4     3.57     2.97     2.73   2.05   2.63
+Send                21    *      4     3.57     2.97     2.73   0.43   0.56
+
+Send                23    0      4    0.003  0.00275    0.002   0.00   0.00
+Send                23    *      4    0.003  0.00275    0.002   0.00   0.00
+
+Send                25    0      4     2.86     2.77     2.73   1.91   2.46
+Send                25    *      4     2.86     2.77     2.73   0.40   0.52
+
+Send                28    0      4     2.88     2.78     2.73   1.91   2.46
+Send                28    *      4     2.88     2.78     2.73   0.40   0.52
+
+Send                29    0      4     3.08     2.41    0.523   1.66   2.13
+Send                29    *      4     3.08     2.41    0.523   0.35   0.45
+
+Send                31    0      4     2.43     2.37     2.27   1.63   2.10
+Send                31    *      4     2.43     2.37     2.27   0.35   0.45
+
+Send                33    0      4      2.9     2.77     2.73   1.91   2.46
+Send                33    *      4      2.9     2.77     2.73   0.40   0.52
+
+Send                36    3      1     11.4     11.4     11.4   2.10   3.04
+Send                36    *      1     11.4     11.4     11.4   0.42   0.54
+
+Send                47    3      1    0.014    0.014    0.014   0.00   0.00
+Send                47    *      1    0.014    0.014    0.014   0.00   0.00
+
+Send                60    3      1     2.22     2.22     2.22   0.41   0.59
+Send                60    *      1     2.22     2.22     2.22   0.08   0.10
+
+Send                67    1      1    0.423    0.423    0.423   0.08   0.10
+Send                67    *      1    0.423    0.423    0.423   0.02   0.02
+
+Send                78    1      1    0.006    0.006    0.006   0.00   0.00
+Send                78    *      1    0.006    0.006    0.006   0.00   0.00
+
+Send                91    1      1     2.75     2.75     2.75   0.52   0.66
+Send                91    *      1     2.75     2.75     2.75   0.10   0.13
+
+Send                98    4      1     16.7     16.7     16.7   3.03   3.71
+Send                98    *      1     16.7     16.7     16.7   0.61   0.79
+
+Send               110    4      1    0.009    0.009    0.009   0.00   0.00
+Send               110    *      1    0.009    0.009    0.009   0.00   0.00
+
+Send               123    4      1     2.54     2.54     2.54   0.46   0.56
+Send               123    *      1     2.54     2.54     2.54   0.09   0.12
+
+Send               129    2      1     5.79     5.79     5.79   1.07   1.36
+Send               129    *      1     5.79     5.79     5.79   0.21   0.27
+
+Send               140    2      1    0.009    0.009    0.009   0.00   0.00
+Send               140    *      1    0.009    0.009    0.009   0.00   0.00
+
+Send               153    2      1     2.24     2.24     2.24   0.42   0.53
+Send               153    *      1     2.24     2.24     2.24   0.08   0.11
+
+Waitall              1    0    100    0.002  0.00144    0.001   0.02   0.03
+Waitall              1    *    100    0.002  0.00144    0.001   0.01   0.01
+
+Waitall             24    0    100     15.8      1.9    0.004  32.70  42.08
+Waitall             24    *    100     15.8      1.9    0.004   6.91   8.97
+
+Waitall             35    3    100    0.004  0.00294    0.002   0.05   0.08
+Waitall             35    *    100    0.004  0.00294    0.002   0.01   0.01
+
+Waitall             55    3    100     3.72     1.39    0.188  25.51  36.96
+Waitall             55    *    100     3.72     1.39    0.188   5.05   6.55
+
+Waitall             66    1    100     0.01  0.00302    0.001   0.06   0.07
+Waitall             66    *    100     0.01  0.00302    0.001   0.01   0.01
+
+Waitall             86    1    100      172      3.3     0.73  61.84  79.13
+Waitall             86    *    100      172      3.3     0.73  12.00  15.57
+
+Waitall             96    4    100    0.002  0.00148    0.001   0.03   0.03
+Waitall             96    *    100    0.002  0.00148    0.001   0.01   0.01
+
+Waitall            115    4    100      3.4     1.74    0.302  31.65  38.72
+Waitall            115    *    100      3.4     1.74    0.302   6.34   8.22
+
+Waitall            128    2    100    0.002  0.00153    0.001   0.03   0.04
+Waitall            128    *    100    0.002  0.00153    0.001   0.01   0.01
+
+Waitall            148    2    100     85.5     2.36    0.877  43.83  55.56
+Waitall            148    *    100     85.5     2.36    0.877   8.59  11.15
+---------------------------------------------------------------------------
+@--- Callsite Message Sent statistics (all, sent bytes) -------------------
+---------------------------------------------------------------------------
+Name              Site Rank   Count       Max      Mean       Min       Sum
+Allgather            5    0       1       256       256       256       256
+Allgather            5    *       1       256       256       256       256
+
+Allgather           38    3       1       256       256       256       256
+Allgather           38    *       1       256       256       256       256
+
+Allgather           69    1       1       256       256       256       256
+Allgather           69    *       1       256       256       256       256
+
+Allgather           99    4       1       256       256       256       256
+Allgather           99    *       1       256       256       256       256
+
+Allgather          131    2       1       256       256       256       256
+Allgather          131    *       1       256       256       256       256
+
+Isend               12    0     100 5.018e+04 5.018e+04 5.018e+04 5.018e+06
+Isend               12    *     100 5.018e+04 5.018e+04 5.018e+04 5.018e+06
+
+Isend               13    0     100 5.018e+04 5.018e+04 5.018e+04 5.018e+06
+Isend               13    *     100 5.018e+04 5.018e+04 5.018e+04 5.018e+06
+
+Isend               42    3     200 5.018e+04 5.018e+04 5.018e+04 1.004e+07
+Isend               42    *     200 5.018e+04 5.018e+04 5.018e+04 1.004e+07
+
+Isend               43    3     200 5.018e+04 5.018e+04 5.018e+04 1.004e+07
+Isend               43    *     200 5.018e+04 5.018e+04 5.018e+04 1.004e+07
+
+Isend               73    1     200 5.018e+04 5.018e+04 5.018e+04 1.004e+07
+Isend               73    *     200 5.018e+04 5.018e+04 5.018e+04 1.004e+07
+
+Isend               74    1     200 5.018e+04 5.018e+04 5.018e+04 1.004e+07
+Isend               74    *     200 5.018e+04 5.018e+04 5.018e+04 1.004e+07
+
+Isend              104    4     100 5.018e+04 5.018e+04 5.018e+04 5.018e+06
+Isend              104    *     100 5.018e+04 5.018e+04 5.018e+04 5.018e+06
+
+Isend              106    4     100 5.018e+04 5.018e+04 5.018e+04 5.018e+06
+Isend              106    *     100 5.018e+04 5.018e+04 5.018e+04 5.018e+06
+
+Isend              135    2     200 5.018e+04 5.018e+04 5.018e+04 1.004e+07
+Isend              135    *     200 5.018e+04 5.018e+04 5.018e+04 1.004e+07
+
+Isend              136    2     200 5.018e+04 5.018e+04 5.018e+04 1.004e+07
+Isend              136    *     200 5.018e+04 5.018e+04 5.018e+04 1.004e+07
+
+Send                 2    0       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+Send                 2    *       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+
+Send                 3    0       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+Send                 3    *       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+
+Send                 4    0       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+Send                 4    *       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+
+Send                 6    0       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+Send                 6    *       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+
+Send                 9    0       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+Send                 9    *       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+
+Send                10    0       4         4         4         4        16
+Send                10    *       4         4         4         4        16
+
+Send                11    0       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+Send                11    *       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+
+Send                14    0       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+Send                14    *       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+
+Send                18    0       4         4         4         4        16
+Send                18    *       4         4         4         4        16
+
+Send                19    0       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+Send                19    *       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+
+Send                21    0       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+Send                21    *       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+
+Send                23    0       4        24        24        24        96
+Send                23    *       4        24        24        24        96
+
+Send                25    0       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+Send                25    *       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+
+Send                28    0       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+Send                28    *       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+
+Send                29    0       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+Send                29    *       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+
+Send                31    0       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+Send                31    *       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+
+Send                33    0       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+Send                33    *       4 3.277e+05 3.154e+05 3.113e+05 1.262e+06
+
+Send                36    3       1 3.113e+05 3.113e+05 3.113e+05 3.113e+05
+Send                36    *       1 3.113e+05 3.113e+05 3.113e+05 3.113e+05
+
+Send                47    3       1        24        24        24        24
+Send                47    *       1        24        24        24        24
+
+Send                60    3       1 3.113e+05 3.113e+05 3.113e+05 3.113e+05
+Send                60    *       1 3.113e+05 3.113e+05 3.113e+05 3.113e+05
+
+Send                67    1       1 3.113e+05 3.113e+05 3.113e+05 3.113e+05
+Send                67    *       1 3.113e+05 3.113e+05 3.113e+05 3.113e+05
+
+Send                78    1       1        24        24        24        24
+Send                78    *       1        24        24        24        24
+
+Send                91    1       1 3.113e+05 3.113e+05 3.113e+05 3.113e+05
+Send                91    *       1 3.113e+05 3.113e+05 3.113e+05 3.113e+05
+
+Send                98    4       1 3.277e+05 3.277e+05 3.277e+05 3.277e+05
+Send                98    *       1 3.277e+05 3.277e+05 3.277e+05 3.277e+05
+
+Send               110    4       1        24        24        24        24
+Send               110    *       1        24        24        24        24
+
+Send               123    4       1 3.277e+05 3.277e+05 3.277e+05 3.277e+05
+Send               123    *       1 3.277e+05 3.277e+05 3.277e+05 3.277e+05
+
+Send               129    2       1 3.113e+05 3.113e+05 3.113e+05 3.113e+05
+Send               129    *       1 3.113e+05 3.113e+05 3.113e+05 3.113e+05
+
+Send               140    2       1        24        24        24        24
+Send               140    *       1        24        24        24        24
+
+Send               153    2       1 3.113e+05 3.113e+05 3.113e+05 3.113e+05
+Send               153    *       1 3.113e+05 3.113e+05 3.113e+05 3.113e+05
+---------------------------------------------------------------------------
+@--- End of Report --------------------------------------------------------
+---------------------------------------------------------------------------

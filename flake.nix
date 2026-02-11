@@ -30,32 +30,37 @@
         ];
       };
 
-      packages = import ./nix/packages.nix { inherit pkgs mpiP akypuera; };
-      scripts = import ./nix/scripts.nix { inherit pkgs packages pajeng rEnv mpiP akypuera; };
-
+      packages = import ./nix/packages.nix {inherit pkgs mpiP akypuera;};
+      scripts = import ./nix/scripts.nix {inherit pkgs packages pajeng rEnv akypuera;};
     in {
       devShell = pkgs.mkShell {
-        buildInputs = [
-          pkgs.cudatoolkit
-          pkgs.openmpi
-          pkgs.clang-tools
-          pkgs.llvmPackages.openmp
-          pkgs.simgrid
-          pkgs.vite
-          pkgs.pandoc
-          rEnv
-          akypuera
-          pajeng
-        ];
+        buildInputs =
+          [
+            pkgs.cudatoolkit
+            pkgs.openmpi
+            pkgs.clang-tools
+            pkgs.llvmPackages.openmp
+            pkgs.simgrid
+            pkgs.vite
+            pkgs.pandoc
+            pkgs.pkg-config
+            rEnv
+            akypuera
+            pajeng
+          ]
+          ++ builtins.attrValues scripts;
         shellHook = ''
           export PATH=${pkgs.clang-tools}/bin/clangd:$PATH
           export CUDA_PATH=${pkgs.cudatoolkit}
         '';
       };
-      
-      packages = packages // scripts // {
-        default = packages.dc-omp-mpip;
-      };
+
+      packages =
+        packages
+        // scripts
+        // {
+          default = packages.dc-omp-mpip;
+        };
 
       apps = {
         default = {
@@ -66,9 +71,9 @@
           type = "app";
           program = "${scripts.run-simgrid}/bin/run-simgrid";
         };
-        comparison = {
+        poti = {
           type = "app";
-          program = "${scripts.run-dc-comparison}/bin/run-dc-comparison";
+          program = "${scripts.run-poti-experiments}/bin/run-poti-experiments";
         };
         dc = {
           type = "app";

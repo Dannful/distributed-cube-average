@@ -10,7 +10,7 @@
 MACHINEFILE="nodes.slurm"
 srun -l hostname | sort -n | awk '{print $2 " slots=1"}' >$MACHINEFILE
 
-nix build .#dc
+nixw nix build .#dc
 
 for i in 32 64 128 256 512; do
   i=$((i - 12))
@@ -19,7 +19,7 @@ for i in 32 64 128 256 512; do
     --mca btl ^openib \
     --mca btl_tcp_if_include eno2 \
     --bind-to none \
-    nix shell -c ./result/bin/dc openmp mpip --size-x=$i --size-y=$i --size-z=$i --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc >execution.log 2>&1
+    nixw ./result/bin/dc openmp mpip --size-x=$i --size-y=$i --size-z=$i --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc >execution.log 2>&1
 
   # Extract mpiP report from the log (everything from "@ mpiP" to the end)
   sed -n '/^@ mpiP/,$p' execution.log >dc.mpiP

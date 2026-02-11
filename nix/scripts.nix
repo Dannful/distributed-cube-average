@@ -3,7 +3,6 @@
   packages,
   pajeng,
   rEnv,
-  mpiP,
   akypuera,
 }: let
   # Helper for backend selection and CUDA env setup
@@ -87,7 +86,7 @@
        fi
     fi
   '';
-in {
+in rec {
   run-dc = pkgs.writeShellScriptBin "run-dc" ''
     ${selectAppLogic}
     shift 2
@@ -186,48 +185,113 @@ in {
     fi
   '';
 
-  run-dc-comparison = pkgs.writeShellScriptBin "run-dc-comparison" ''
-    export PATH=${pkgs.cudatoolkit}/bin:$PATH
-    size_x=52; size_y=52; size_z=52; absorption=2; dx=1e-1; dy=1e-1; dz=1e-1; dt=1e-6; tmax=1e-4
+  run-simgrid-platform-cuda = pkgs.writeShellScriptBin "run-simgrid-platform-cuda" ''
+    if [ "$#" -lt 5 ]; then
+      echo "Usage: run-simgrid-platform-cuda NUM_HOSTS NET_BW NET_LAT GPU_BW GPU_LAT [PROGRAM_ARGS...]"
+      exit 1
+    fi
 
-    # Use mpip variants for comparison (execution only)
-    DC_OMP=${packages.dc-omp-mpip}
-    DC_CUDA=${packages.dc-cuda-mpip}
+    NUM_HOSTS=$1
+    NET_BW=$2
+    NET_LAT=$3
+    GPU_BW=$4
+    GPU_LAT=$5
+    shift 5
+    ARGS="$@"
 
-    export MPIP="-g" # Disable mpiP report generation
-
-    echo "Running sequential version..."
-    OMP_NUM_THREADS=1 ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none $DC_OMP/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/ground_truth.dc
-
-    echo "Running OpenMP version..."
-    ${pkgs.openmpi}/bin/mpirun -np 6 --bind-to none $DC_OMP/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/openmp_predicted.dc
-
-    echo "Comparing..."
-    mv ./validation/openmp_predicted.dc ./validation/predicted.dc
-    Rscript ./validation/CompareResults.R 0
+    export PLATFORM_NUM_HOSTS=$NUM_HOSTS
+    export PLATFORM_NET_BW=$NET_BW
+    export PLATFORM_NET_LAT=$NET_LAT
+    export PLATFORM_GPU_BW=$GPU_BW
+    export PLATFORM_GPU_LAT=$GPU_LAT
+    export PLATFORM_HOSTFILE=simgrid-config/hostfile.txt
 
     # CUDA Setup
     DRIVER_SANDBOX=$(mktemp -d)
     trap "rm -rf $DRIVER_SANDBOX" EXIT
-    POSSIBLE_PATHS=("/usr/lib/x86_64-linux-gnu" "/usr/lib64" "/usr/lib/wsl/lib" "/usr/lib")
+    POSSIBLE_PATHS=(
+      "/usr/lib/x86_64-linux-gnu"
+      "/usr/lib64"
+      "/usr/lib/wsl/lib"
+      "/usr/lib"
+      "/run/opengl-driver/lib"
+    )
     FOUND_DRIVER=0
     for libdir in "''${POSSIBLE_PATHS[@]}"; do
       if [ -e "$libdir/libcuda.so.1" ]; then
+        # echo "Found host CUDA driver in: $libdir"
         ln -sf "$libdir/libcuda.so.1" "$DRIVER_SANDBOX/libcuda.so.1"
         ln -sf "$libdir/libcuda.so.1" "$DRIVER_SANDBOX/libcuda.so"
         if [ -e "$libdir/libnvidia-ptxjitcompiler.so.1" ]; then
-             ln -sf "$libdir/libnvidia-ptxjitcompiler.so.1" "$DRIVER_SANDBOX/libnvidia-ptxjitcompiler.so.1"
+            ln -sf "$libdir/libnvidia-ptxjitcompiler.so.1" "$DRIVER_SANDBOX/libnvidia-ptxjitcompiler.so.1"
         fi
         FOUND_DRIVER=1
         break
       fi
     done
-    if [ "$FOUND_DRIVER" -eq 1 ]; then export LD_LIBRARY_PATH="$DRIVER_SANDBOX:$LD_LIBRARY_PATH"; fi
+    if [ "$FOUND_DRIVER" -eq 1 ]; then
+      export LD_LIBRARY_PATH="$DRIVER_SANDBOX:$LD_LIBRARY_PATH"
+    fi
 
-    echo "Running CUDA version..."
-    ${pkgs.openmpi}/bin/mpirun -np 1 --bind-to none $DC_CUDA/bin/dc --size-x=$size_x --size-y=$size_y --size-z=$size_z --absorption=$absorption --dx=$dx --dy=$dy --dz=$dz --dt=$dt --time-max=$tmax --output-file=./validation/predicted.dc
+    # Build Platform
+    ./simgrid-config/compile_platform.sh > /dev/null
+    ./simgrid-config/generate_artifacts > /dev/null
 
-    echo "Comparing CUDA..."
-    Rscript ./validation/CompareResults.R 1e-3
+    # Run Simulation
+    export OMP_NUM_THREADS=1
+    rm -f dc.trace dc.csv smpi.html smpi.png
+
+    # Note: We use packages.dc-simgrid-cuda/bin/dc as the binary
+    ${pkgs.simgrid}/bin/smpirun \
+      -platform simgrid-config/libplatform.so \
+      -hostfile simgrid-config/hostfile.txt \
+      -np $NUM_HOSTS \
+      --cfg=smpi/display-timing:yes \
+      --cfg=precision/timing:1e-9 \
+      --cfg=tracing/precision:9 \
+      --cfg=smpi/host-speed:auto \
+      -trace --cfg=tracing/filename:dc.trace \
+      ${packages.dc-simgrid-cuda}/bin/dc $ARGS 2>&1 | tee sim.log
+
+    # Generate Stats
+    if [ -f "dc.trace" ]; then
+        ${pajeng}/bin/pj_dump -l 9 dc.trace | grep ^State > dc.csv
+        ${rEnv}/bin/Rscript ./plot.R dc.csv
+    fi
+  '';
+
+  run-poti-experiments = pkgs.writeShellScriptBin "run-poti-experiments" ''
+    NET_BW="937Mbps"
+    NET_LAT="22.7us"
+    GPU_BW="16GBps"
+    GPU_LAT="0us"
+    NUM_HOSTS=5
+
+    OUTPUT_CSV="simulation_results.csv"
+    echo "run,problem_size,mpi_time,computation_time,total_time" > $OUTPUT_CSV
+
+    echo "Running experiments (1..1 runs, sizes 32..512)..."
+
+    for i in {1..1}; do
+      echo "--- Run number $i ---"
+      for j in 32 64 128 256 512; do
+        size=$((j - 12))
+        echo "  Problem Size: $size"
+
+        output=$(${run-simgrid-platform-cuda}/bin/run-simgrid-platform-cuda $NUM_HOSTS $NET_BW $NET_LAT $GPU_BW $GPU_LAT \
+                 --size-x=$size --size-y=$size --size-z=$size --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc)
+        total_time=$(echo "$output" | grep "Total time:" | awk '{print $3}')
+        mpi_time=$(echo "$output" | grep "MPI time:" | awk '{print $3}')
+        comp_time=$(echo "$output" | grep "Computation time:" | awk '{print $3}')
+
+        if [ -n "$total_time" ]; then
+            echo "$i,$size,$mpi_time,$comp_time,$total_time" >> $OUTPUT_CSV
+        else
+            echo "    Failed to parse metrics for run $i size $size"
+        fi
+      done
+    done
+
+    ${rEnv}/bin/Rscript ./validation/compare_sim_real.R $OUTPUT_CSV
   '';
 }

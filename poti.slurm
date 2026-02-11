@@ -10,7 +10,7 @@
 MACHINEFILE="nodes.slurm"
 srun -l hostname | sort -n | awk '{print $2 " slots=1"}' >$MACHINEFILE
 
-nix build .#dc
+nixw build .#dc
 
 current_date=$(date +'%Y-%m-%d')
 
@@ -22,7 +22,7 @@ for i in {1..60}; do
       --mca btl ^openib \
       --mca btl_tcp_if_include 192.168.30.0/24 \
       --bind-to none \
-      nix shell -c ./result/bin/dc cuda mpip --size-x=$j --size-y=$j --size-z=$j --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1 --output-file=./validation/predicted.dc >execution.log 2>&1
+      nixw ./result/bin/dc cuda mpip --size-x=$j --size-y=$j --size-z=$j --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc >execution.log 2>&1
 
     # Extract mpiP report from the log (everything from "@ mpiP" to the end)
     sed -n '/^@ mpiP/,$p' execution.log >dc.mpiP

@@ -181,7 +181,6 @@
       pkgs.gnugrep
       rEnv
       pkgs.pandoc
-      runSimgridPlatformCuda
     ]}:$PATH
 
     NET_BW="937Mbps"
@@ -201,8 +200,8 @@
         size=$((j - 12))
         echo "  Problem Size: $size"
 
-        output=$(run-simgrid-platform-cuda $NUM_HOSTS $NET_BW $NET_LAT $GPU_BW $GPU_LAT \
-                 --size-x=$size --size-y=$size --size-z=$size --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1 --output-file=./validation/predicted.dc)
+        output=$(${runSimgridPlatformCuda}/bin/run-simgrid-platform-cuda $NUM_HOSTS $NET_BW $NET_LAT $GPU_BW $GPU_LAT \
+                 --size-x=$size --size-y=$size --size-z=$size --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc)
 
         total_time=$(echo "$output" | grep "Total time:" | awk '{print $3}')
         mpi_time=$(echo "$output" | grep "MPI time:" | awk '{print $3}')
@@ -281,7 +280,7 @@ in {
           ln -sf "$libdir/libcuda.so.1" "$DRIVER_SANDBOX/libcuda.so"
           if [ -e "$libdir/libnvidia-ptxjitcompiler.so.1" ]; then
               ln -sf "$libdir/libnvidia-ptxjitcompiler.so.1" "$DRIVER_SANDBOX/libnvidia-ptxjitcompiler.so.1"
-          }
+          fi
           FOUND_DRIVER=1
           break
         fi

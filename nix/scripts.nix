@@ -233,9 +233,8 @@ in rec {
       export LD_LIBRARY_PATH="$DRIVER_SANDBOX:$LD_LIBRARY_PATH"
     fi
 
-    # Build Platform
-    ./simgrid-config/compile_platform.sh > /dev/null
-    ./simgrid-config/generate_artifacts > /dev/null
+    # Generate Hostfile (using pre-built tool)
+    ${packages.dc-simgrid-platform}/bin/generate_artifacts > /dev/null
 
     # Run Simulation
     export OMP_NUM_THREADS=1
@@ -243,7 +242,7 @@ in rec {
 
     # Note: We use packages.dc-simgrid-cuda/bin/dc as the binary
     ${pkgs.simgrid}/bin/smpirun \
-      -platform simgrid-config/libplatform.so \
+      -platform ${packages.dc-simgrid-platform}/lib/libplatform.so \
       -hostfile simgrid-config/hostfile.txt \
       -np $NUM_HOSTS \
       --cfg=smpi/display-timing:yes \

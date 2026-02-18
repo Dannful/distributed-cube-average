@@ -113,4 +113,29 @@ in {
       cp hostfile.txt $out/
     '';
   };
+
+  dc-simgrid-platform = pkgs.stdenv.mkDerivation {
+    pname = "dc-simgrid-platform";
+    version = "0.1.0";
+    src = ../simgrid-config;
+    nativeBuildInputs = with pkgs; [ pkg-config ];
+    buildInputs = with pkgs; [ simgrid ];
+    
+    buildPhase = ''
+      SG_CFLAGS=$(pkg-config --cflags simgrid)
+      SG_LIBS=$(pkg-config --libs simgrid)
+      
+      echo "Compiling Shared Object (libplatform.so)..."
+      g++ -std=c++17 -shared -fPIC -o libplatform.so platform_s4u.cpp $SG_CFLAGS $SG_LIBS
+      
+      echo "Compiling Generator Executable (generate_artifacts)..."
+      g++ -std=c++17 -o generate_artifacts platform_s4u.cpp $SG_CFLAGS $SG_LIBS
+    '';
+    
+    installPhase = ''
+      mkdir -p $out/lib $out/bin
+      cp libplatform.so $out/lib/
+      cp generate_artifacts $out/bin/
+    '';
+  };
 }

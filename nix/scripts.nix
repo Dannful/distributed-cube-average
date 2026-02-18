@@ -203,14 +203,14 @@
         output=$(${runSimgridPlatformCuda}/bin/run-simgrid-platform-cuda $NUM_HOSTS $NET_BW $NET_LAT $GPU_BW $GPU_LAT \
                  --size-x=$size --size-y=$size --size-z=$size --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc)
 
-        total_time=$(echo "$output" | grep "Total time:" | awk '{print $3}')
-        mpi_time=$(echo "$output" | grep "MPI time:" | awk '{print $3}')
-        comp_time=$(echo "$output" | grep "Computation time:" | awk '{print $3}')
+        total_time=$(echo "$output" | grep "Total time:" | awk '{print $4}' | tr -d '"')
+        mpi_time=$(echo "$output" | grep "MPI time:" | awk '{print $4}' | tr -d '"')
+        comp_time=$(echo "$output" | grep "Computation time:" | awk '{print $4}' | tr -d '"')
 
         if [ -n "$total_time" ]; then
-            echo "$i,$size,$mpi_time,$comp_time,$total_time" >> $OUTPUT_CSV
+          echo "$i,$size,$mpi_time,$comp_time,$total_time" >> $OUTPUT_CSV
         else
-            echo "    Failed to parse metrics for run $i size $size"
+          echo "    Failed to parse metrics for run $i size $size"
         fi
       done
     done

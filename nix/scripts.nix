@@ -78,8 +78,8 @@
     elif [ "$PROFILE" == "akypuera" ]; then
        if ls rastro-*.rst 1> /dev/null 2>&1; then
          echo "Converting Akypuera traces..."
-         ${akypuera}/bin/aky_converter > dc.trace
-         ${pajeng}/bin/pj_dump -l 9 dc.trace | grep ^State > dc.csv
+         ${akypuera}/bin/aky_converter *.rst > dc.trace
+         ${pajeng}/bin/pj_dump -z -l 9 dc.trace | grep ^State > dc.csv
          ${rEnv}/bin/Rscript ./plot.R dc.csv
        else
          echo "Warning: No Akypuera traces found (rastro-*.rst)."

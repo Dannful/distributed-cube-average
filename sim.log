@@ -1,0 +1,162 @@
+[0.000000] [xbt_cfg/INFO] Configuration change: Set 'smpi/privatization' to 'ON'
+[0.000000] [xbt_cfg/INFO] Configuration change: Set 'smpi/np' to '5'
+[0.000000] [xbt_cfg/INFO] Configuration change: Set 'smpi/hostfile' to 'simgrid-config/hostfile.txt'
+[0.000000] [xbt_cfg/INFO] Configuration change: Set 'tracing' to 'yes'
+[0.000000] [xbt_cfg/INFO] Configuration change: Set 'tracing/filename' to 'smpi_simgrid.trace'
+[0.000000] [xbt_cfg/INFO] Configuration change: Set 'tracing/smpi' to 'yes'
+[0.000000] [xbt_cfg/INFO] Configuration change: Set 'precision/timing' to '1e-9'
+[0.000000] [xbt_cfg/INFO] Configuration change: Set 'network/model' to 'SMPI'
+[0.000000] [xbt_cfg/INFO] Configuration change: Set 'smpi/display-timing' to 'yes'
+[0.000000] [xbt_cfg/INFO] Configuration change: Set 'precision/timing' to '1e-9'
+[0.000000] [xbt_cfg/INFO] Configuration change: Set 'tracing/precision' to '9'
+[0.000000] [xbt_cfg/INFO] Configuration change: Set 'smpi/host-speed' to '1f'
+[0.000000] [xbt_cfg/INFO] Configuration change: Set 'tracing/filename' to 'dc.trace'
+[0.000000] [xbt_cfg/INFO] Configuration change: Set 'smpi/tmpdir' to '/tmp'
+[S4U Plugin] Loading Platform: 5 hosts.
+[INFO] nixos - Coordinator: Initializing problem data...
+[INFO] nixos - Coordinator: Partitioning cube...
+[INFO] nixos - Coordinator: Partition sizes: X: 11, Y: 56, Z: 56
+[INFO] nixos - Coordinator: Partition remainders: X: 1, Y: 0, Z: 0
+[INFO] nixos - Coordinator: Calculating source...
+[INFO] nixos - Coordinator: Source is located at coordinates X: 32, Y: 32 and Z: 32
+[INFO] nixos - Coordinator: Worker 2 at coordinates (2, 0, 0) will handle the source at global index 133152 and local index 39530
+[INFO] nixos - Coordinator: Partition completed. Sending data to workers...
+[INFO] nixos - Worker 4: Awaiting data from coordinator...
+[INFO] nixos - Worker 1: Awaiting data from coordinator...
+[INFO] nixos - Worker 2: Awaiting data from coordinator...
+[INFO] nixos - Worker 3: Awaiting data from coordinator...
+[INFO] nixos - Worker 1: Data received from coordinator.
+[INFO] nixos - Worker 1: Starting worker process...
+[INFO] nixos - Worker 1: Starting 100 iterations with sizes 19 64 64
+CUDA source using device (0) NVIDIA GeForce RTX 4060 with compute capability 8.9
+[INFO] nixos - Worker 2: Data received from coordinator.
+[INFO] nixos - Worker 2: Starting worker process...
+[INFO] nixos - Worker 2: Starting 100 iterations with sizes 19 64 64
+CUDA source using device (0) NVIDIA GeForce RTX 4060 with compute capability 8.9
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 3: Data received from coordinator.
+[INFO] nixos - Worker 3: Starting worker process...
+[INFO] nixos - Worker 3: Starting 100 iterations with sizes 19 64 64
+CUDA source using device (0) NVIDIA GeForce RTX 4060 with compute capability 8.9
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Coordinator: Starting worker process...
+[INFO] nixos - Coordinator: Starting 100 iterations with sizes 19 64 64
+CUDA source using device (0) NVIDIA GeForce RTX 4060 with compute capability 8.9
+[INFO] nixos - Worker 4: Data received from coordinator.
+[INFO] nixos - Worker 4: Starting worker process...
+[INFO] nixos - Worker 4: Starting 100 iterations with sizes 20 64 64
+CUDA source using device (0) NVIDIA GeForce RTX 4060 with compute capability 8.9
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Worker 2: Inserting source -0.000028 at 39530
+[INFO] nixos - Coordinator: Processing complete.
+[INFO] nixos - Worker 4: Processing complete.
+[INFO] nixos - Worker 1: Processing complete.
+[INFO] nixos - Worker 3: Processing complete.
+[INFO] nixos - Worker 2: Processing complete.
+[INFO] nixos - Worker 1: Elapsed time: 0.838861 seconds
+[INFO] nixos - Worker 2: Elapsed time: 0.845810 seconds
+[INFO] nixos - Worker 3: Elapsed time: 0.853079 seconds
+[INFO] nixos - Worker 4: Elapsed time: 0.861078 seconds
+[INFO] nixos - Coordinator: Elapsed time: 0.862866 seconds
+[0.866559] [smpi_utils/INFO] Simulated time: 0.866559 seconds. 
+
+The simulation took 0.754346 seconds (after parsing and platform setup)
+0.678689 seconds were actual computation of the application
+[0.866559] [smpi_utils/INFO] More than 75% of the time was spent inside the application code.
+You may want to use sampling functions or trace replay to reduce this.

@@ -163,7 +163,7 @@
       --cfg=smpi/display-timing:yes \
       --cfg=precision/timing:1e-9 \
       --cfg=tracing/precision:9 \
-      --cfg=smpi/host-speed:auto \
+      --cfg=smpi/host-speed:1f \
       -trace --cfg=tracing/filename:dc.trace \
       $DC_BIN $ARGS 2>&1 | tee sim.log
 
@@ -183,11 +183,11 @@
       pkgs.pandoc
     ]}:$PATH
 
+    NUM_HOSTS=5
     NET_BW="937Mbps"
     NET_LAT="22.7us"
-    GPU_BW="16GBps"
-    GPU_LAT="0us"
-    NUM_HOSTS=5
+    GPU_BW="457.54GBps"
+    GPU_LAT="1.34us"
 
     OUTPUT_CSV="simulation_results.csv"
     echo "run,problem_size,mpi_time,computation_time,total_time" > $OUTPUT_CSV

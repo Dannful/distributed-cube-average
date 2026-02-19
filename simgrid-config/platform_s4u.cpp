@@ -57,9 +57,8 @@ extern "C" void load_platform(simgrid::s4u::Engine &e) {
     std::string net_link_name = "link-net-" + std::to_string(i);
     std::string gpu_link_name = "link-gpu-" + std::to_string(i);
 
-    // Using 1Gf in order to use the actual host's speed
-    auto *host = zone->add_host(host_name, "1Gf");
-    auto *gpu = zone->add_host(gpu_name, "1Gf");
+    auto *host = zone->add_host(host_name, "1f");
+    auto *gpu = zone->add_host(gpu_name, "1f");
 
     // Network (Host <-> Switch)
     auto *net_link =
@@ -68,7 +67,7 @@ extern "C" void load_platform(simgrid::s4u::Engine &e) {
     std::vector<const simgrid::s4u::Link *> net_route = {net_link};
     zone->add_route(host->get_netpoint(), switch_router, net_route);
 
-    // GPU (Host -> GPU, Unidirectional)
+    // GPU Connection (PCIe)
     auto *gpu_link =
         zone->add_link(gpu_link_name, cfg.gpu_bw)
             ->set_latency(cfg.gpu_lat)
@@ -77,15 +76,12 @@ extern "C" void load_platform(simgrid::s4u::Engine &e) {
     std::vector<simgrid::s4u::LinkInRoute> gpu_route;
     gpu_route.push_back(simgrid::s4u::LinkInRoute(gpu_link));
 
-    zone->add_route(host->get_netpoint(), gpu->get_netpoint(), gpu_route,
-                    false);
+    zone->add_route(host->get_netpoint(), gpu->get_netpoint(), gpu_route, true);
   }
 
   zone->seal();
 }
 
-// This is used when the file is compiled as an executable to generate the
-// hostfile
 int main(int argc, char *argv[]) {
   PlatformConfig cfg = PlatformConfig::load();
 

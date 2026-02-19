@@ -5,9 +5,10 @@ result
 *.rst
 *.trace
 smpi*
-*.csv
 *.output
 nohup.out
 *.err
 *.out
 /nodes.slurm
+*.csv
+!simulation*.csv

@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
   }
 
   for (int i = 0; i < cfg.num_hosts; ++i) {
-    hf << "host-" << i << std::endl;
+    hf << "gpu-" << i << std::endl;
   }
   hf.close();
 

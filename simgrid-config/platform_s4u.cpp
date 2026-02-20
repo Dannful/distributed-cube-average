@@ -57,8 +57,8 @@ extern "C" void load_platform(simgrid::s4u::Engine &e) {
     std::string net_link_name = "link-net-" + std::to_string(i);
     std::string gpu_link_name = "link-gpu-" + std::to_string(i);
 
-    auto *host = zone->add_host(host_name, "1f");
-    auto *gpu = zone->add_host(gpu_name, "1f");
+    auto *host = zone->add_host(host_name, "1Mf");
+    auto *gpu = zone->add_host(gpu_name, "29Tf");
 
     // Network (Host <-> Switch)
     auto *net_link =

@@ -163,7 +163,7 @@
       --cfg=smpi/display-timing:yes \
       --cfg=precision/timing:1e-9 \
       --cfg=tracing/precision:9 \
-      --cfg=smpi/host-speed:1f \
+      --cfg=smpi/host-speed:5.84Tf \
       -trace --cfg=tracing/filename:dc.trace \
       $DC_BIN $ARGS 2>&1 | tee sim.log
 

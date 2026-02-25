@@ -97,8 +97,8 @@
       rEnv
     ]}:$PATH
 
-    if [ "$#" -lt 5 ]; then
-      echo "Usage: run-simgrid-platform-cuda NUM_HOSTS NET_BW NET_LAT GPU_BW GPU_LAT [PROGRAM_ARGS...]"
+    if [ "$#" -lt 6 ]; then
+      echo "Usage: run-simgrid-platform-cuda NUM_HOSTS NET_BW NET_LAT GPU_BW GPU_LAT GPU_POWER [PROGRAM_ARGS...]"
       exit 1
     fi
 
@@ -107,7 +107,8 @@
     NET_LAT=$3
     GPU_BW=$4
     GPU_LAT=$5
-    shift 5
+    GPU_POWER=$6
+    shift 6
     ARGS="$@"
 
     export PLATFORM_NUM_HOSTS=$NUM_HOSTS
@@ -115,6 +116,7 @@
     export PLATFORM_NET_LAT=$NET_LAT
     export PLATFORM_GPU_BW=$GPU_BW
     export PLATFORM_GPU_LAT=$GPU_LAT
+    export PLATFORM_GPU_POWER=$GPU_POWER
     export PLATFORM_HOSTFILE=simgrid-config/hostfile.txt
 
     # CUDA Setup

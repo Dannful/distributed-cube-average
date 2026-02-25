@@ -11,6 +11,7 @@ struct PlatformConfig {
   std::string net_lat;
   std::string gpu_bw;
   std::string gpu_lat;
+  std::string gpu_power;
   std::string hostfile_path;
 
   static std::string require_env_var(const char *name) {
@@ -30,6 +31,7 @@ struct PlatformConfig {
     cfg.net_lat = require_env_var("PLATFORM_NET_LAT");
     cfg.gpu_bw = require_env_var("PLATFORM_GPU_BW");
     cfg.gpu_lat = require_env_var("PLATFORM_GPU_LAT");
+    cfg.gpu_power = require_env_var("PLATFORM_GPU_POWER");
     cfg.hostfile_path = require_env_var("PLATFORM_HOSTFILE");
     return cfg;
   }
@@ -58,7 +60,7 @@ extern "C" void load_platform(simgrid::s4u::Engine &e) {
     std::string gpu_link_name = "link-gpu-" + std::to_string(i);
 
     auto *host = zone->add_host(host_name, "1Mf");
-    auto *gpu = zone->add_host(gpu_name, "29Tf");
+    auto *gpu = zone->add_host(gpu_name, cfg.gpu_power);
 
     // Network (Host <-> Switch)
     auto *net_link =

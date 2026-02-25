@@ -34,7 +34,6 @@ else ifeq ($(BACKEND), simgrid)
     CC           := smpicc
     SOURCES_C    := $(SOURCES_C_COMMON) $(SRCDIR)/openmp_propagate.c $(SRCDIR)/device_data.c
     SOURCES_CUDA :=
-    CFLAGS       += -D_SMPI_ADD_SEMANTICS
 
 else ifeq ($(BACKEND), cuda)
     SOURCES_C    := $(SOURCES_C_COMMON)
@@ -47,8 +46,6 @@ else ifeq ($(BACKEND), simgrid_cuda)
     SOURCES_CUDA := $(SRCDIR)/cuda_propagate.cu $(SRCDIR)/device_data.cu
     
     CUDA_CFLAGS  += -Xcompiler -fPIC
-    CFLAGS       += -D_SMPI_ADD_SEMANTICS
-    CUDA_CFLAGS  += -D_SMPI_ADD_SEMANTICS
     CUDA_CFLAGS  += -ccbin g++
     LDFLAGS      += -L/usr/local/cuda/lib64 -lcudart_static -lstdc++ -lpthread -ldl -lrt
 

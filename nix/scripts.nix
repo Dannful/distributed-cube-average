@@ -110,6 +110,9 @@
     GPU_POWER=$6
     shift 6
     ARGS="$@"
+    
+    # HOST_SPEED: use environment variable
+    HOST_SPEED="$HOST_SPEED"
 
     export PLATFORM_NUM_HOSTS=$NUM_HOSTS
     export PLATFORM_NET_BW=$NET_BW
@@ -165,7 +168,7 @@
       --cfg=smpi/display-timing:yes \
       --cfg=precision/timing:1e-9 \
       --cfg=tracing/precision:9 \
-      --cfg=smpi/host-speed:5.84Tf \
+      --cfg=smpi/host-speed:"$HOST_SPEED" \
       -trace --cfg=tracing/filename:dc.trace \
       $DC_BIN $ARGS 2>&1 | tee sim.log
 
@@ -190,6 +193,10 @@
     NET_LAT="22.7us"
     GPU_BW="457.54GBps"
     GPU_LAT="1.34us"
+    GPU_POWER="29Tf"
+    HOST_SPEED="5.84Tf"
+    
+    export HOST_SPEED
 
     OUTPUT_CSV="simulation_results.csv"
     echo "run,problem_size,mpi_time,computation_time,total_time" > $OUTPUT_CSV
@@ -202,7 +209,7 @@
         size=$((j - 12))
         echo "  Problem Size: $size"
 
-        output=$(${runSimgridPlatformCuda}/bin/run-simgrid-platform-cuda $NUM_HOSTS $NET_BW $NET_LAT $GPU_BW $GPU_LAT \
+        output=$(${runSimgridPlatformCuda}/bin/run-simgrid-platform-cuda $NUM_HOSTS $NET_BW $NET_LAT $GPU_BW $GPU_LAT $GPU_POWER \
                  --size-x=$size --size-y=$size --size-z=$size --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc)
 
         total_time=$(echo "$output" | grep "Total time:" | awk '{print $4}' | tr -d '"')

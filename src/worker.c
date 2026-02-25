@@ -466,8 +466,19 @@ void dc_worker_free(dc_process_t process) {
 
 void dc_concatenate_worker_requests(int rank, worker_requests_t *target,
                                     worker_requests_t *source) {
-  if (source == NULL || source->count == 0)
+  if (source == NULL)
     return;
+  if (source->count == 0) {
+    if (source->requests != NULL) {
+      free(source->requests);
+      source->requests = NULL;
+    }
+    if (source->buffers_to_free != NULL) {
+      free(source->buffers_to_free);
+      source->buffers_to_free = NULL;
+    }
+    return;
+  }
   size_t original_target_count = target->count;
   size_t new_count = original_target_count + source->count;
   target->requests = realloc(target->requests, new_count * sizeof(MPI_Request));

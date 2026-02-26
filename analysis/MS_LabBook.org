@@ -4890,16 +4890,63 @@ tibble(FILE = c("2026-02-19/1/256/dc.csv", "../dc.csv")) |>
 #+RESULTS:
 #+begin_example
 # A tibble: 10 × 6
-   FILE                    Operation       N       Mean    Total        P
-   <chr>                   <fct>       <int>      <dbl>    <dbl>    <dbl>
- 1 ../dc.csv               MPI_Irecv   24024 0            0       0      
- 2 2026-02-19/1/256/dc.csv MPI_Irecv   24024 0.00000101   0.0242  0.00683
- 3 ../dc.csv               MPI_Isend   24024 0            0       0      
- 4 2026-02-19/1/256/dc.csv MPI_Isend   24024 0.00000479   0.115   0.0324 
- 5 ../dc.csv               MPI_Recv       60 0.298       17.9     5.03   
- 6 2026-02-19/1/256/dc.csv MPI_Recv       60 0.385       23.1     6.51   
- 7 ../dc.csv               MPI_Send       60 0.165        9.90    2.79   
- 8 2026-02-19/1/256/dc.csv MPI_Send       60 0.143        8.56    2.41   
- 9 ../dc.csv               MPI_Waitall  8008 0.0205     164.     46.3    
-10 2026-02-19/1/256/dc.csv MPI_Waitall  8008 0.0163     131.     36.9
+   FILE                    Operation       N       Mean    Total       P
+   <chr>                   <fct>       <int>      <dbl>    <dbl>   <dbl>
+ 1 ../dc.csv               MPI_Irecv    2400 0            0       0     
+ 2 2026-02-19/1/256/dc.csv MPI_Irecv   24024 0.00000101   0.0242  0.0147
+ 3 ../dc.csv               MPI_Isend    2400 0            0       0     
+ 4 2026-02-19/1/256/dc.csv MPI_Isend   24024 0.00000479   0.115   0.0699
+ 5 ../dc.csv               MPI_Recv       60 0.0241       1.44    0.877 
+ 6 2026-02-19/1/256/dc.csv MPI_Recv       60 0.385       23.1    14.0   
+ 7 ../dc.csv               MPI_Send       60 0.00310      0.186   0.113 
+ 8 2026-02-19/1/256/dc.csv MPI_Send       60 0.143        8.56    5.20  
+ 9 ../dc.csv               MPI_Waitall   800 0.000478     0.383   0.232 
+10 2026-02-19/1/256/dc.csv MPI_Waitall  8008 0.0163     131.     79.5
 #+end_example
+
+*** Compute MSamples/s
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+tibble(FILE = c("2026-02-19/1/256/dc.csv")) |>
+  mutate(DATA = map(FILE, lets_read_our_csv)) |>
+  unnest(DATA) |>
+  filter(Operation != "MPI_Allgather") |>
+  filter(Operation != "MPI_Finalize") |>
+  filter(Operation != "MPI_Init") |>
+  arrange(Start) -> df
+
+# Get last MPI_Send
+df |>
+  filter(Rank == 0) |>
+  filter(Operation == "MPI_Send") |>
+  arrange(-End) |>
+  pull(End) |>
+  max() -> t.start
+
+# Get first MPI_Recv
+df |>
+  filter(Rank == 0) |>
+  filter(Operation == "MPI_Recv") |>
+  arrange(-Start) |>
+  pull(Start) |>
+  min() -> t.end
+
+walltime = (t.end-t.start)
+walltime
+  
+
+df |>
+  filter(Start >= t.start) |>
+  filter(End <= t.end) |>
+  ggplot(aes(xmin=Start,xmax=End, ymin=Rank, ymax=Rank+0.9, fill=Operation)) + geom_rect()
+#+end_src
+
+#+RESULTS:
+: [1] 35.90013
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+256^3*100/1000/walltime
+#+end_src
+
+#+RESULTS:
+: [1] 46733.02

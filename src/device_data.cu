@@ -61,10 +61,6 @@ dc_device_data *dc_device_data_init(dc_process_t *process) {
                    "cudaMalloc qp");
   check_cuda_error(cudaMalloc(&data->qc, total_size_bytes), process->rank,
                    "cudaMalloc qc");
-  check_cuda_error(cudaMalloc(&data->pp_copy, total_size_bytes), process->rank,
-                   "cudaMalloc pp_copy");
-  check_cuda_error(cudaMalloc(&data->qp_copy, total_size_bytes), process->rank,
-                   "cudaMalloc qp_copy");
 
   check_cuda_error(cudaMemcpy(data->pp, process->pp, total_size_bytes,
                               cudaMemcpyHostToDevice),
@@ -148,6 +144,12 @@ dc_device_data *dc_device_data_init(dc_process_t *process) {
                               sizeof(dc_precomp_vars), cudaMemcpyHostToDevice),
                    process->rank, "cudaMemcpy d_precomp_vars");
 
+  check_cuda_error(cudaMalloc(&data->d_start_coords, sizeof(size_t) * DIMENSIONS), process->rank, "cudaMalloc d_start_coords");
+  check_cuda_error(cudaMalloc(&data->d_end_coords, sizeof(size_t) * DIMENSIONS), process->rank, "cudaMalloc d_end_coords");
+  check_cuda_error(cudaMalloc(&data->d_sizes, sizeof(size_t) * DIMENSIONS), process->rank, "cudaMalloc d_sizes");
+  check_cuda_error(cudaMalloc(&data->d_process_coordinates, sizeof(int) * DIMENSIONS), process->rank, "cudaMalloc d_process_coordinates");
+  check_cuda_error(cudaMalloc(&data->d_topology, sizeof(int) * DIMENSIONS), process->rank, "cudaMalloc d_topology");
+
   return data;
 }
 
@@ -156,8 +158,6 @@ void dc_device_data_free(dc_device_data *data) {
   cudaFree(data->pc);
   cudaFree(data->qp);
   cudaFree(data->qc);
-  cudaFree(data->pp_copy);
-  cudaFree(data->qp_copy);
 
   cudaFree(data->precomp_vars.ch1dxx);
   cudaFree(data->precomp_vars.ch1dyy);
@@ -170,6 +170,12 @@ void dc_device_data_free(dc_device_data *data) {
   cudaFree(data->precomp_vars.v2sz);
   cudaFree(data->precomp_vars.v2pn);
   cudaFree(data->d_precomp_vars);
+
+  cudaFree(data->d_start_coords);
+  cudaFree(data->d_end_coords);
+  cudaFree(data->d_sizes);
+  cudaFree(data->d_process_coordinates);
+  cudaFree(data->d_topology);
 
   free(data);
 }
@@ -252,14 +258,3 @@ void dc_device_insert_halo_face(dc_device_data *data, const float *buffer,
   check_cuda_error(cudaMemcpy3D(&params), 0, "cudaMemcpy3D insert");
 }
 
-void dc_device_data_copy_to_device_copies(dc_device_data *data,
-                                          const size_t sizes[DIMENSIONS]) {
-  size_t total_size = dc_compute_count_from_sizes((size_t *)sizes);
-  size_t total_size_bytes = total_size * sizeof(float);
-  check_cuda_error(cudaMemcpy(data->pp_copy, data->pp, total_size_bytes,
-                              cudaMemcpyDeviceToDevice),
-                   0, "cudaMemcpy pp_copy");
-  check_cuda_error(cudaMemcpy(data->qp_copy, data->qp, total_size_bytes,
-                              cudaMemcpyDeviceToDevice),
-                   0, "cudaMemcpy qp_copy");
-}

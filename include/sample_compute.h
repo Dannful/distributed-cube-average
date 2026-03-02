@@ -8,8 +8,7 @@ static inline HOST_DEVICE void
 sample_compute(size_t x, size_t y, size_t z, const size_t *sizes,
                const int *process_coordinates, const int *topology, float dx,
                float dy, float dz, float dt, const float *pc, const float *qc,
-               const float *pp_in, const float *qp_in, float *pp_out,
-               float *qp_out, dc_precomp_vars *precomp_vars) {
+               float *pp, float *qp, dc_precomp_vars *precomp_vars) {
   const size_t size_x = sizes[0];
   const size_t size_y = sizes[1];
   const size_t size_z = sizes[2];
@@ -81,6 +80,6 @@ sample_compute(size_t x, size_t y, size_t z, const size_t *sizes,
                precomp_vars->v2sz[i] * h2pmq;
 
   // new p and q
-  pp_out[i] = 2.0f * pc[i] - pp_in[i] + rhsp * dt * dt;
-  qp_out[i] = 2.0f * qc[i] - qp_in[i] + rhsq * dt * dt;
+  pp[i] = 2.0f * pc[i] - pp[i] + rhsp * dt * dt;
+  qp[i] = 2.0f * qc[i] - qp[i] + rhsq * dt * dt;
 }

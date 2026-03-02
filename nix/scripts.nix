@@ -229,7 +229,8 @@
 in {
   run-dc = pkgs.writeShellScriptBin "run-dc" ''
     ${selectAppLogic}
-    shift 2
+    np=$3
+    shift 3
     ARGS="$@"
 
     # Cleanup
@@ -243,7 +244,7 @@ in {
     fi
 
     echo "Running $APP_DIR/bin/dc with args: $ARGS"
-    ${pkgs.openmpi}/bin/mpirun -np 6 --bind-to none $MPI_ARGS $APP_DIR/bin/dc $ARGS | tee dc.output
+    ${pkgs.openmpi}/bin/mpirun -np $np --bind-to none $MPI_ARGS $APP_DIR/bin/dc $ARGS | tee dc.output
 
     ${postProcessLogic}
   '';

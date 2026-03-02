@@ -397,8 +397,6 @@ void dc_worker_process(dc_process_t *process, MPI_Comm comm) {
       dc_device_add_source(data, process->source_index, source);
     }
 
-    dc_device_data_copy_to_device_copies(data, process->sizes);
-
     worker_halos_t new_pp_halos = dc_receive_halos(*process, comm, PP_TAG);
     worker_halos_t new_qp_halos = dc_receive_halos(*process, comm, QP_TAG);
 

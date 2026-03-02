@@ -25,27 +25,10 @@ dc_device_data *dc_device_data_init(dc_process_t *process) {
   data->qc = process->qc;
   data->precomp_vars = process->precomp_vars;
 
-  data->pp_copy = (float *)malloc(total_size_bytes);
-  if (data->pp_copy == NULL) {
-    dc_log_error(process->rank, "OOM: could not allocate memory for pp_copy in "
-                                "dc_device_data_init");
-    MPI_Finalize();
-    exit(1);
-  }
-  data->qp_copy = (float *)malloc(total_size_bytes);
-  if (data->qp_copy == NULL) {
-    dc_log_error(process->rank, "OOM: could not allocate memory for qp_copy in "
-                                "dc_device_data_init");
-    MPI_Finalize();
-    exit(1);
-  }
-
   return data;
 }
 
 void dc_device_data_free(dc_device_data *data) {
-  free(data->pp_copy);
-  free(data->qp_copy);
   free(data);
 }
 
@@ -101,12 +84,4 @@ void dc_device_insert_halo_face(dc_device_data *data, const float *buffer,
       }
     }
   }
-}
-
-void dc_device_data_copy_to_device_copies(dc_device_data *data,
-                                          const size_t sizes[DIMENSIONS]) {
-  size_t total_size = dc_compute_count_from_sizes((size_t *)sizes);
-  size_t total_size_bytes = total_size * sizeof(float);
-  memcpy(data->pp_copy, data->pp, total_size_bytes);
-  memcpy(data->qp_copy, data->qp, total_size_bytes);
 }

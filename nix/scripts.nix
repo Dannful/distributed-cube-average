@@ -108,11 +108,9 @@
     GPU_BW=$4
     GPU_LAT=$5
     GPU_POWER=$6
-    shift 6
+    HOST_SPEED=$7
+    shift 7
     ARGS="$@"
-    
-    # HOST_SPEED: use environment variable
-    HOST_SPEED="$HOST_SPEED"
 
     export PLATFORM_NUM_HOSTS=$NUM_HOSTS
     export PLATFORM_NET_BW=$NET_BW
@@ -120,6 +118,7 @@
     export PLATFORM_GPU_BW=$GPU_BW
     export PLATFORM_GPU_LAT=$GPU_LAT
     export PLATFORM_GPU_POWER=$GPU_POWER
+    export HOST_SPEED=$HOST_SPEED
     export PLATFORM_HOSTFILE=simgrid-config/hostfile.txt
 
     # CUDA Setup
@@ -195,7 +194,7 @@
     GPU_LAT="1.34us"
     GPU_POWER="29Tf"
     HOST_SPEED="5.84Tf"
-    
+
     export HOST_SPEED
 
     OUTPUT_CSV="simulation_results.csv"

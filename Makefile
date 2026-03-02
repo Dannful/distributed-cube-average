@@ -9,10 +9,10 @@ INCDIR   = include
 BUILDDIR = bin
 OBJDIR   = $(BUILDDIR)/obj
 
-CFLAGS   = -I$(INCDIR) -Wall -O3
+CFLAGS   = -I$(INCDIR) -Wall -O3 -g
 LDFLAGS  = -lm
 
-CUDA_CFLAGS    = -I$(INCDIR) -gencode arch=compute_$(subst sm_,,$(ARCH)),code=$(ARCH) -allow-unsupported-compiler
+CUDA_CFLAGS    = -I$(INCDIR) -g -gencode arch=compute_$(subst sm_,,$(ARCH)),code=$(ARCH) -allow-unsupported-compiler
 CUDA_LINK_LIBS = -L/usr/local/cuda/lib64 -lcudart
 
 SOURCES_C_COMMON = $(filter-out $(wildcard $(SRCDIR)/*_propagate.c) $(SRCDIR)/device_data.c $(SRCDIR)/derivatives.c $(SRCDIR)/sample.c, $(wildcard $(SRCDIR)/*.c))
@@ -31,7 +31,6 @@ ifeq ($(BACKEND), openmp)
     LDFLAGS      += -fopenmp
 
 else ifeq ($(BACKEND), simgrid)
-    CFLAGS       += -DUSE_SIMGRID
     CC           := smpicc
     SOURCES_C    := $(SOURCES_C_COMMON) $(SRCDIR)/openmp_propagate.c $(SRCDIR)/device_data.c
     SOURCES_CUDA :=
@@ -43,12 +42,13 @@ else ifeq ($(BACKEND), cuda)
 
 else ifeq ($(BACKEND), simgrid_cuda)
     CC           := smpicc
-    CFLAGS       += -DUSE_SIMGRID
+    CFLAGS       += -DSIMGRID
     SOURCES_C    := $(SOURCES_C_COMMON)
     SOURCES_CUDA := $(SRCDIR)/cuda_propagate.cu $(SRCDIR)/device_data.cu
     
     CUDA_CFLAGS  += -Xcompiler -fPIC
     CUDA_CFLAGS  += -ccbin g++
+    CUDA_CFLAGS  += -DSIMGRID
     LDFLAGS      += -L/usr/local/cuda/lib64 -lcudart_static -lstdc++ -lpthread -ldl -lrt
 
 else

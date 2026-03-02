@@ -139,9 +139,9 @@ int main(int argc, char **argv) {
            sizeof(float) * coordinator_size);
     mpi_process.iterations = problem_data.iterations;
     mpi_process.rank = rank;
-    free_precomp_vars(&mpi_process.precomp_vars);
+    dc_free_precomp_vars(&mpi_process.precomp_vars);
     mpi_process.precomp_vars = *problem_data.precomp_vars_workers[0];
-    free(problem_data.precomp_vars_workers[0]);
+    dc_free(problem_data.precomp_vars_workers[0]);
     problem_data.precomp_vars_workers[0] = NULL;
     dc_free_problem_data_mem(&problem_data);
   } else {
@@ -167,8 +167,8 @@ int main(int argc, char **argv) {
   double end_time = MPI_Wtime();
 
   free(arguments.output_file);
-  free_anisotropy_vars(&mpi_process.anisotropy_vars);
-  free_precomp_vars(&mpi_process.precomp_vars);
+  dc_free_anisotropy_vars(&mpi_process.anisotropy_vars);
+  dc_free_precomp_vars(&mpi_process.precomp_vars);
 
   dc_log_info(rank, "Elapsed time: %lf seconds", end_time - start_time);
 

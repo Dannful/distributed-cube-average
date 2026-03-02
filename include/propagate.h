@@ -1,14 +1,14 @@
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifndef DC_PROPAGATE_H
 #define DC_PROPAGATE_H
 
 #include "definitions.h"
 #include "device_data.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void dc_propagate(const size_t start_coords[DIMENSIONS],
                   const size_t end_coords[DIMENSIONS],

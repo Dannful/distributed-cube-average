@@ -1,8 +1,16 @@
+#include "definitions.h"
+#include "memory.h"
 #include <mpi.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef SIMGRID
+#include <smpi/smpi.h>
+// this is a rough estimation based on the amount of floating point
+// operations present per sample
+#define FLOPS_PER_SAMPLE 104
+#endif
 
 #include "calculate_source.h"
 #include "coordinator.h"
@@ -21,7 +29,7 @@ void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm) {
            MPI_STATUS_IGNORE);
 
   size_t count = dc_compute_count_from_sizes(process->sizes);
-  process->pp = (float *)malloc(count * sizeof(float));
+  process->pp = (float *)shared_malloc(count * sizeof(float));
   if (process->pp == NULL) {
     dc_log_error(
         process->rank,
@@ -29,7 +37,7 @@ void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm) {
     MPI_Finalize();
     exit(1);
   }
-  process->pc = (float *)malloc(count * sizeof(float));
+  process->pc = (float *)shared_malloc(count * sizeof(float));
   if (process->pc == NULL) {
     dc_log_error(
         process->rank,
@@ -37,7 +45,7 @@ void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm) {
     MPI_Finalize();
     exit(1);
   }
-  process->qp = (float *)malloc(count * sizeof(float));
+  process->qp = (float *)shared_malloc(count * sizeof(float));
   if (process->qp == NULL) {
     dc_log_error(
         process->rank,
@@ -45,7 +53,7 @@ void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm) {
     MPI_Finalize();
     exit(1);
   }
-  process->qc = (float *)malloc(count * sizeof(float));
+  process->qc = (float *)shared_malloc(count * sizeof(float));
   if (process->qc == NULL) {
     dc_log_error(
         process->rank,
@@ -63,7 +71,7 @@ void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm) {
   MPI_Recv(process->qc, count, MPI_FLOAT, COORDINATOR, 0, comm,
            MPI_STATUS_IGNORE);
 
-  process->precomp_vars.ch1dxx = (float *)malloc(count * sizeof(float));
+  process->precomp_vars.ch1dxx = (float *)shared_malloc(count * sizeof(float));
   if (process->precomp_vars.ch1dxx == NULL) {
     dc_log_error(process->rank,
                  "OOM: could not allocate memory for "
@@ -71,7 +79,7 @@ void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm) {
     MPI_Finalize();
     exit(1);
   }
-  process->precomp_vars.ch1dyy = (float *)malloc(count * sizeof(float));
+  process->precomp_vars.ch1dyy = (float *)shared_malloc(count * sizeof(float));
   if (process->precomp_vars.ch1dyy == NULL) {
     dc_log_error(process->rank,
                  "OOM: could not allocate memory for "
@@ -79,7 +87,7 @@ void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm) {
     MPI_Finalize();
     exit(1);
   }
-  process->precomp_vars.ch1dzz = (float *)malloc(count * sizeof(float));
+  process->precomp_vars.ch1dzz = (float *)shared_malloc(count * sizeof(float));
   if (process->precomp_vars.ch1dzz == NULL) {
     dc_log_error(process->rank,
                  "OOM: could not allocate memory for "
@@ -87,7 +95,7 @@ void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm) {
     MPI_Finalize();
     exit(1);
   }
-  process->precomp_vars.ch1dxy = (float *)malloc(count * sizeof(float));
+  process->precomp_vars.ch1dxy = (float *)shared_malloc(count * sizeof(float));
   if (process->precomp_vars.ch1dxy == NULL) {
     dc_log_error(process->rank,
                  "OOM: could not allocate memory for "
@@ -95,7 +103,7 @@ void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm) {
     MPI_Finalize();
     exit(1);
   }
-  process->precomp_vars.ch1dyz = (float *)malloc(count * sizeof(float));
+  process->precomp_vars.ch1dyz = (float *)shared_malloc(count * sizeof(float));
   if (process->precomp_vars.ch1dyz == NULL) {
     dc_log_error(process->rank,
                  "OOM: could not allocate memory for "
@@ -103,7 +111,7 @@ void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm) {
     MPI_Finalize();
     exit(1);
   }
-  process->precomp_vars.ch1dxz = (float *)malloc(count * sizeof(float));
+  process->precomp_vars.ch1dxz = (float *)shared_malloc(count * sizeof(float));
   if (process->precomp_vars.ch1dxz == NULL) {
     dc_log_error(process->rank,
                  "OOM: could not allocate memory for "
@@ -111,28 +119,28 @@ void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm) {
     MPI_Finalize();
     exit(1);
   }
-  process->precomp_vars.v2px = (float *)malloc(count * sizeof(float));
+  process->precomp_vars.v2px = (float *)shared_malloc(count * sizeof(float));
   if (process->precomp_vars.v2px == NULL) {
     dc_log_error(process->rank, "OOM: could not allocate memory for "
                                 "precomp_vars.v2px in dc_worker_receive_data");
     MPI_Finalize();
     exit(1);
   }
-  process->precomp_vars.v2pz = (float *)malloc(count * sizeof(float));
+  process->precomp_vars.v2pz = (float *)shared_malloc(count * sizeof(float));
   if (process->precomp_vars.v2pz == NULL) {
     dc_log_error(process->rank, "OOM: could not allocate memory for "
                                 "precomp_vars.v2pz in dc_worker_receive_data");
     MPI_Finalize();
     exit(1);
   }
-  process->precomp_vars.v2sz = (float *)malloc(count * sizeof(float));
+  process->precomp_vars.v2sz = (float *)shared_malloc(count * sizeof(float));
   if (process->precomp_vars.v2sz == NULL) {
     dc_log_error(process->rank, "OOM: could not allocate memory for "
                                 "precomp_vars.v2sz in dc_worker_receive_data");
     MPI_Finalize();
     exit(1);
   }
-  process->precomp_vars.v2pn = (float *)malloc(count * sizeof(float));
+  process->precomp_vars.v2pn = (float *)shared_malloc(count * sizeof(float));
   if (process->precomp_vars.v2pn == NULL) {
     dc_log_error(process->rank, "OOM: could not allocate memory for "
                                 "precomp_vars.v2pn in dc_worker_receive_data");
@@ -235,7 +243,7 @@ void dc_send_halo_to_neighbours(dc_process_t process, MPI_Comm comm, int tag,
     size_t data_size = (send_ends[0] - send_starts[0]) *
                        (send_ends[1] - send_starts[1]) *
                        (send_ends[2] - send_starts[2]);
-    float *send_buffer = malloc(data_size * sizeof(float));
+    float *send_buffer = shared_malloc(data_size * sizeof(float));
     if (send_buffer == NULL) {
       dc_log_error(process.rank,
                    "OOM: could not allocate memory for send_buffer in "
@@ -306,7 +314,8 @@ worker_halos_t dc_receive_halos(dc_process_t process, MPI_Comm comm, int tag) {
       }
     }
     result.halo_sizes[face_index] = recv_data_size;
-    result.halo_data[face_index] = malloc(recv_data_size * sizeof(float));
+    result.halo_data[face_index] =
+        shared_malloc(recv_data_size * sizeof(float));
     if (result.halo_data[face_index] == NULL) {
       dc_log_error(process.rank, "OOM: could not allocate memory for "
                                  "halo_data[face_index] in dc_receive_halos");
@@ -393,12 +402,25 @@ void dc_worker_process(dc_process_t *process, MPI_Comm comm) {
     worker_halos_t new_pp_halos = dc_receive_halos(*process, comm, PP_TAG);
     worker_halos_t new_qp_halos = dc_receive_halos(*process, comm, QP_TAG);
 
+#ifdef SIMGRID
+    SMPI_SAMPLE_FLOPS(6 * STENCIL * FLOPS_PER_SAMPLE);
+#else
     dc_compute_boundaries(process, data);
+#endif
     dc_send_halo_to_neighbours(*process, comm, PP_TAG, data, data->pp,
                                &all_send_requests);
     dc_send_halo_to_neighbours(*process, comm, QP_TAG, data, data->qp,
                                &all_send_requests);
+#ifdef SIMGRID
+    size_t trimmed_sizes[DIMENSIONS];
+    trimmed_sizes[0] = process->sizes[0] - 2 * STENCIL;
+    trimmed_sizes[1] = process->sizes[1] - 2 * STENCIL;
+    trimmed_sizes[2] = process->sizes[2] - 2 * STENCIL;
+    size_t total_count = dc_compute_count_from_sizes(trimmed_sizes);
+    SMPI_SAMPLE_FLOPS(total_count * FLOPS_PER_SAMPLE);
+#else
     dc_compute_interior(process, data);
+#endif
 
     dc_concatenate_worker_requests(process->rank, &new_pp_halos.requests,
                                    &new_qp_halos.requests);

@@ -1,7 +1,6 @@
 #include "precomp.h"
 #include <math.h>
 #include <mpi.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "coordinator.h"
@@ -171,7 +170,7 @@ dc_anisotropy_t dc_compute_anisotropy_vars(int sx, int sy, int sz) {
   return anisotropy;
 }
 
-void free_anisotropy_vars(dc_anisotropy_t *anisotropy) {
+void dc_free_anisotropy_vars(dc_anisotropy_t *anisotropy) {
   free(anisotropy->theta);
   free(anisotropy->phi);
   free(anisotropy->vsv);
@@ -187,7 +186,7 @@ void free_anisotropy_vars(dc_anisotropy_t *anisotropy) {
   anisotropy->delta = NULL;
 }
 
-void free_precomp_vars(dc_precomp_vars *precomp) {
+void dc_free_precomp_vars(dc_precomp_vars *precomp) {
   free(precomp->ch1dxx);
   free(precomp->ch1dyy);
   free(precomp->ch1dzz);

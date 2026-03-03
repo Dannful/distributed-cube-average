@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=distributed-cube-distributed
 #SBATCH --partition=poti
-#SBATCH --nodes=4
-#SBATCH --ntasks=4
+#SBATCH --nodes=5
+#SBATCH --ntasks=5
 #SBATCH --time=24:00:00
 #SBATCH --output=%x_%j.out
 #SBATCH --error=%x_%j.err

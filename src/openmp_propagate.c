@@ -10,13 +10,16 @@ void dc_propagate(const size_t start_coords[DIMENSIONS],
                   const int topology[DIMENSIONS], dc_device_data *data,
                   const float dx, const float dy, const float dz,
                   const float dt) {
-#pragma omp parallel for collapse(3)
-  for (size_t z = start_coords[2]; z < end_coords[2]; z++) {
-    for (size_t y = start_coords[1]; y < end_coords[1]; y++) {
-      for (size_t x = start_coords[0]; x < end_coords[0]; x++) {
-        sample_compute(x, y, z, sizes, process_coordinates, topology, dx, dy,
-                       dz, dt, data->pc, data->qc, data->pp, data->qp,
-                       &data->precomp_vars);
+#pragma omp parallel
+  {
+#pragma omp for
+    for (size_t z = start_coords[2]; z < end_coords[2]; z++) {
+      for (size_t y = start_coords[1]; y < end_coords[1]; y++) {
+        for (size_t x = start_coords[0]; x < end_coords[0]; x++) {
+          sample_compute(x, y, z, sizes, process_coordinates, topology, dx, dy,
+                         dz, dt, data->pc, data->qc, data->pp, data->qp,
+                         &data->precomp_vars);
+        }
       }
     }
   }

@@ -23,7 +23,7 @@ problem_data_t dc_initialize_problem(MPI_Comm comm,
       arguments.size_y + 2 * arguments.absorption_size + 2 * STENCIL;
   result.size_z =
       arguments.size_z + 2 * arguments.absorption_size + 2 * STENCIL;
-  result.pp = (float *)malloc(result.size_x * result.size_y * result.size_z *
+  result.pp = (float *)calloc(result.size_x * result.size_y * result.size_z,
                               sizeof(float));
   if (result.pp == NULL) {
     dc_log_error(
@@ -32,7 +32,7 @@ problem_data_t dc_initialize_problem(MPI_Comm comm,
     MPI_Finalize();
     exit(1);
   }
-  result.pc = (float *)malloc(result.size_x * result.size_y * result.size_z *
+  result.pc = (float *)calloc(result.size_x * result.size_y * result.size_z,
                               sizeof(float));
   if (result.pc == NULL) {
     dc_log_error(
@@ -41,7 +41,7 @@ problem_data_t dc_initialize_problem(MPI_Comm comm,
     MPI_Finalize();
     exit(1);
   }
-  result.qp = (float *)malloc(result.size_x * result.size_y * result.size_z *
+  result.qp = (float *)calloc(result.size_x * result.size_y * result.size_z,
                               sizeof(float));
   if (result.qp == NULL) {
     dc_log_error(
@@ -50,7 +50,7 @@ problem_data_t dc_initialize_problem(MPI_Comm comm,
     MPI_Finalize();
     exit(1);
   }
-  result.qc = (float *)malloc(result.size_x * result.size_y * result.size_z *
+  result.qc = (float *)calloc(result.size_x * result.size_y * result.size_z,
                               sizeof(float));
   if (result.qc == NULL) {
     dc_log_error(

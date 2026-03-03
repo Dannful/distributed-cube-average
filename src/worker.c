@@ -342,10 +342,18 @@ void dc_compute_boundaries(const dc_process_t *process, dc_device_data *data) {
       displacement[dimension] = direction;
       size_t start_coords[DIMENSIONS], end_coords[DIMENSIONS];
       for (unsigned int i = 0; i < DIMENSIONS; i++) {
-        start_coords[i] =
-            (displacement[i] > 0) ? (process->sizes[i] - 2 * radius) : radius;
-        end_coords[i] =
-            (displacement[i] < 0) ? 2 * radius : process->sizes[i] - radius;
+        if (i < dimension) {
+          start_coords[i] = 2 * radius;
+          end_coords[i] = process->sizes[i] - 2 * radius;
+        } else if (i == dimension) {
+          start_coords[i] =
+              (displacement[i] > 0) ? (process->sizes[i] - 2 * radius) : radius;
+          end_coords[i] =
+              (displacement[i] < 0) ? 2 * radius : process->sizes[i] - radius;
+        } else {
+          start_coords[i] = radius;
+          end_coords[i] = process->sizes[i] - radius;
+        }
       }
       dc_propagate(start_coords, end_coords, process->sizes,
                    process->coordinates, process->topology, data, process->dx,

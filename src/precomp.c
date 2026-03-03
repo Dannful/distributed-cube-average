@@ -85,10 +85,10 @@ dc_precomp_vars dc_compute_precomp_vars(int sx, int sy, int sz,
   for (int i = 0; i < n; i++) {
     float sinTheta = sin(anisotropy.theta[i]);
     float cosTheta = cos(anisotropy.theta[i]);
-    float sin2Theta = sin(2.0f * anisotropy.theta[i]);
+    float sin2Theta = sin(2.0 * anisotropy.theta[i]);
     float sinPhi = sin(anisotropy.phi[i]);
     float cosPhi = cos(anisotropy.phi[i]);
-    float sin2Phi = sin(2.0f * anisotropy.phi[i]);
+    float sin2Phi = sin(2.0 * anisotropy.phi[i]);
     vars.ch1dxx[i] = sinTheta * sinTheta * cosPhi * cosPhi;
     vars.ch1dyy[i] = sinTheta * sinTheta * sinPhi * sinPhi;
     vars.ch1dzz[i] = cosTheta * cosTheta;

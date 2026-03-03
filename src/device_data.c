@@ -33,7 +33,10 @@ void dc_device_data_free(dc_device_data *data) {
 }
 
 void dc_device_data_get_results(dc_process_t *process, dc_device_data *data) {
-  // No-op for OpenMP, as data is already on the host
+  process->pp = data->pp;
+  process->pc = data->pc;
+  process->qp = data->qp;
+  process->qc = data->qc;
 }
 
 void dc_device_swap_arrays(dc_device_data *data) {

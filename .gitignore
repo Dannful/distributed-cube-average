@@ -12,3 +12,4 @@ nohup.out
 /nodes.slurm
 *.csv
 !simulation*.csv
+sim.log

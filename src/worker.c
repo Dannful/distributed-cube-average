@@ -385,7 +385,7 @@ void dc_send_data_to_coordinator(dc_process_t process, MPI_Comm comm) {
            COORDINATOR, 0, comm);
 }
 
-void dc_worker_process(dc_process_t *process, MPI_Comm comm) {
+double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
   worker_requests_t all_send_requests;
   all_send_requests.buffers_to_free = NULL;
   all_send_requests.requests = NULL;
@@ -396,6 +396,8 @@ void dc_worker_process(dc_process_t *process, MPI_Comm comm) {
               process->sizes[2]);
 
   dc_device_data *data = dc_device_data_init(process);
+
+  double start_time = MPI_Wtime();
 
   for (unsigned int i = 0; i < process->iterations; i++) {
     if (process->source_index != -1) {
@@ -444,7 +446,15 @@ void dc_worker_process(dc_process_t *process, MPI_Comm comm) {
 
   dc_device_data_get_results(process, data);
   dc_device_data_free(data);
-  dc_log_info(process->rank, "Processing complete.");
+
+  double end_time = MPI_Wtime();
+  double elapsed = end_time - start_time;
+  size_t compute_size_x = process->sizes[0] - 2 * STENCIL;
+  size_t compute_size_y = process->sizes[1] - 2 * STENCIL;
+  size_t compute_size_z = process->sizes[2] - 2 * STENCIL;
+  double msamples = ((double)compute_size_x * compute_size_y * compute_size_z * process->iterations) / 1000000.0;
+  double msamples_per_s = msamples / elapsed;
+  return msamples_per_s;
 }
 
 void dc_free_worker_requests(worker_requests_t *requests) {

@@ -150,7 +150,7 @@ int main(int argc, char **argv) {
     dc_log_info(rank, "Data received from coordinator.");
   }
   dc_log_info(rank, "Starting worker process...");
-  dc_worker_process(&mpi_process, communicator);
+  double msamples_per_s = dc_worker_process(&mpi_process, communicator);
   dc_send_data_to_coordinator(mpi_process, communicator);
   if (rank == COORDINATOR) {
     dc_result_t result =
@@ -165,12 +165,18 @@ int main(int argc, char **argv) {
   dc_worker_free(mpi_process);
 
   double end_time = MPI_Wtime();
+  double total_time = end_time - start_time;
 
   free(arguments.output_file);
   dc_free_anisotropy_vars(&mpi_process.anisotropy_vars);
   dc_free_precomp_vars(&mpi_process.precomp_vars);
 
-  dc_log_info(rank, "Elapsed time: %lf seconds", end_time - start_time);
+  MPI_Barrier(communicator);
+  if (rank == COORDINATOR) {
+    printf("rank,total_time,msamples_per_s\n");
+  }
+  MPI_Barrier(communicator);
+  printf("%d,%lf,%lf\n", rank, total_time, msamples_per_s);
 
   MPI_Finalize();
   return 0;

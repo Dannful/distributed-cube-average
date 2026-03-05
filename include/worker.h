@@ -30,7 +30,7 @@ typedef struct {
 } worker_halos_t;
 
 void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm);
-void dc_worker_process(dc_process_t *process, MPI_Comm comm);
+double dc_worker_process(dc_process_t *process, MPI_Comm comm);
 void dc_worker_free(dc_process_t process);
 
 void dc_send_halo_to_neighbours(dc_process_t process, MPI_Comm comm, int tag,

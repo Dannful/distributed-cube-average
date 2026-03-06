@@ -178,6 +178,16 @@ int main(int argc, char **argv) {
   MPI_Barrier(communicator);
   printf("%d,%lf,%lf\n", rank, total_time, msamples_per_s);
 
+  MPI_Barrier(communicator);
+  if (rank == COORDINATOR) {
+    size_t global_compute_x = sx - 2 * STENCIL;
+    size_t global_compute_y = sy - 2 * STENCIL;
+    size_t global_compute_z = sz - 2 * STENCIL;
+    double global_msamples = ((double)global_compute_x * global_compute_y * global_compute_z * mpi_process.iterations) / 1000000.0;
+    double global_msamples_per_s = global_msamples / total_time;
+    printf("*,%lf,%lf\n", total_time, global_msamples_per_s);
+  }
+
   MPI_Finalize();
   return 0;
 }

@@ -29,8 +29,8 @@ parse_output <- function(file_path) {
 
     if (length(header_idx) > 0) {
         csv_lines <- lines[header_idx[1]:length(lines)]
-        df <- read.csv(text = paste(csv_lines, collapse = "\n"))
-        df_rank0 <- df[df$rank == 0, ]
+        df <- read.csv(text = paste(csv_lines, collapse = "\n"), colClasses=c("rank"="character"))
+        df_rank0 <- df[df$rank == "*", ]
         if (nrow(df_rank0) > 0) {
             return(data.frame(run = run_number, problem_size = problem_size,
                 total_time = df_rank0$total_time[1], msamples_per_s = df_rank0$msamples_per_s[1]))

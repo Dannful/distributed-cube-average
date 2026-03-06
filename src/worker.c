@@ -402,8 +402,6 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
   for (unsigned int i = 0; i < process->iterations; i++) {
     if (process->source_index != -1) {
       float source = dc_calculate_source(process->dt, i);
-      dc_log_info(process->rank, "Inserting source %f at %d", source,
-                  process->source_index);
       dc_device_add_source(data, process->source_index, source);
     }
 
@@ -452,7 +450,9 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
   size_t compute_size_x = process->sizes[0] - 2 * STENCIL;
   size_t compute_size_y = process->sizes[1] - 2 * STENCIL;
   size_t compute_size_z = process->sizes[2] - 2 * STENCIL;
-  double msamples = ((double)compute_size_x * compute_size_y * compute_size_z * process->iterations) / 1000000.0;
+  double msamples = ((double)compute_size_x * compute_size_y * compute_size_z *
+                     process->iterations) /
+                    1000000.0;
   double msamples_per_s = msamples / elapsed;
   return msamples_per_s;
 }

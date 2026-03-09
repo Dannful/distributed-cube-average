@@ -1,48 +1,49 @@
 suppressMessages(library(tidyverse))
 library(stringr)
 
-base_dir <- "analysis/2026-01-20"
+base_dir <- "analysis/2026-03-06"
 
 if (!dir.exists(base_dir)) {
     stop(paste("Directory not found:", base_dir))
 }
 
-files <- list.files(path = base_dir, pattern = "dc\\.output$", recursive = TRUE, full.names = TRUE)
+files <- list.files(path = base_dir, pattern = "\\.rst$", recursive = TRUE, full.names = TRUE)
 
 if (length(files) == 0) {
     warning("No dc.output files found.")
 }
 
 parse_output <- function(file_path) {
-    path_parts <- str_match(file_path, "/([0-9]+)/([0-9]+)/dc\\.output$")
-
-    if (any(is.na(path_parts))) {
-        warning(paste("Could not parse path structure for:", file_path))
-        return(NULL)
-    }
-
-    run_number <- as.integer(path_parts[2])
-    problem_size <- as.integer(path_parts[3])
-
-    lines <- readLines(file_path, warn = FALSE)
-    header_idx <- grep("^rank,total_time,msamples_per_s", lines)
-
-    if (length(header_idx) > 0) {
-        csv_lines <- lines[header_idx[1]:length(lines)]
-        df <- read.csv(text = paste(csv_lines, collapse = "\n"), colClasses=c("rank"="character"))
-        df_rank0 <- df[df$rank == "*", ]
-        if (nrow(df_rank0) > 0) {
-            return(data.frame(run = run_number, problem_size = problem_size,
-                total_time = df_rank0$total_time[1], msamples_per_s = df_rank0$msamples_per_s[1]))
-        }
-    }
-
-    NULL
+    matches <- str_match_all(file_path, "analysis/[^/]+/(?<run>[0-9]+)/(?<size>[0-9]+)")[[1]]
+    run_number <- as.integer(matches[2])
+    problem_size <- as.integer(matches[3])
+    trace_path <- paste0(file_path, ".trace")
+    csv_path <- paste0(file_path, ".csv")
+    system(paste0("aky_converter -l ", file_path, " > ", trace_path))
+    system(paste0("pj_dump -z -l 9 ", trace_path, " | grep ^State > ", csv_path))
+    dataset <- read_csv(csv_path, show_col_types = FALSE, col_names = c("Nature",
+        "Container", "Type", "Start", "End", "Duration", "Imbrication", "Value")) |>
+        select(-Type) |>
+        select(-Imbrication) |>
+        mutate(Container = as.integer(gsub("rank-?", "", Container))) |>
+        mutate(Value = gsub("^PMPI_", "MPI_", Value)) |>
+        mutate(Rank = Container) |>
+        mutate(Operation = as.factor(Value)) |>
+        mutate(problem_size = problem_size) |>
+        mutate(run_number = run_number) |>
+        mutate(total_time = End - Start)
+    system(paste0("rm ", trace_path))
+    system(paste0("rm ", csv_path))
+    dataset
 }
 
+print("Loading dataset...")
 df_real <- map_dfr(files, parse_output)
+print("Dataset loaded.")
 if (nrow(df_real) > 0) {
     df_real <- df_real |>
+        group_by(problem_size, run_number) |>
+        summarise(total_time = max(End, na.rm = TRUE) - min(Start, na.rm = TRUE), .groups = "drop") |>
         group_by(problem_size) |>
         summarise(total_time = mean(total_time))
 
@@ -51,7 +52,8 @@ if (nrow(df_real) > 0) {
     print("No real data parsed.")
 }
 
-sim_file <- here::here("simulation_results.csv")
+args <- commandArgs(trailingOnly = TRUE)
+sim_file <- args[1]
 if (file.exists(sim_file)) {
     df_sim <- read.csv(sim_file)
     df_sim <- df_sim |>

@@ -211,7 +211,7 @@
         echo "  Problem Size: $size"
 
         output=$(${runSimgridPlatformCuda}/bin/run-simgrid-platform-cuda $NUM_HOSTS $NET_BW $NET_LAT $GPU_BW $GPU_LAT $GPU_POWER $HOST_SPEED \
-                 --size-x=$size --size-y=$size --size-z=$size --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-4 --output-file=./validation/predicted.dc)
+                 --size-x=$size --size-y=$size --size-z=$size --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-3 --output-file=./validation/predicted.dc)
 
         total_time=$(echo "$output" | grep "Total time:" | awk '{print $4}' | tr -d '"')
         mpi_time=$(echo "$output" | grep "MPI time:" | awk '{print $4}' | tr -d '"')

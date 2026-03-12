@@ -91,9 +91,6 @@ if (file.exists(sim_results_csv)) {
     merged_summary <- inner_join(df_real_summary, df_sim_summary, by = "problem_size",
         suffix = c("_real", "_sim"))
     if (nrow(merged_summary) > 0) {
-        # Linear Model
-        print(summary(lm(total_time_real ~ total_time_sim, data = merged_summary)))
-
         dir.create("plots", showWarnings = FALSE)
 
         # Comparison Line Plot

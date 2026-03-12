@@ -160,13 +160,14 @@
     PLATFORM_LIB=${packages.dc-simgrid-platform}/lib/libplatform.so
     DC_BIN=${packages.dc-simgrid-cuda}/bin/dc
 
-    smpirun \
+    ${pkgs.simgrid}/bin/smpirun \
       -platform $PLATFORM_LIB \
       -hostfile simgrid-config/hostfile.txt \
       -np $NUM_HOSTS \
       --cfg=smpi/display-timing:yes \
       --cfg=precision/timing:1e-9 \
       --cfg=tracing/precision:9 \
+      --cfg=smpi/shared-malloc:global \
       --cfg=smpi/host-speed:"$HOST_SPEED" \
       -trace --cfg=tracing/filename:dc.trace \
       $DC_BIN $ARGS 2>&1 | tee sim.log
@@ -174,7 +175,7 @@
     # Generate Stats
     if [ -f "dc.trace" ]; then
         pj_dump -l 9 dc.trace | grep ^State > dc.csv
-        Rscript ./plot.R dc.csv
+        ${rEnv}/bin/Rscript ./get_metrics.R
     fi
   '';
 
@@ -193,18 +194,19 @@
     GPU_BW="457.54GBps"
     GPU_LAT="1.34us"
     GPU_POWER="29Tf"
-    HOST_SPEED="5.84Tf"
+    HOST_SPEED="auto"
 
     export HOST_SPEED
 
     OUTPUT_CSV="simulation_results.csv"
+    rm -rf "$OUTPUT_CSV" "sim_traces" "plots"
     echo "run,problem_size,mpi_time,computation_time,total_time" > $OUTPUT_CSV
 
-    echo "Running experiments (1..60 runs, sizes 32..512)..."
+    echo "Running experiments (1..1 runs, sizes 32..256)..."
 
-    for i in {1..60}; do
+    for i in {1..1}; do
       echo "--- Run number $i ---"
-      for j in 32 64 128 256 512; do
+      for j in 32 64 128 256; do
         size=$((j - 12))
         echo "  Problem Size: $size"
 
@@ -217,6 +219,8 @@
 
         if [ -n "$total_time" ]; then
           echo "$i,$j,$mpi_time,$comp_time,$total_time" >> $OUTPUT_CSV
+          mkdir -p "sim_traces/$i/$j"
+          cp dc.csv "sim_traces/$i/$j/dc.csv"
         else
           echo "    Failed to parse metrics for run $i size $size"
         fi
@@ -224,7 +228,7 @@
     done
 
     echo "Comparison vs Real Data:"
-    Rscript ./validation/compare_sim_real.R $OUTPUT_CSV
+    ${rEnv}/bin/Rscript ./validation/compare_sim_real.R $OUTPUT_CSV
   '';
 in {
   run-dc = pkgs.writeShellScriptBin "run-dc" ''

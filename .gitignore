@@ -13,3 +13,4 @@ nohup.out
 *.csv
 !simulation*.csv
 sim.log
+/plots

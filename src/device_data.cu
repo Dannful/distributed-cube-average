@@ -138,18 +138,6 @@ dc_device_data *dc_device_data_init(dc_process_t *process) {
                               cudaMemcpyHostToDevice),
                    process->rank, "cudaMemcpy precomp_vars.v2pn");
 
-  check_cuda_error(cudaMalloc(&data->d_precomp_vars, sizeof(dc_precomp_vars)),
-                   process->rank, "cudaMalloc d_precomp_vars");
-  check_cuda_error(cudaMemcpy(data->d_precomp_vars, &data->precomp_vars,
-                              sizeof(dc_precomp_vars), cudaMemcpyHostToDevice),
-                   process->rank, "cudaMemcpy d_precomp_vars");
-
-  check_cuda_error(cudaMalloc(&data->d_start_coords, sizeof(size_t) * DIMENSIONS), process->rank, "cudaMalloc d_start_coords");
-  check_cuda_error(cudaMalloc(&data->d_end_coords, sizeof(size_t) * DIMENSIONS), process->rank, "cudaMalloc d_end_coords");
-  check_cuda_error(cudaMalloc(&data->d_sizes, sizeof(size_t) * DIMENSIONS), process->rank, "cudaMalloc d_sizes");
-  check_cuda_error(cudaMalloc(&data->d_process_coordinates, sizeof(int) * DIMENSIONS), process->rank, "cudaMalloc d_process_coordinates");
-  check_cuda_error(cudaMalloc(&data->d_topology, sizeof(int) * DIMENSIONS), process->rank, "cudaMalloc d_topology");
-
   return data;
 }
 
@@ -169,13 +157,6 @@ void dc_device_data_free(dc_device_data *data) {
   cudaFree(data->precomp_vars.v2pz);
   cudaFree(data->precomp_vars.v2sz);
   cudaFree(data->precomp_vars.v2pn);
-  cudaFree(data->d_precomp_vars);
-
-  cudaFree(data->d_start_coords);
-  cudaFree(data->d_end_coords);
-  cudaFree(data->d_sizes);
-  cudaFree(data->d_process_coordinates);
-  cudaFree(data->d_topology);
 
   free(data);
 }

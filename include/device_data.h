@@ -14,9 +14,6 @@ typedef struct {
 
   // CUDA-specific fields for kernel launch parameters
 #ifdef __CUDACC__
-  size_t *d_start_coords, *d_end_coords, *d_sizes;
-  int *d_process_coordinates, *d_topology;
-  dc_precomp_vars *d_precomp_vars;
 #endif
 } dc_device_data;
 

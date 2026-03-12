@@ -102,7 +102,6 @@ int main(int argc, char **argv) {
                       arguments.dx, arguments.dy, arguments.dz, arguments.dt);
   mpi_process.anisotropy_vars = dc_compute_anisotropy_vars(sx, sy, sz);
 
-  double start_time = MPI_Wtime();
 
   unsigned int seed = 0;
   randomVelocityBoundary(sx, sy, sz, arguments.size_x, arguments.size_y,
@@ -150,7 +149,10 @@ int main(int argc, char **argv) {
     dc_log_info(rank, "Data received from coordinator.");
   }
   dc_log_info(rank, "Starting worker process...");
+  double start_time = MPI_Wtime();
   double msamples_per_s = dc_worker_process(&mpi_process, communicator);
+  double end_time = MPI_Wtime();
+  double total_time = end_time - start_time;
   dc_send_data_to_coordinator(mpi_process, communicator);
   if (rank == COORDINATOR) {
     dc_result_t result =
@@ -164,21 +166,16 @@ int main(int argc, char **argv) {
   }
   dc_worker_free(mpi_process);
 
-  double end_time = MPI_Wtime();
-  double total_time = end_time - start_time;
 
   free(arguments.output_file);
   dc_free_anisotropy_vars(&mpi_process.anisotropy_vars);
   dc_free_precomp_vars(&mpi_process.precomp_vars);
 
-  MPI_Barrier(communicator);
   if (rank == COORDINATOR) {
     printf("rank,total_time,msamples_per_s\n");
   }
-  MPI_Barrier(communicator);
   printf("%d,%lf,%lf\n", rank, total_time, msamples_per_s);
 
-  MPI_Barrier(communicator);
   if (rank == COORDINATOR) {
     size_t global_compute_x = sx - 2 * STENCIL;
     size_t global_compute_y = sy - 2 * STENCIL;

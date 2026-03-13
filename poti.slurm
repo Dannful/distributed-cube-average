@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=distributed-cube-distributed
 #SBATCH --partition=poti
-#SBATCH --nodes=5
-#SBATCH --ntasks=5
+#SBATCH --nodes=3
+#SBATCH --ntasks=3
 #SBATCH --time=24:00:00
 #SBATCH --output=%x_%j.out
 #SBATCH --error=%x_%j.err
@@ -12,7 +12,7 @@ srun -l hostname | sort -n | awk '{print $2 " slots=1"}' >$MACHINEFILE
 
 current_date=$(date +'%Y-%m-%d')
 
-for i in {1..60}; do
+for i in {1..1}; do
   for j in 32 64 128 256 512; do
     j=$((j - 12))
     mpirun -np $SLURM_NTASKS \

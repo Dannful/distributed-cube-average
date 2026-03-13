@@ -178,24 +178,7 @@
         ${rEnv}/bin/Rscript ./get_metrics.R
     fi
   '';
-
-  runPotiExperiments = pkgs.writeShellScriptBin "run-poti-experiments" ''
-    export PATH=${pkgs.lib.makeBinPath [
-      pkgs.coreutils
-      pkgs.gawk
-      pkgs.gnugrep
-      rEnv
-      pkgs.pandoc
-    ]}:$PATH
-
-    NUM_HOSTS=5
-    NET_BW="937Mbps"
-    NET_LAT="22.7us"
-    GPU_BW="457.54GBps"
-    GPU_LAT="1.34us"
-    GPU_POWER="29Tf"
-    HOST_SPEED="auto"
-
+  runSimGridExperiments = ''
     export HOST_SPEED
 
     OUTPUT_CSV="simulation_results.csv"
@@ -229,6 +212,45 @@
 
     echo "Comparison vs Real Data:"
     ${rEnv}/bin/Rscript ./validation/compare_sim_real.R $OUTPUT_CSV
+  '';
+
+  runPotiExperiments = pkgs.writeShellScriptBin "run-poti-experiments" ''
+    export PATH=${pkgs.lib.makeBinPath [
+      pkgs.coreutils
+      pkgs.gawk
+      pkgs.gnugrep
+      rEnv
+      pkgs.pandoc
+    ]}:$PATH
+
+    NUM_HOSTS=5
+    NET_BW="937Mbps"
+    NET_LAT="22.7us"
+    GPU_BW="457.54GBps"
+    GPU_LAT="1.34us"
+    GPU_POWER="29Tf"
+    HOST_SPEED="auto"
+
+    ${runSimGridExperiments}
+  '';
+  runTupiExperiments = pkgs.writeShellScriptBin "run-tupi-experiments" ''
+    export PATH=${pkgs.lib.makeBinPath [
+      pkgs.coreutils
+      pkgs.gawk
+      pkgs.gnugrep
+      rEnv
+      pkgs.pandoc
+    ]}:$PATH
+
+    NUM_HOSTS=5
+    NET_BW="937Mbps"
+    NET_LAT="22.7us"
+    GPU_BW="457.54GBps"
+    GPU_LAT="1.34us"
+    GPU_POWER="29Tf"
+    HOST_SPEED="auto"
+
+    ${runSimGridExperiments}
   '';
 in {
   run-dc = pkgs.writeShellScriptBin "run-dc" ''
@@ -332,4 +354,5 @@ in {
 
   run-simgrid-platform-cuda = runSimgridPlatformCuda;
   run-poti-experiments = runPotiExperiments;
+  run-tupi-experiments = runTupiExperiments;
 }

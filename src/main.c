@@ -102,7 +102,6 @@ int main(int argc, char **argv) {
                       arguments.dx, arguments.dy, arguments.dz, arguments.dt);
   mpi_process.anisotropy_vars = dc_compute_anisotropy_vars(sx, sy, sz);
 
-
   unsigned int seed = 0;
   randomVelocityBoundary(sx, sy, sz, arguments.size_x, arguments.size_y,
                          arguments.size_z, STENCIL, arguments.absorption_size,
@@ -166,7 +165,6 @@ int main(int argc, char **argv) {
   }
   dc_worker_free(mpi_process);
 
-
   free(arguments.output_file);
   dc_free_anisotropy_vars(&mpi_process.anisotropy_vars);
   dc_free_precomp_vars(&mpi_process.precomp_vars);
@@ -174,13 +172,16 @@ int main(int argc, char **argv) {
   if (rank == COORDINATOR) {
     printf("rank,total_time,msamples_per_s\n");
   }
+  MPI_Barrier(communicator);
   printf("%d,%lf,%lf\n", rank, total_time, msamples_per_s);
 
   if (rank == COORDINATOR) {
     size_t global_compute_x = sx - 2 * STENCIL;
     size_t global_compute_y = sy - 2 * STENCIL;
     size_t global_compute_z = sz - 2 * STENCIL;
-    double global_msamples = ((double)global_compute_x * global_compute_y * global_compute_z * mpi_process.iterations) / 1000000.0;
+    double global_msamples = ((double)global_compute_x * global_compute_y *
+                              global_compute_z * mpi_process.iterations) /
+                             1000000.0;
     double global_msamples_per_s = global_msamples / total_time;
     printf("*,%lf,%lf\n", total_time, global_msamples_per_s);
   }

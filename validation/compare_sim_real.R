@@ -3,7 +3,7 @@ library(stringr)
 library(grid)
 
 # Setup directories
-base_dir <- "analysis/2026-03-06"
+base_dir <- "analysis/2026-03-13"
 sim_traces_dir <- "sim_traces"
 
 # Helper to load and clean trace data into a dataframe
@@ -73,34 +73,100 @@ df_real_all <- map_dfr(run_dirs, function(dir_path) {
 })
 
 df_real_summary <- df_real_all |>
-    group_by(problem_size, run_number) |>
-    summarise(total_time = max(End, na.rm = TRUE) - min(Start, na.rm = TRUE), .groups = "drop") |>
+    group_by(problem_size, run_number, Rank) |>
+    summarise(
+        total_time = max(End, na.rm = TRUE) - min(Start, na.rm = TRUE),
+        mpi_time = sum(Duration, na.rm = TRUE),
+        .groups = "drop"
+    ) |>
+    mutate(compute_time = total_time - mpi_time) |>
     group_by(problem_size) |>
-    summarise(total_time = mean(total_time))
+    summarise(
+        total_time = mean(total_time),
+        mpi_time = mean(mpi_time),
+        compute_time = mean(compute_time)
+    )
 
 # 2. Process Simulated Data
-args <- commandArgs(trailingOnly = TRUE)
-sim_results_csv <- args[1]
+# Load all simulation trace data to calculate MPI/compute time breakdown
+print("Loading simulation traces...")
+sim_runs <- list.dirs(sim_traces_dir, full.names = FALSE, recursive = FALSE)
+df_sim_all_traces <- map_dfr(sim_runs, function(run) {
+    size_dirs <- list.dirs(file.path(sim_traces_dir, run), full.names = FALSE, recursive = FALSE)
+    map_dfr(size_dirs, function(sz) {
+        sim_csv <- file.path(sim_traces_dir, run, sz, "dc.csv")
+        if (file.exists(sim_csv)) {
+            load_trace(sim_csv) |>
+                mutate(run_number = as.integer(run), problem_size = as.integer(sz))
+        } else {
+            NULL
+        }
+    })
+})
 
-if (file.exists(sim_results_csv)) {
-    df_sim_summary <- read.csv(sim_results_csv) |>
-        group_by(problem_size) |>
-        summarise(total_time = mean(total_time))
+df_sim_summary <- df_sim_all_traces |>
+    group_by(problem_size, run_number, Rank) |>
+    summarise(
+        total_time = max(End, na.rm = TRUE) - min(Start, na.rm = TRUE),
+        mpi_time = sum(Duration, na.rm = TRUE),
+        .groups = "drop"
+    ) |>
+    mutate(compute_time = total_time - mpi_time) |>
+    group_by(problem_size) |>
+    summarise(
+        total_time = mean(total_time),
+        mpi_time = mean(mpi_time),
+        compute_time = mean(compute_time)
+    )
 
+if (nrow(df_sim_summary) > 0 && nrow(df_real_summary) > 0) {
     # 3. Compare and Plot
     merged_summary <- inner_join(df_real_summary, df_sim_summary, by = "problem_size",
         suffix = c("_real", "_sim"))
     if (nrow(merged_summary) > 0) {
         dir.create("plots", showWarnings = FALSE)
 
-        # Comparison Line Plot
-        p_comp <- ggplot(merged_summary, aes(x = problem_size)) + geom_line(aes(y = total_time_real,
-            color = "Real Data"), linewidth = 1) + geom_point(aes(y = total_time_real,
-            color = "Real Data"), size = 3) + geom_line(aes(y = total_time_sim, color = "Simulated Data"),
-            linewidth = 1) + geom_point(aes(y = total_time_sim, color = "Simulated Data"),
-            size = 3) + labs(title = "Execution Time Comparison", x = "Problem Size",
-            y = "Total Time (s)", color = "Legend") + theme_minimal()
-        ggsave("plots/comparison_plot.pdf", p_comp, width = 8, height = 6)
+        # Print comparison table to stdout
+        cat("\nTime Breakdown Comparison (seconds):\n")
+        comparison_df <- merged_summary |>
+            select(problem_size,
+                   real_compute = compute_time_real,
+                   real_mpi = mpi_time_real,
+                   sim_compute = compute_time_sim,
+                   sim_mpi = mpi_time_sim)
+        print(as.data.frame(comparison_df))
+        cat("\n")
+
+        # Prepare data for stacked bar chart
+        plot_data <- merged_summary |>
+            select(problem_size, compute_time_real, mpi_time_real, compute_time_sim, mpi_time_sim) |>
+            pivot_longer(
+                cols = -problem_size,
+                names_to = c("time_type", "source"),
+                names_pattern = "(.+)_(real|sim)",
+                values_to = "time"
+            ) |>
+            mutate(
+                source = factor(ifelse(source == "real", "Real", "Simulated"),
+                    levels = c("Real", "Simulated")),
+                time_type = factor(ifelse(time_type == "compute_time", "Computation", "MPI"),
+                    levels = c("MPI", "Computation"))
+            )
+
+        # Stacked bar comparison plot
+        p_comp <- ggplot(plot_data, aes(x = factor(problem_size), y = time, fill = time_type)) +
+            geom_bar(stat = "identity", position = "stack") +
+            facet_wrap(~source) +
+            scale_fill_manual(values = c("Computation" = "#4DAF4A", "MPI" = "#E41A1C")) +
+            labs(
+                title = "Execution Time Breakdown: Computation vs MPI",
+                x = "Problem Size",
+                y = "Time (s)",
+                fill = "Time Type"
+            ) +
+            theme_minimal() +
+            theme(legend.position = "top")
+        ggsave("plots/comparison_plot.pdf", p_comp, width = 10, height = 6)
 
         # Gantt Chart Comparisons
         for (sz in merged_summary$problem_size) {
@@ -115,21 +181,13 @@ if (file.exists(sim_results_csv)) {
                   .groups = "drop") |>
                 mutate(Operation = fct_drop(as.factor(Value)))
 
-            # Extract all sim runs for this size
-            sim_runs <- list.dirs(sim_traces_dir, full.names = FALSE, recursive = FALSE)
-            df_sim_all <- map_dfr(sim_runs, function(run) {
-                sim_csv <- file.path(sim_traces_dir, run, sz, "dc.csv")
-                if (file.exists(sim_csv)) {
-                  load_trace(sim_csv) |>
-                    mutate(run_number = as.integer(run))
-                } else {
-                  NULL
-                }
-            })
+            # Filter sim traces for this size (already loaded above)
+            df_sim_size <- df_sim_all_traces |>
+                filter(problem_size == sz)
 
-            if (!is.null(df_sim_all) && nrow(df_sim_all) > 0) {
+            if (!is.null(df_sim_size) && nrow(df_sim_size) > 0) {
                 # Compute mean sim Gantt data
-                df_s_mean <- df_sim_all |>
+                df_s_mean <- df_sim_size |>
                   group_by(run_number, Rank) |>
                   arrange(Start) |>
                   mutate(event_id = row_number()) |>

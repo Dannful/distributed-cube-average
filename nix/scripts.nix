@@ -112,6 +112,15 @@
     shift 7
     ARGS="$@"
 
+    cat <<EOF
+    Hosts: $NUM_HOSTS
+    Network bandwidth: $NET_BW
+    Network latency: $NET_LAT
+    GPU bandwidth: $GPU_BW
+    GPU power: $GPU_POWER
+    Host speed: $HOST_SPEED
+    EOF
+
     export PLATFORM_NUM_HOSTS=$NUM_HOSTS
     export PLATFORM_NET_BW=$NET_BW
     export PLATFORM_NET_LAT=$NET_LAT
@@ -221,14 +230,16 @@
       pkgs.gnugrep
       rEnv
       pkgs.pandoc
+      akypuera
+      pajeng
     ]}:$PATH
 
-    NUM_HOSTS=5
-    NET_BW="937Mbps"
-    NET_LAT="22.7us"
+    NUM_HOSTS=3
+    NET_BW="1000Mbps"
+    NET_LAT="10us"
     GPU_BW="457.54GBps"
     GPU_LAT="1.34us"
-    GPU_POWER="29Tf"
+    GPU_POWER="19Tf"
     HOST_SPEED="auto"
 
     ${runSimGridExperiments}
@@ -240,11 +251,13 @@
       pkgs.gnugrep
       rEnv
       pkgs.pandoc
+      akypuera
+      pajeng
     ]}:$PATH
 
     NUM_HOSTS=5
-    NET_BW="937Mbps"
-    NET_LAT="22.7us"
+    NET_BW="1000Mbps"
+    NET_LAT="10us"
     GPU_BW="457.54GBps"
     GPU_LAT="1.34us"
     GPU_POWER="29Tf"

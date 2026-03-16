@@ -7,9 +7,9 @@
 #include <string.h>
 #ifdef SIMGRID
 #include <smpi/smpi.h>
-// this is a rough estimation based on the amount of floating point
-// operations present per sample
-#define FLOPS_PER_SAMPLE 104
+// refined estimation based on real data
+#define FLOPS_PER_SAMPLE 31350
+#define FLOPS_OVERHEAD 5000000000ULL
 #endif
 
 #include "calculate_source.h"
@@ -397,6 +397,20 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
 
   dc_device_data *data = dc_device_data_init(process);
 
+#ifdef SIMGRID
+  size_t total_compute_count = 1;
+  size_t interior_compute_count = 1;
+  for (int i = 0; i < 3; i++) {
+    total_compute_count *= (process->sizes[i] - 2 * STENCIL);
+    if (process->sizes[i] > 4 * STENCIL) {
+      interior_compute_count *= (process->sizes[i] - 4 * STENCIL);
+    } else {
+      interior_compute_count = 0;
+    }
+  }
+  size_t boundary_compute_count = total_compute_count - interior_compute_count;
+#endif
+
   double start_time = MPI_Wtime();
 
   for (unsigned int i = 0; i < process->iterations; i++) {
@@ -409,7 +423,8 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
     worker_halos_t new_qp_halos = dc_receive_halos(*process, comm, QP_TAG);
 
 #ifdef SIMGRID
-    SMPI_SAMPLE_FLOPS(6 * STENCIL * FLOPS_PER_SAMPLE);
+    SMPI_SAMPLE_FLOPS(boundary_compute_count * FLOPS_PER_SAMPLE +
+                      FLOPS_OVERHEAD / 2);
 #else
     dc_compute_boundaries(process, data);
 #endif
@@ -418,12 +433,8 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
     dc_send_halo_to_neighbours(*process, comm, QP_TAG, data, data->qp,
                                &all_send_requests);
 #ifdef SIMGRID
-    size_t trimmed_sizes[DIMENSIONS];
-    trimmed_sizes[0] = process->sizes[0] - 2 * STENCIL;
-    trimmed_sizes[1] = process->sizes[1] - 2 * STENCIL;
-    trimmed_sizes[2] = process->sizes[2] - 2 * STENCIL;
-    size_t total_count = dc_compute_count_from_sizes(trimmed_sizes);
-    SMPI_SAMPLE_FLOPS(total_count * FLOPS_PER_SAMPLE);
+    SMPI_SAMPLE_FLOPS(interior_compute_count * FLOPS_PER_SAMPLE +
+                      FLOPS_OVERHEAD / 2);
 #else
     dc_compute_interior(process, data);
 #endif

@@ -43,13 +43,8 @@ else ifeq ($(BACKEND), cuda)
 else ifeq ($(BACKEND), simgrid_cuda)
     CC           := smpicc
     CFLAGS       += -DSIMGRID
-    SOURCES_C    := $(SOURCES_C_COMMON)
-    SOURCES_CUDA := $(SRCDIR)/cuda_propagate.cu $(SRCDIR)/device_data.cu
-    
-    CUDA_CFLAGS  += -Xcompiler -fPIC
-    CUDA_CFLAGS  += -ccbin g++
-    CUDA_CFLAGS  += -DSIMGRID
-    LDFLAGS      += -L/usr/local/cuda/lib64 -lcudart_static -lstdc++ -lpthread -ldl -lrt
+    SOURCES_C    := $(SOURCES_C_COMMON) $(SRCDIR)/simgrid_propagate.c $(SRCDIR)/device_data_simgrid.c
+    SOURCES_CUDA :=
 
 else
     $(error Unsupported backend: $(BACKEND). Supported: openmp, simgrid, cuda, simgrid_cuda)

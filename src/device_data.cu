@@ -75,7 +75,6 @@ dc_device_data *dc_device_data_init(dc_process_t *process) {
                               cudaMemcpyHostToDevice),
                    process->rank, "cudaMemcpy qc");
 
-  // Allocate and copy precomp_vars
   check_cuda_error(cudaMalloc(&data->precomp_vars.ch1dxx, total_size_bytes),
                    process->rank, "cudaMalloc precomp_vars.ch1dxx");
   check_cuda_error(cudaMalloc(&data->precomp_vars.ch1dyy, total_size_bytes),
@@ -238,4 +237,3 @@ void dc_device_insert_halo_face(dc_device_data *data, const float *buffer,
   params.kind = cudaMemcpyHostToDevice;
   check_cuda_error(cudaMemcpy3D(&params), 0, "cudaMemcpy3D insert");
 }
-

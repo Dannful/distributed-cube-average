@@ -9,101 +9,57 @@
 #ifdef SIMGRID
 #include <smpi/smpi.h>
 
-// =============================================================================
-// SMPI Calibration Model
-// =============================================================================
-// Corrects for systematic differences between SMPI simulation and real MPI.
-// Uses physically-motivated scaling: overhead ∝ N² (surface), compute ∝ N³ (volume)
-
-#define BASE_FLOPS_PER_SAMPLE 35000ULL
-#define BASE_FLOPS_PER_ITERATION 5000000000ULL
+// SMPI Zero-Allocation Calibration Model constants
+#define BASE_FLOPS_PER_SAMPLE 42000ULL
+#define BASE_FLOPS_PER_ITERATION 7000000000ULL
 #define FLOPS_PER_HALO_ELEMENT 0ULL
-#define SMPI_OVERHEAD_FLOPS_PER_SURFACE_ELEMENT 850000.0
-
 #define SIMGRID_MAX_HALO_SIZE (4 * 1024 * 1024)
-#define SIMGRID_NUM_BUFFERS (NEIGHBOURHOOD * 2 * 2)
+#define SIMGRID_NUM_BUFFERS (NEIGHBOURHOOD * 4)
 
-static float *simgrid_buffer_pool[SIMGRID_NUM_BUFFERS];
-static int simgrid_buffer_next = 0;
-static int simgrid_buffers_initialized = 0;
+// Pre-allocated structures
+static float *sg_buffer_pool[SIMGRID_NUM_BUFFERS];
+static int sg_buffer_next = 0;
+static int sg_initialized = 0;
+static MPI_Request sg_send_requests[NEIGHBOURHOOD * 2];
+static size_t sg_send_count = 0;
+static MPI_Request sg_recv_requests[2][NEIGHBOURHOOD];
+static size_t sg_recv_sizes[2][NEIGHBOURHOOD];
+static float *sg_recv_data[2][NEIGHBOURHOOD];
+static size_t sg_recv_count[2];
 
-// Approximate log10(x) without libm
-static inline double approx_log10(size_t x) {
-  double result = 0.0;
-  while (x >= 10) { result += 1.0; x /= 10; }
-  result += (double)(x - 1) / 9.0;
-  return result;
-}
 
-// Approximate exp(x) using Taylor series
-static inline double approx_exp(double x) {
-  if (x > 10) return 22026.0;
-  if (x < -10) return 0.000045;
-  double result = 1.0, term = 1.0;
-  for (int i = 1; i <= 10; i++) {
-    term *= x / i;
-    result += term;
-  }
-  return result;
-}
 
-// FLOPS scaling factor based on problem size (piecewise linear in log-space)
-static inline double get_size_scaling_factor(size_t compute_count) {
-  if (compute_count == 0) return 1.0;
-  double log_count = approx_log10(compute_count);
-
-  // Calibration points: log10(count) -> correction
-  // 4.14 (size 32) -> 0.966, 5.24 (size 64) -> 0.809
-  // 6.24 (size 128) -> 1.65, 7.18 (size 256) -> 0.25
-  if (log_count < 4.14) {
-    return 0.966 + (4.14 - log_count) * 0.01;
-  } else if (log_count < 5.24) {
-    double t = (log_count - 4.14) / 1.1;
-    return 0.966 * (1.0 - t) + 0.809 * t;
-  } else if (log_count < 6.24) {
-    double t = (log_count - 5.24) / 1.0;
-    return 0.809 * (1.0 - t) + 1.55 * t;
-  } else if (log_count < 7.18) {
-    double t = (log_count - 6.24) / 0.94;
-    return 1.65 * (1.0 - t) + 0.25 * t;
-  } else {
-    double correction = 0.35 * (1.0 + 0.3 * (log_count - 7.18));
-    return (correction < 0.2) ? 0.2 : (correction > 1.5) ? 1.5 : correction;
-  }
-}
-
-// Overhead compensation (negative FLOPS) based on surface area with logistic scaling
-static inline long long calc_overhead_compensation(size_t *sizes) {
-  size_t face_size = (sizes[0] - 2*STENCIL) * (sizes[1] - 2*STENCIL);
-  size_t surface_elements = 6 * face_size * STENCIL;
-
-  // Logistic scaling: minimal at small sizes, full at large sizes
-  double log_face = approx_log10(face_size);
-  double scale = 1.0 / (1.0 + approx_exp(-5.0 * (log_face - 4.3)));
-
-  return (long long)(-1.0 * surface_elements * SMPI_OVERHEAD_FLOPS_PER_SURFACE_ELEMENT * scale);
-}
-
-// Buffer pool management
-static void simgrid_init_buffer_pool(void) {
-  if (simgrid_buffers_initialized) return;
+static void sg_init(void) {
+  if (sg_initialized) return;
   for (int i = 0; i < SIMGRID_NUM_BUFFERS; i++) {
-    simgrid_buffer_pool[i] = (float *)SMPI_SHARED_MALLOC(SIMGRID_MAX_HALO_SIZE * sizeof(float));
+    sg_buffer_pool[i] = (float *)SMPI_SHARED_MALLOC(SIMGRID_MAX_HALO_SIZE * sizeof(float));
   }
-  simgrid_buffers_initialized = 1;
+  for (int f = 0; f < 2; f++) {
+    for (int n = 0; n < NEIGHBOURHOOD; n++) {
+      sg_recv_data[f][n] = sg_buffer_pool[f * NEIGHBOURHOOD + n];
+    }
+  }
+  sg_initialized = 1;
 }
 
-static float *simgrid_get_buffer(void) {
-  if (!simgrid_buffers_initialized) simgrid_init_buffer_pool();
-  float *buf = simgrid_buffer_pool[simgrid_buffer_next];
-  simgrid_buffer_next = (simgrid_buffer_next + 1) % SIMGRID_NUM_BUFFERS;
+static float *sg_get_buffer(void) {
+  float *buf = sg_buffer_pool[sg_buffer_next];
+  sg_buffer_next = (sg_buffer_next + 1) % SIMGRID_NUM_BUFFERS;
   return buf;
 }
 
-static void simgrid_reset_buffer_pool(void) {
-  simgrid_buffer_next = 0;
+static void sg_reset(void) {
+  sg_buffer_next = NEIGHBOURHOOD * 2;
+  sg_send_count = 0;
+  sg_recv_count[0] = sg_recv_count[1] = 0;
 }
 
+static void sg_insert_halos(int field) {
+  for (size_t face = 0; face < NEIGHBOURHOOD; face++) {
+    if (sg_recv_sizes[field][face] == 0) continue;
+    SMPI_SAMPLE_FLOPS(sg_recv_sizes[field][face] * FLOPS_PER_HALO_ELEMENT);
+  }
+}
 #endif
 
 #include "calculate_source.h"
@@ -113,6 +69,51 @@ static void simgrid_reset_buffer_pool(void) {
 #include "log.h"
 #include "propagate.h"
 #include "worker.h"
+
+#ifdef SIMGRID
+static void sg_send_halos(dc_process_t process, MPI_Comm comm, int tag,
+                          size_t data_size_cache[NEIGHBOURHOOD]) {
+  size_t radius = STENCIL;
+  for (size_t face = 0; face < NEIGHBOURHOOD; face++) {
+    if (process.neighbours[face] == MPI_PROC_NULL) continue;
+    int dz = face / 9, dy = (face % 9) / 3, dx = face % 3;
+    size_t starts[3], ends[3];
+    for (int d = 0; d < 3; d++) {
+      int dir = (d == 0) ? dx - 1 : (d == 1) ? dy - 1 : dz - 1;
+      if (dir == -1) { starts[d] = radius; ends[d] = 2 * radius; }
+      else if (dir == 1) { starts[d] = process.sizes[d] - 2 * radius; ends[d] = process.sizes[d] - radius; }
+      else { starts[d] = radius; ends[d] = process.sizes[d] - radius; }
+    }
+    size_t data_size = (ends[0] - starts[0]) * (ends[1] - starts[1]) * (ends[2] - starts[2]);
+    data_size_cache[face] = data_size;
+    float *buf = sg_get_buffer();
+    SMPI_SAMPLE_FLOPS(data_size * FLOPS_PER_HALO_ELEMENT);
+    MPI_Isend(buf, data_size, MPI_FLOAT, process.neighbours[face], tag, comm,
+              &sg_send_requests[sg_send_count++]);
+  }
+}
+
+static void sg_recv_halos(dc_process_t process, MPI_Comm comm, int tag, int field) {
+  size_t radius = STENCIL;
+  sg_recv_count[field] = 0;
+  for (size_t face = 0; face < NEIGHBOURHOOD; face++) {
+    if (process.neighbours[face] == MPI_PROC_NULL) {
+      sg_recv_sizes[field][face] = 0;
+      continue;
+    }
+    int dz = face / 9, dy = (face % 9) / 3, dx = face % 3;
+    int disp[3] = {dx - 1, dy - 1, dz - 1};
+    size_t recv_size = 1;
+    for (int d = 0; d < 3; d++) {
+      recv_size *= (disp[d] == 0) ? process.sizes[d] - 2 * radius : radius;
+    }
+    sg_recv_sizes[field][face] = recv_size;
+    MPI_Irecv(sg_recv_data[field][face], recv_size, MPI_FLOAT,
+              process.neighbours[face], tag, comm,
+              &sg_recv_requests[field][sg_recv_count[field]++]);
+  }
+}
+#endif
 
 void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm) {
   MPI_Recv(&process->source_index, 1, MPI_INT, COORDINATOR, 0, comm,
@@ -339,11 +340,9 @@ void dc_send_halo_to_neighbours(dc_process_t process, MPI_Comm comm, int tag,
                        (send_ends[2] - send_starts[2]);
 
 #ifdef SIMGRID
-    // Use pre-allocated buffer pool to avoid allocation overhead
-    float *send_buffer = simgrid_get_buffer();
-    // Model halo extraction as FLOPS proportional to data size
+    float *send_buffer = sg_get_buffer();
     SMPI_SAMPLE_FLOPS(data_size * FLOPS_PER_HALO_ELEMENT);
-    reqs.buffers_to_free[reqs.count] = NULL;  // Don't free pooled buffer
+    reqs.buffers_to_free[reqs.count] = NULL;
 #else
     float *send_buffer = shared_malloc(data_size * sizeof(float));
     if (send_buffer == NULL) {
@@ -416,8 +415,7 @@ worker_halos_t dc_receive_halos(dc_process_t process, MPI_Comm comm, int tag) {
     }
     result.halo_sizes[face_index] = recv_data_size;
 #ifdef SIMGRID
-    // Use pre-allocated buffer pool to avoid allocation overhead
-    result.halo_data[face_index] = simgrid_get_buffer();
+    result.halo_data[face_index] = sg_get_buffer();
 #else
     result.halo_data[face_index] =
         shared_malloc(recv_data_size * sizeof(float));
@@ -492,11 +490,6 @@ void dc_send_data_to_coordinator(dc_process_t process, MPI_Comm comm) {
 }
 
 double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
-  worker_requests_t all_send_requests;
-  all_send_requests.buffers_to_free = NULL;
-  all_send_requests.requests = NULL;
-  all_send_requests.count = 0;
-
   dc_log_info(process->rank, "Starting %u iterations with sizes %d %d %d",
               process->iterations, process->sizes[0], process->sizes[1],
               process->sizes[2]);
@@ -504,34 +497,66 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
   dc_device_data *data = dc_device_data_init(process);
 
 #ifdef SIMGRID
-  size_t total_compute_count = 1;
-  size_t interior_compute_count = 1;
+  // Initialize zero-allocation structures
+  sg_init();
+
+  // Calculate compute region sizes
+  size_t total_compute_count = 1, interior_compute_count = 1;
   for (int i = 0; i < 3; i++) {
     total_compute_count *= (process->sizes[i] - 2 * STENCIL);
-    if (process->sizes[i] > 4 * STENCIL) {
+    if (process->sizes[i] > 4 * STENCIL)
       interior_compute_count *= (process->sizes[i] - 4 * STENCIL);
-    } else {
+    else
       interior_compute_count = 0;
-    }
   }
   size_t boundary_compute_count = total_compute_count - interior_compute_count;
 
-  // Apply size-dependent scaling to match real execution times
-  double scale = get_size_scaling_factor(total_compute_count);
-  unsigned long long FLOPS_PER_SAMPLE = (unsigned long long)(BASE_FLOPS_PER_SAMPLE * scale);
-  unsigned long long FLOPS_PER_ITERATION = (unsigned long long)(BASE_FLOPS_PER_ITERATION * scale);
-
-  // Calculate overhead compensation (negative FLOPS to subtract SMPI overhead)
-  // Distributed across 2 SMPI_SAMPLE_FLOPS calls per iteration
-  long long overhead_compensation = calc_overhead_compensation(process->sizes) / 2;
-#endif
+  // Cache for send data sizes
+  size_t pp_send_sizes[NEIGHBOURHOOD], qp_send_sizes[NEIGHBOURHOOD];
 
   double start_time = MPI_Wtime();
 
   for (unsigned int i = 0; i < process->iterations; i++) {
-#ifdef SIMGRID
-    simgrid_reset_buffer_pool();  // Reuse pre-allocated buffers each iteration
-#endif
+    sg_reset();
+
+    if (process->source_index != -1) {
+      float source = dc_calculate_source(process->dt, i);
+      dc_device_add_source(data, process->source_index, source);
+    }
+
+    // Post receives (zero-allocation)
+    sg_recv_halos(*process, comm, PP_TAG, 0);
+    sg_recv_halos(*process, comm, QP_TAG, 1);
+
+    // Boundary computation
+    SMPI_SAMPLE_FLOPS((double)(boundary_compute_count * BASE_FLOPS_PER_SAMPLE + BASE_FLOPS_PER_ITERATION / 2));
+
+    // Post sends (zero-allocation)
+    sg_send_halos(*process, comm, PP_TAG, pp_send_sizes);
+    sg_send_halos(*process, comm, QP_TAG, qp_send_sizes);
+
+    // Interior computation
+    SMPI_SAMPLE_FLOPS((double)(interior_compute_count * BASE_FLOPS_PER_SAMPLE + BASE_FLOPS_PER_ITERATION / 2));
+
+    // Wait for receives and insert halos
+    MPI_Waitall(sg_recv_count[0], sg_recv_requests[0], MPI_STATUSES_IGNORE);
+    MPI_Waitall(sg_recv_count[1], sg_recv_requests[1], MPI_STATUSES_IGNORE);
+    sg_insert_halos(0);
+    sg_insert_halos(1);
+
+    dc_device_swap_arrays(data);
+
+    // Wait for sends
+    MPI_Waitall(sg_send_count, sg_send_requests, MPI_STATUSES_IGNORE);
+  }
+
+#else
+  // Non-SIMGRID path with dynamic allocation
+  worker_requests_t all_send_requests = {0};
+
+  double start_time = MPI_Wtime();
+
+  for (unsigned int i = 0; i < process->iterations; i++) {
     if (process->source_index != -1) {
       float source = dc_calculate_source(process->dt, i);
       dc_device_add_source(data, process->source_index, source);
@@ -540,44 +565,27 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
     worker_halos_t new_pp_halos = dc_receive_halos(*process, comm, PP_TAG);
     worker_halos_t new_qp_halos = dc_receive_halos(*process, comm, QP_TAG);
 
-#ifdef SIMGRID
-    // Add overhead compensation to subtract SMPI tracking overhead
-    long long boundary_flops = (long long)(boundary_compute_count * FLOPS_PER_SAMPLE +
-                                           FLOPS_PER_ITERATION / 2);
-    long long compensated_flops = boundary_flops + overhead_compensation;
-    if (compensated_flops < 0) compensated_flops = 0;  // Clamp to non-negative
-    SMPI_SAMPLE_FLOPS((double)compensated_flops);
-#else
     dc_compute_boundaries(process, data);
-#endif
-    dc_send_halo_to_neighbours(*process, comm, PP_TAG, data, data->pp,
-                               &all_send_requests);
-    dc_send_halo_to_neighbours(*process, comm, QP_TAG, data, data->qp,
-                               &all_send_requests);
-#ifdef SIMGRID
-    // Add overhead compensation to subtract SMPI tracking overhead
-    long long interior_flops = (long long)(interior_compute_count * FLOPS_PER_SAMPLE +
-                                           FLOPS_PER_ITERATION / 2);
-    long long compensated_interior = interior_flops + overhead_compensation;
-    if (compensated_interior < 0) compensated_interior = 0;  // Clamp to non-negative
-    SMPI_SAMPLE_FLOPS((double)compensated_interior);
-#else
-    dc_compute_interior(process, data);
-#endif
 
-    dc_concatenate_worker_requests(process->rank, &new_pp_halos.requests,
-                                   &new_qp_halos.requests);
-    MPI_Waitall(new_pp_halos.requests.count, new_pp_halos.requests.requests,
-                MPI_STATUSES_IGNORE);
+    dc_send_halo_to_neighbours(*process, comm, PP_TAG, data, data->pp, &all_send_requests);
+    dc_send_halo_to_neighbours(*process, comm, QP_TAG, data, data->qp, &all_send_requests);
+
+    dc_compute_interior(process, data);
+
+    dc_concatenate_worker_requests(process->rank, &new_pp_halos.requests, &new_qp_halos.requests);
+    MPI_Waitall(new_pp_halos.requests.count, new_pp_halos.requests.requests, MPI_STATUSES_IGNORE);
+
     dc_worker_insert_halos(process, &new_pp_halos, data, data->pp);
     dc_worker_insert_halos(process, &new_qp_halos, data, data->qp);
     dc_free_worker_halos(&new_pp_halos);
     dc_free_worker_halos(&new_qp_halos);
+
     dc_device_swap_arrays(data);
-    MPI_Waitall(all_send_requests.count, all_send_requests.requests,
-                MPI_STATUSES_IGNORE);
+
+    MPI_Waitall(all_send_requests.count, all_send_requests.requests, MPI_STATUSES_IGNORE);
     dc_free_worker_requests(&all_send_requests);
   }
+#endif
 
   dc_device_data_get_results(process, data);
   dc_device_data_free(data);
@@ -588,10 +596,8 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
   size_t compute_size_y = process->sizes[1] - 2 * STENCIL;
   size_t compute_size_z = process->sizes[2] - 2 * STENCIL;
   double msamples = ((double)compute_size_x * compute_size_y * compute_size_z *
-                     process->iterations) /
-                    1000000.0;
-  double msamples_per_s = msamples / elapsed;
-  return msamples_per_s;
+                     process->iterations) / 1000000.0;
+  return msamples / elapsed;
 }
 
 void dc_free_worker_requests(worker_requests_t *requests) {

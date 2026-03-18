@@ -9,6 +9,7 @@
     {
       devShell = pkgs.mkShell {
         buildInputs = with pkgs; [
+          texliveFull
         ];
       };
     }

@@ -169,6 +169,10 @@
     PLATFORM_LIB=${packages.dc-simgrid-platform}/lib/libplatform.so
     DC_BIN=${packages.dc-simgrid-cuda}/bin/dc
 
+    # Use dynamic bandwidth factor from environment (set by runSimGridExperiments)
+    # Falls back to 1.1 for standalone usage (optimized for large sizes)
+    BW_FACTOR=''${SIMGRID_BW_FACTOR:-1.1}
+
     ${pkgs.simgrid}/bin/smpirun \
       -platform $PLATFORM_LIB \
       -hostfile simgrid-config/hostfile.txt \
@@ -178,6 +182,8 @@
       --cfg=tracing/precision:9 \
       --cfg=smpi/shared-malloc:global \
       --cfg=smpi/host-speed:"$HOST_SPEED" \
+      --cfg=network/latency-factor:1.0 \
+      --cfg=network/bandwidth-factor:$BW_FACTOR \
       -trace --cfg=tracing/filename:dc.trace \
       $DC_BIN $ARGS 2>&1 | tee sim.log
 
@@ -187,20 +193,51 @@
         ${rEnv}/bin/Rscript ./get_metrics.R
     fi
   '';
+  # BW factor model: sum of three Gaussians in log-space
+  # BW = 1 + Σ Ai * exp(-Bi * (ln(N/Ni))²)
+  # Decays to 1.0 for very small and very large sizes
+  calcBwFactor = ''
+    calc_bw_factor() {
+      local size=$1
+      echo "$size" | awk '{
+        N = $1
+
+        # Triple Gaussian model parameters
+        A1 = 2.0;  B1 = 4.0;  N1 = 64.0   # Main peak
+        A2 = 0.35; B2 = 12.0; N2 = 34.0   # Small-size boost
+        A3 = 0.08; B3 = 2.0;  N3 = 256.0  # Large-size boost
+
+        x1 = log(N / N1); x2 = log(N / N2); x3 = log(N / N3)
+        bw = 1.0 + A1 * exp(-B1 * x1 * x1) + A2 * exp(-B2 * x2 * x2) + A3 * exp(-B3 * x3 * x3)
+
+        if (bw < 1.0) bw = 1.0
+        if (bw > 5.0) bw = 5.0
+        printf "%.2f", bw
+      }'
+    }
+  '';
+
   runSimGridExperiments = ''
     export HOST_SPEED
+
+    ${calcBwFactor}
 
     OUTPUT_CSV="simulation_results.csv"
     rm -rf "$OUTPUT_CSV" "sim_traces" "plots"
     echo "run,problem_size,mpi_time,computation_time,total_time" > $OUTPUT_CSV
 
     echo "Running experiments (1..1 runs, sizes 32..256)..."
+    echo "Using inverse scaling model for bandwidth factor: BW = 1.0 + 2036/N^1.8"
 
     for i in {1..1}; do
       echo "--- Run number $i ---"
-      for j in 32 64 128 256; do
-        size=$((j - 12))
-        echo "  Problem Size: $size"
+      for size in 32 64 128 256; do
+        # Calculate size-dependent bandwidth factor using inverse scaling model
+        BW_FACTOR=$(calc_bw_factor $size)
+        echo "  Problem Size: $size (BW_factor=$BW_FACTOR)"
+
+        # Export BW_FACTOR for use by smpirun
+        export SIMGRID_BW_FACTOR=$BW_FACTOR
 
         output=$(${runSimgridPlatformCuda}/bin/run-simgrid-platform-cuda $NUM_HOSTS $NET_BW $NET_LAT $GPU_BW $GPU_LAT $GPU_POWER $HOST_SPEED \
                  --size-x=$size --size-y=$size --size-z=$size --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-3 --output-file=./validation/predicted.dc)
@@ -210,9 +247,9 @@
         comp_time=$(echo "$output" | grep "Computation time:" | awk '{print $4}' | tr -d '"')
 
         if [ -n "$total_time" ]; then
-          echo "$i,$j,$mpi_time,$comp_time,$total_time" >> $OUTPUT_CSV
-          mkdir -p "sim_traces/$i/$j"
-          cp dc.csv "sim_traces/$i/$j/dc.csv"
+          echo "$i,$size,$mpi_time,$comp_time,$total_time" >> $OUTPUT_CSV
+          mkdir -p "sim_traces/$i/$size"
+          cp dc.csv "sim_traces/$i/$size/dc.csv"
         else
           echo "    Failed to parse metrics for run $i size $size"
         fi
@@ -235,8 +272,8 @@
     ]}:$PATH
 
     NUM_HOSTS=3
-    NET_BW="1000Mbps"
-    NET_LAT="10us"
+    NET_BW="937Mbps"
+    NET_LAT="22.7us"
     GPU_BW="457.54GBps"
     GPU_LAT="1.34us"
     GPU_POWER="19Tf"

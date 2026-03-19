@@ -2,6 +2,7 @@
 
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}
+\usepackage{subcaption}
 
 \title{Distributed Implementation of Anisotropic RTM Using the
 Fletcher Method with MPI and Ghost Cells}
@@ -18,7 +19,8 @@ Fletcher Method with MPI and Ghost Cells}
 
 \begin{document}
 \maketitle
-\begin{abstract} ... \end{abstract}
+\begin{abstract} ...
+\end{abstract}
 \newpage
 \tableofcontents
 \newpage
@@ -101,11 +103,61 @@ application was conceived to fully explore the application's parameters and
 suitable High-Performance Computing (HPC)
 cluster characteristics, in order to discover the most suitable environment
 for the program's overall performance.
-\chapter{State of the art}
+\chapter{Related work}
+\section{Fletcher modeling}
+Reverse Time Migration (RTM), of which Fletcher consists, is defined
+as a seismic imaging method to map the subsurface reflectivity using recorded
+seismic waveforms (Hua-Wei Zhou et al., 2018). In petroleum
+exploration, the wave is emitted at the vessel and propagates
+outwards in a radial manner, eventually reflecting, in the subsurface, at
+velocity boundaries until it is recaptured at sea level.
+
+Such process requires, therefore, that the wave be propagated forward in time
+(from $t = 0$ to $t = T$) and backwards (from $t = T$ to $t = 0$)
+simultaneously,
+so that both models can be cross-correlated with respect to a certain
+$t$, making
+it feasible to reconstruct the depth and the location of the moment the echoes
+crashed.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{subfigure}[b]{0.3\textwidth}
+    \centering
+    \includegraphics{./assets/forward_propagation_1.jpg}
+    \caption{Forward propagation at $t = 2$}
+    \label{fig:forward_propagation_1}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.3\textwidth}
+    \centering
+    \includegraphics{./assets/forward_propagation_2.jpg}
+    \caption{Forward propagation at $t = 4$}
+    \label{fig:forward_propagation_2}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.3\textwidth}
+    \centering
+    \includegraphics{./assets/forward_propagation_3.jpg}
+    \caption{Forward propagation at $t = 6$}
+    \label{fig:forward_propagation_3}
+  \end{subfigure}
+\end{figure}
+
 \chapter{Methodology}
 \section{Project}
+The present research had two preliminary goals:
+\begin{enumerate}
+  \item Craft a distributed MPI application for calculating
+    Fletcher's equations.
+  \item Run a performance analysis, in order to determine the bottlenecks and
+    most prominent parameters, aiming at maximizing the MSamples/s metric.
+\end{enumerate}
+
 \section{Implementation}
 \subsection{Application}
+The application was built from the ground up using OpenMPI as the
+messaging interface, aiming at evenly distributing the domain across all workers
 \subsection{Simulation}
 \chapter{Results}
 \newpage

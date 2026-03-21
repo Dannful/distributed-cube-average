@@ -15,12 +15,10 @@ LDFLAGS  = -lm
 CUDA_CFLAGS    = -I$(INCDIR) -g -gencode arch=compute_$(subst sm_,,$(ARCH)),code=$(ARCH) -allow-unsupported-compiler
 CUDA_LINK_LIBS = -L/usr/local/cuda/lib64 -lcudart
 
-SOURCES_C_COMMON = $(filter-out $(wildcard $(SRCDIR)/*_propagate.c) $(SRCDIR)/device_data.c $(SRCDIR)/derivatives.c $(SRCDIR)/sample.c, $(wildcard $(SRCDIR)/*.c))
+SOURCES_C_COMMON = $(filter-out $(wildcard $(SRCDIR)/*_propagate.c) $(SRCDIR)/device_data.c $(SRCDIR)/device_data_simgrid.c $(SRCDIR)/derivatives.c $(SRCDIR)/sample.c, $(wildcard $(SRCDIR)/*.c))
 
 # Profile configuration
-ifeq ($(PROFILE), mpip)
-    LDFLAGS += -lmpiP
-else ifeq ($(PROFILE), akypuera)
+ifeq ($(PROFILE), akypuera)
     LDFLAGS += -laky
 endif
 

@@ -1,6 +1,5 @@
 {
   pkgs,
-  mpiP,
   akypuera,
 }: let
   mkDc = {
@@ -49,13 +48,6 @@
     };
 in {
   # OpenMP variants
-  dc-omp-mpip = mkDc {
-    name = "dc-omp-mpip";
-    backend = "openmp";
-    profile = "mpip";
-    extraBuildInputs = [mpiP];
-  };
-
   dc-omp-aky = mkDc {
     name = "dc-omp-aky";
     backend = "openmp";
@@ -64,13 +56,6 @@ in {
   };
 
   # CUDA variants
-  dc-cuda-mpip = mkDcCuda {
-    name = "dc-cuda-mpip";
-    backend = "cuda";
-    profile = "mpip";
-    extraBuildInputs = [mpiP];
-  };
-
   dc-cuda-aky = mkDcCuda {
     name = "dc-cuda-aky";
     backend = "cuda";
@@ -120,18 +105,18 @@ in {
     src = ../simgrid-config;
     nativeBuildInputs = with pkgs; [ pkg-config ];
     buildInputs = with pkgs; [ simgrid ];
-    
+
     buildPhase = ''
       SG_CFLAGS=$(pkg-config --cflags simgrid)
       SG_LIBS=$(pkg-config --libs simgrid)
-      
+
       echo "Compiling Shared Object (libplatform.so)..."
       g++ -std=c++17 -shared -fPIC -o libplatform.so platform_s4u.cpp $SG_CFLAGS $SG_LIBS
-      
+
       echo "Compiling Generator Executable (generate_artifacts)..."
       g++ -std=c++17 -o generate_artifacts platform_s4u.cpp $SG_CFLAGS $SG_LIBS
     '';
-    
+
     installPhase = ''
       mkdir -p $out/lib $out/bin
       cp libplatform.so $out/lib/

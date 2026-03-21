@@ -17,7 +17,6 @@
       };
       akypuera = import ./nix/akypuera.nix {inherit pkgs;};
       pajeng = import ./nix/pajeng.nix {inherit pkgs;};
-      mpiP = import ./nix/mpiP.nix {inherit pkgs;};
 
       rEnv = pkgs.rWrapper.override {
         packages = with pkgs.rPackages; [
@@ -30,7 +29,7 @@
         ];
       };
 
-      packages = import ./nix/packages.nix {inherit pkgs mpiP akypuera;};
+      packages = import ./nix/packages.nix {inherit pkgs akypuera;};
       scripts = import ./nix/scripts.nix {inherit pkgs packages pajeng rEnv akypuera;};
     in {
       devShell = pkgs.mkShell {
@@ -59,7 +58,7 @@
         packages
         // scripts
         // {
-          default = packages.dc-omp-mpip;
+          default = packages.dc-omp-aky;
         };
 
       apps = {

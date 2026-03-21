@@ -8,16 +8,13 @@
   # Helper for backend selection and CUDA env setup
   selectAppLogic = ''
     BACKEND=$1
-    PROFILE=$2
 
-    # Defaults
+    # Default
     if [ -z "$BACKEND" ]; then BACKEND="openmp"; fi
-    if [ -z "$PROFILE" ]; then PROFILE="mpip"; fi
 
     APP_DIR=""
     if [ "$BACKEND" == "openmp" ]; then
-      if [ "$PROFILE" == "mpip" ]; then APP_DIR=${packages.dc-omp-mpip}; fi
-      if [ "$PROFILE" == "akypuera" ]; then APP_DIR=${packages.dc-omp-aky}; fi
+      APP_DIR=${packages.dc-omp-aky}
     elif [ "$BACKEND" == "cuda" ]; then
        # CUDA Driver Sandbox
        DRIVER_SANDBOX=$(mktemp -d)
@@ -48,42 +45,26 @@
          echo "WARNING: Could not find host libcuda.so.1."
        fi
 
-      if [ "$PROFILE" == "mpip" ]; then APP_DIR=${packages.dc-cuda-mpip}; fi
-      if [ "$PROFILE" == "akypuera" ]; then APP_DIR=${packages.dc-cuda-aky}; fi
+       APP_DIR=${packages.dc-cuda-aky}
     fi
 
     if [ -z "$APP_DIR" ]; then
-      echo "Error: Invalid backend ($BACKEND) or profile ($PROFILE)"
+      echo "Error: Invalid backend ($BACKEND)"
       echo "Supported backends: openmp, cuda"
-      echo "Supported profiles: mpip, akypuera"
       exit 1
     fi
   '';
 
   # Helper for post-processing logic
   postProcessLogic = ''
-    echo "Starting post-processing for profile: $PROFILE"
-    if [ "$PROFILE" == "mpip" ]; then
-       MPIP_FILE=$(ls *.mpiP* 2>/dev/null | head -n 1)
-       if [ -n "$MPIP_FILE" ]; then
-         echo "Processing mpiP file: $MPIP_FILE"
-         ${rEnv}/bin/Rscript ./plot.R $MPIP_FILE
-       elif [ -f "dc.output" ]; then
-         echo "No .mpiP file found. Attempting to parse dc.output..."
-         ${rEnv}/bin/Rscript ./plot.R dc.output
-       else
-         echo "Warning: No mpiP output found (checked *.mpiP* and dc.output)."
-         ls -la
-       fi
-    elif [ "$PROFILE" == "akypuera" ]; then
-       if ls rastro-*.rst 1> /dev/null 2>&1; then
-         echo "Converting Akypuera traces..."
-         ${akypuera}/bin/aky_converter *.rst > dc.trace
-         ${pajeng}/bin/pj_dump -z -l 9 dc.trace | grep ^State > dc.csv
-         ${rEnv}/bin/Rscript ./plot.R dc.csv
-       else
-         echo "Warning: No Akypuera traces found (rastro-*.rst)."
-       fi
+    echo "Starting post-processing..."
+    if ls rastro-*.rst 1> /dev/null 2>&1; then
+      echo "Converting Akypuera traces..."
+      ${akypuera}/bin/aky_converter *.rst > dc.trace
+      ${pajeng}/bin/pj_dump -z -l 9 dc.trace | grep ^State > dc.csv
+      ${rEnv}/bin/Rscript ./plot.R dc.csv
+    else
+      echo "Warning: No Akypuera traces found (rastro-*.rst)."
     fi
   '';
 
@@ -279,33 +260,22 @@
 in {
   run-dc = pkgs.writeShellScriptBin "run-dc" ''
     ${selectAppLogic}
-    np=$3
-    shift 3
+    np=$2
+    shift 2
     ARGS="$@"
 
     # Cleanup
-    rm -f dc.mpiP* *.rst dc.trace dc.csv dc.output
-
-    # Environment
-    MPI_ARGS=""
-    if [ "$PROFILE" == "mpip" ]; then
-       export MPIP="-k 2 -f ./dc.mpiP"
-       MPI_ARGS="-x MPIP"
-    fi
+    rm -f *.rst dc.trace dc.csv dc.output
 
     echo "Running $APP_DIR/bin/dc with args: $ARGS"
-    ${pkgs.openmpi}/bin/mpirun -np $np --bind-to none $MPI_ARGS $APP_DIR/bin/dc $ARGS | tee dc.output
+    ${pkgs.openmpi}/bin/mpirun -np $np --bind-to none $APP_DIR/bin/dc $ARGS | tee dc.output
 
     ${postProcessLogic}
   '';
 
   dc = pkgs.writeShellScriptBin "dc" ''
     ${selectAppLogic}
-    shift 2
-
-    if [ "$PROFILE" == "mpip" ]; then
-       export MPIP="-k 2 -f $(pwd)/dc.mpiP"
-    fi
+    shift 1
 
     echo "Running direct binary execution (no mpirun): $APP_DIR/bin/dc $@"
     exec $APP_DIR/bin/dc "$@"

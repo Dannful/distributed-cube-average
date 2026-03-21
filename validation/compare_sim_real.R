@@ -3,7 +3,7 @@ library(stringr)
 library(grid)
 
 # Setup directories
-base_dir <- "analysis/2026-03-13"
+base_dir <- "analysis/2026-03-18"
 sim_traces_dir <- "sim_traces"
 
 # Helper to load and clean trace data into a dataframe

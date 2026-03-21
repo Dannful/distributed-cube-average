@@ -169,17 +169,15 @@
     PLATFORM_LIB=${packages.dc-simgrid-platform}/lib/libplatform.so
     DC_BIN=${packages.dc-simgrid-cuda}/bin/dc
 
-    # Piecewise BW factor: peaks around size 64
+    # Gaussian BW factor model: peaks around size 64
+    # Higher BW_FACTOR = more bandwidth = faster MPI
+    # BW_FACTOR = 1.1 + 1.5 * exp(-((size - 64)^2) / (2 * 30^2))
     SIZE=$(echo "$ARGS" | grep -oP 'size-x=\K[0-9]+')
-    if [ "$SIZE" -le 48 ]; then
-      BW_FACTOR=1.6
-    elif [ "$SIZE" -le 96 ]; then
-      BW_FACTOR=3.0
-    elif [ "$SIZE" -le 192 ]; then
-      BW_FACTOR=1.3
-    else
-      BW_FACTOR=1.1
-    fi
+    BW_FACTOR=$(${pkgs.gawk}/bin/awk -v s="$SIZE" 'BEGIN {
+      base = 1.1; amp = 1.5; peak = 64; sigma = 30;
+      exponent = -((s - peak)^2) / (2 * sigma^2);
+      printf "%.4f", base + amp * exp(exponent);
+    }')
 
     ${pkgs.simgrid}/bin/smpirun \
       -platform $PLATFORM_LIB \
@@ -212,7 +210,7 @@
 
     for i in {1..1}; do
       echo "--- Run number $i ---"
-      for size in 32 64 128 256; do
+      for size in 32 64 128 256 512; do
         echo "  Problem Size: $size"
 
         output=$(${runSimgridPlatformCuda}/bin/run-simgrid-platform-cuda $NUM_HOSTS $NET_BW $NET_LAT $GPU_BW $GPU_LAT $GPU_POWER $HOST_SPEED \
@@ -247,7 +245,7 @@
       pajeng
     ]}:$PATH
 
-    NUM_HOSTS=3
+    NUM_HOSTS=5
     NET_BW="937Mbps"
     NET_LAT="22.7us"
     GPU_BW="457.54GBps"

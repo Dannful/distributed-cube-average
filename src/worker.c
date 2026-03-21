@@ -1,5 +1,6 @@
 #include "definitions.h"
 #include "memory.h"
+#include <math.h>
 #include <mpi.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -15,6 +16,19 @@
 #define FLOPS_PER_HALO_ELEMENT 0ULL
 #define SIMGRID_MAX_HALO_SIZE (4 * 1024 * 1024)
 #define SIMGRID_NUM_BUFFERS (NEIGHBOURHOOD * 4)
+
+// Compute efficiency correction: Gaussian in log2 space
+// Models GPU efficiency variation with problem size
+// CORR = 0.85 + 1.4 * exp(-((log2(size) - 7.0)^2) / (2 * 0.7^2))
+static double sg_compute_efficiency_correction(size_t problem_size) {
+  double log2_size = log2((double)problem_size);
+  double base = 0.85;  // Base correction (allows < 1 for large/small sizes)
+  double peak = 7.0;   // Peak at size 128 (2^7)
+  double sigma = 0.7;  // Width of the correction region
+  double amp = 1.4;    // Amplitude of correction
+  double exponent = -((log2_size - peak) * (log2_size - peak)) / (2.0 * sigma * sigma);
+  return base + amp * exp(exponent);
+}
 
 // Pre-allocated structures
 static float *sg_buffer_pool[SIMGRID_NUM_BUFFERS];
@@ -511,6 +525,14 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
   }
   size_t boundary_compute_count = total_compute_count - interior_compute_count;
 
+  // Calculate efficiency correction based on problem size (use max dimension)
+  size_t max_dim = 0;
+  for (int i = 0; i < 3; i++) {
+    size_t dim = process->sizes[i] - 2 * STENCIL;
+    if (dim > max_dim) max_dim = dim;
+  }
+  double efficiency_correction = sg_compute_efficiency_correction(max_dim);
+
   // Cache for send data sizes
   size_t pp_send_sizes[NEIGHBOURHOOD], qp_send_sizes[NEIGHBOURHOOD];
 
@@ -528,15 +550,15 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
     sg_recv_halos(*process, comm, PP_TAG, 0);
     sg_recv_halos(*process, comm, QP_TAG, 1);
 
-    // Boundary computation
-    SMPI_SAMPLE_FLOPS((double)(boundary_compute_count * BASE_FLOPS_PER_SAMPLE + BASE_FLOPS_PER_ITERATION / 2));
+    // Boundary computation (scaled by efficiency correction)
+    SMPI_SAMPLE_FLOPS(efficiency_correction * (double)(boundary_compute_count * BASE_FLOPS_PER_SAMPLE + BASE_FLOPS_PER_ITERATION / 2));
 
     // Post sends (zero-allocation)
     sg_send_halos(*process, comm, PP_TAG, pp_send_sizes);
     sg_send_halos(*process, comm, QP_TAG, qp_send_sizes);
 
-    // Interior computation
-    SMPI_SAMPLE_FLOPS((double)(interior_compute_count * BASE_FLOPS_PER_SAMPLE + BASE_FLOPS_PER_ITERATION / 2));
+    // Interior computation (scaled by efficiency correction)
+    SMPI_SAMPLE_FLOPS(efficiency_correction * (double)(interior_compute_count * BASE_FLOPS_PER_SAMPLE + BASE_FLOPS_PER_ITERATION / 2));
 
     // Wait for receives and insert halos
     MPI_Waitall(sg_recv_count[0], sg_recv_requests[0], MPI_STATUSES_IGNORE);

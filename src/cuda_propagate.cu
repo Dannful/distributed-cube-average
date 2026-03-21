@@ -47,7 +47,8 @@ extern "C" void dc_propagate(const size_t start_coords[DIMENSIONS],
   const size_t nx = end_coords[0] - start_coords[0];
   const size_t ny = end_coords[1] - start_coords[1];
 
-  const dim3 numBlocks(nx / threadsPerBlock.x, ny / threadsPerBlock.y);
+  const dim3 numBlocks((nx + threadsPerBlock.x - 1) / threadsPerBlock.x,
+                       (ny + threadsPerBlock.y - 1) / threadsPerBlock.y);
 
   propagate_kernel<<<numBlocks, threadsPerBlock>>>(
       start_coords[0], start_coords[1], start_coords[2],
@@ -63,4 +64,9 @@ extern "C" void dc_propagate(const size_t start_coords[DIMENSIONS],
       data->precomp_vars.v2sz, data->precomp_vars.v2pn);
 
   cudaDeviceSynchronize();
+  cudaError_t err = cudaGetLastError();
+  if (err != cudaSuccess) {
+    fprintf(stderr, "CUDA kernel error in dc_propagate: %s\n", cudaGetErrorString(err));
+    exit(1);
+  }
 }

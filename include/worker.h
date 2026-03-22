@@ -3,7 +3,6 @@
 #include "dc_process.h"
 #include "device_data.h"
 #include "mpi.h"
-#include "setup.h"
 #include <stddef.h>
 
 #ifdef __cplusplus
@@ -29,7 +28,7 @@ typedef struct {
   int (*halo_dirs)[DIMENSIONS];
 } worker_halos_t;
 
-void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm);
+void dc_worker_init_from_partition_info(dc_process_t *process, MPI_Comm comm);
 double dc_worker_process(dc_process_t *process, MPI_Comm comm);
 void dc_worker_free(dc_process_t process);
 

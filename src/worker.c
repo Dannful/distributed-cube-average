@@ -1,5 +1,7 @@
+#include "boundary.h"
 #include "definitions.h"
 #include "memory.h"
+#include "precomp.h"
 #include <math.h>
 #include <mpi.h>
 #include <stddef.h>
@@ -22,11 +24,12 @@
 // CORR = 0.85 + 1.4 * exp(-((log2(size) - 7.0)^2) / (2 * 0.7^2))
 static double sg_compute_efficiency_correction(size_t problem_size) {
   double log2_size = log2((double)problem_size);
-  double base = 0.85;  // Base correction (allows < 1 for large/small sizes)
-  double peak = 7.0;   // Peak at size 128 (2^7)
-  double sigma = 0.7;  // Width of the correction region
-  double amp = 1.4;    // Amplitude of correction
-  double exponent = -((log2_size - peak) * (log2_size - peak)) / (2.0 * sigma * sigma);
+  double base = 0.85; // Base correction (allows < 1 for large/small sizes)
+  double peak = 7.0;  // Peak at size 128 (2^7)
+  double sigma = 0.7; // Width of the correction region
+  double amp = 1.4;   // Amplitude of correction
+  double exponent =
+      -((log2_size - peak) * (log2_size - peak)) / (2.0 * sigma * sigma);
   return base + amp * exp(exponent);
 }
 
@@ -41,12 +44,12 @@ static size_t sg_recv_sizes[2][NEIGHBOURHOOD];
 static float *sg_recv_data[2][NEIGHBOURHOOD];
 static size_t sg_recv_count[2];
 
-
-
 static void sg_init(void) {
-  if (sg_initialized) return;
+  if (sg_initialized)
+    return;
   for (int i = 0; i < SIMGRID_NUM_BUFFERS; i++) {
-    sg_buffer_pool[i] = (float *)SMPI_SHARED_MALLOC(SIMGRID_MAX_HALO_SIZE * sizeof(float));
+    sg_buffer_pool[i] =
+        (float *)SMPI_SHARED_MALLOC(SIMGRID_MAX_HALO_SIZE * sizeof(float));
   }
   for (int f = 0; f < 2; f++) {
     for (int n = 0; n < NEIGHBOURHOOD; n++) {
@@ -70,7 +73,8 @@ static void sg_reset(void) {
 
 static void sg_insert_halos(int field) {
   for (size_t face = 0; face < NEIGHBOURHOOD; face++) {
-    if (sg_recv_sizes[field][face] == 0) continue;
+    if (sg_recv_sizes[field][face] == 0)
+      continue;
     SMPI_SAMPLE_FLOPS(sg_recv_sizes[field][face] * FLOPS_PER_HALO_ELEMENT);
   }
 }
@@ -89,16 +93,25 @@ static void sg_send_halos(dc_process_t process, MPI_Comm comm, int tag,
                           size_t data_size_cache[NEIGHBOURHOOD]) {
   size_t radius = STENCIL;
   for (size_t face = 0; face < NEIGHBOURHOOD; face++) {
-    if (process.neighbours[face] == MPI_PROC_NULL) continue;
+    if (process.neighbours[face] == MPI_PROC_NULL)
+      continue;
     int dz = face / 9, dy = (face % 9) / 3, dx = face % 3;
     size_t starts[3], ends[3];
     for (int d = 0; d < 3; d++) {
       int dir = (d == 0) ? dx - 1 : (d == 1) ? dy - 1 : dz - 1;
-      if (dir == -1) { starts[d] = radius; ends[d] = 2 * radius; }
-      else if (dir == 1) { starts[d] = process.sizes[d] - 2 * radius; ends[d] = process.sizes[d] - radius; }
-      else { starts[d] = radius; ends[d] = process.sizes[d] - radius; }
+      if (dir == -1) {
+        starts[d] = radius;
+        ends[d] = 2 * radius;
+      } else if (dir == 1) {
+        starts[d] = process.sizes[d] - 2 * radius;
+        ends[d] = process.sizes[d] - radius;
+      } else {
+        starts[d] = radius;
+        ends[d] = process.sizes[d] - radius;
+      }
     }
-    size_t data_size = (ends[0] - starts[0]) * (ends[1] - starts[1]) * (ends[2] - starts[2]);
+    size_t data_size =
+        (ends[0] - starts[0]) * (ends[1] - starts[1]) * (ends[2] - starts[2]);
     data_size_cache[face] = data_size;
     float *buf = sg_get_buffer();
     SMPI_SAMPLE_FLOPS(data_size * FLOPS_PER_HALO_ELEMENT);
@@ -107,7 +120,8 @@ static void sg_send_halos(dc_process_t process, MPI_Comm comm, int tag,
   }
 }
 
-static void sg_recv_halos(dc_process_t process, MPI_Comm comm, int tag, int field) {
+static void sg_recv_halos(dc_process_t process, MPI_Comm comm, int tag,
+                          int field) {
   size_t radius = STENCIL;
   sg_recv_count[field] = 0;
   for (size_t face = 0; face < NEIGHBOURHOOD; face++) {
@@ -129,154 +143,139 @@ static void sg_recv_halos(dc_process_t process, MPI_Comm comm, int tag, int fiel
 }
 #endif
 
-void dc_worker_receive_data(dc_process_t *process, MPI_Comm comm) {
-  MPI_Recv(&process->source_index, 1, MPI_INT, COORDINATOR, 0, comm,
+void dc_worker_init_from_partition_info(dc_process_t *process, MPI_Comm comm) {
+  dc_partition_info_t info;
+  MPI_Recv(&info, sizeof(dc_partition_info_t), MPI_BYTE, COORDINATOR, 0, comm,
            MPI_STATUS_IGNORE);
-  MPI_Recv(&process->iterations, 1, MPI_UINT32_T, COORDINATOR, 0, comm,
-           MPI_STATUS_IGNORE);
-  MPI_Recv(process->sizes, DIMENSIONS, MPI_UNSIGNED_LONG, COORDINATOR, 0, comm,
-           MPI_STATUS_IGNORE);
+
+  process->sizes[0] = info.local_sizes[0];
+  process->sizes[1] = info.local_sizes[1];
+  process->sizes[2] = info.local_sizes[2];
+  process->iterations = info.iterations;
+  process->source_index = info.source_index;
 
   size_t count = dc_compute_count_from_sizes(process->sizes);
-  process->pp = (float *)shared_malloc(count * sizeof(float));
-  if (process->pp == NULL) {
-    dc_log_error(
-        process->rank,
-        "OOM: could not allocate memory for pp in dc_worker_receive_data");
-    MPI_Finalize();
-    exit(1);
-  }
-  process->pc = (float *)shared_malloc(count * sizeof(float));
-  if (process->pc == NULL) {
-    dc_log_error(
-        process->rank,
-        "OOM: could not allocate memory for pc in dc_worker_receive_data");
-    MPI_Finalize();
-    exit(1);
-  }
-  process->qp = (float *)shared_malloc(count * sizeof(float));
-  if (process->qp == NULL) {
-    dc_log_error(
-        process->rank,
-        "OOM: could not allocate memory for qp in dc_worker_receive_data");
-    MPI_Finalize();
-    exit(1);
-  }
-  process->qc = (float *)shared_malloc(count * sizeof(float));
-  if (process->qc == NULL) {
-    dc_log_error(
-        process->rank,
-        "OOM: could not allocate memory for qc in dc_worker_receive_data");
+  dc_log_info(process->rank,
+              "Received partition info: local %zux%zux%zu, global %zux%zux%zu",
+              info.local_sizes[0], info.local_sizes[1], info.local_sizes[2],
+              info.global_sizes[0], info.global_sizes[1], info.global_sizes[2]);
+
+  process->pp = (float *)shared_calloc(count, sizeof(float));
+  process->pc = (float *)shared_calloc(count, sizeof(float));
+  process->qp = (float *)shared_calloc(count, sizeof(float));
+  process->qc = (float *)shared_calloc(count, sizeof(float));
+  if (process->pp == NULL || process->pc == NULL || process->qp == NULL ||
+      process->qc == NULL) {
+    dc_log_error(process->rank, "OOM: could not allocate field arrays");
     MPI_Finalize();
     exit(1);
   }
 
-  MPI_Recv(process->pp, count, MPI_FLOAT, COORDINATOR, 0, comm,
-           MPI_STATUS_IGNORE);
-  MPI_Recv(process->pc, count, MPI_FLOAT, COORDINATOR, 0, comm,
-           MPI_STATUS_IGNORE);
-  MPI_Recv(process->qp, count, MPI_FLOAT, COORDINATOR, 0, comm,
-           MPI_STATUS_IGNORE);
-  MPI_Recv(process->qc, count, MPI_FLOAT, COORDINATOR, 0, comm,
-           MPI_STATUS_IGNORE);
+  size_t sx = info.local_sizes[0];
+  size_t sy = info.local_sizes[1];
+  size_t sz = info.local_sizes[2];
+
+  process->anisotropy_vars.vpz = (float *)malloc(count * sizeof(float));
+  process->anisotropy_vars.vsv = (float *)malloc(count * sizeof(float));
+  process->anisotropy_vars.epsilon = (float *)malloc(count * sizeof(float));
+  process->anisotropy_vars.delta = (float *)malloc(count * sizeof(float));
+  process->anisotropy_vars.phi = (float *)malloc(count * sizeof(float));
+  process->anisotropy_vars.theta = (float *)malloc(count * sizeof(float));
+  if (process->anisotropy_vars.vpz == NULL ||
+      process->anisotropy_vars.vsv == NULL ||
+      process->anisotropy_vars.epsilon == NULL ||
+      process->anisotropy_vars.delta == NULL ||
+      process->anisotropy_vars.phi == NULL ||
+      process->anisotropy_vars.theta == NULL) {
+    dc_log_error(process->rank, "OOM: could not allocate anisotropy arrays");
+    MPI_Finalize();
+    exit(1);
+  }
+
+  // Initialize anisotropy with default values
+  for (size_t i = 0; i < count; i++) {
+    process->anisotropy_vars.vpz[i] = 3000.0f;
+    process->anisotropy_vars.epsilon[i] = 0.24f;
+    process->anisotropy_vars.delta[i] = 0.1f;
+    process->anisotropy_vars.phi[i] = 1.0f;
+    process->anisotropy_vars.theta[i] = atanf(1.0);
+    if (SIGMA > MAX_SIGMA) {
+      process->anisotropy_vars.vsv[i] = 0.0f;
+    } else {
+      process->anisotropy_vars.vsv[i] =
+          process->anisotropy_vars.vpz[i] *
+          sqrtf(fabsf(process->anisotropy_vars.epsilon[i] -
+                      process->anisotropy_vars.delta[i]) /
+                SIGMA);
+    }
+  }
+
+  unsigned int seed = 0;
+  randomVelocityBoundaryPartition(sx, sy, sz, // Local sizes
+                                  info.global_sizes[0], info.global_sizes[1],
+                                  info.global_sizes[2], // Global sizes
+                                  info.start_coords[0], info.start_coords[1],
+                                  info.start_coords[2], // Start coords
+                                  info.problem_sizes[0], info.problem_sizes[1],
+                                  info.problem_sizes[2], // Problem sizes
+                                  STENCIL, info.absorption_size,
+                                  process->anisotropy_vars.vpz,
+                                  process->anisotropy_vars.vsv, &seed);
 
   process->precomp_vars.ch1dxx = (float *)shared_malloc(count * sizeof(float));
-  if (process->precomp_vars.ch1dxx == NULL) {
-    dc_log_error(process->rank,
-                 "OOM: could not allocate memory for "
-                 "precomp_vars.ch1dxx in dc_worker_receive_data");
-    MPI_Finalize();
-    exit(1);
-  }
   process->precomp_vars.ch1dyy = (float *)shared_malloc(count * sizeof(float));
-  if (process->precomp_vars.ch1dyy == NULL) {
-    dc_log_error(process->rank,
-                 "OOM: could not allocate memory for "
-                 "precomp_vars.ch1dyy in dc_worker_receive_data");
-    MPI_Finalize();
-    exit(1);
-  }
   process->precomp_vars.ch1dzz = (float *)shared_malloc(count * sizeof(float));
-  if (process->precomp_vars.ch1dzz == NULL) {
-    dc_log_error(process->rank,
-                 "OOM: could not allocate memory for "
-                 "precomp_vars.ch1dzz in dc_worker_receive_data");
-    MPI_Finalize();
-    exit(1);
-  }
   process->precomp_vars.ch1dxy = (float *)shared_malloc(count * sizeof(float));
-  if (process->precomp_vars.ch1dxy == NULL) {
-    dc_log_error(process->rank,
-                 "OOM: could not allocate memory for "
-                 "precomp_vars.ch1dxy in dc_worker_receive_data");
-    MPI_Finalize();
-    exit(1);
-  }
   process->precomp_vars.ch1dyz = (float *)shared_malloc(count * sizeof(float));
-  if (process->precomp_vars.ch1dyz == NULL) {
-    dc_log_error(process->rank,
-                 "OOM: could not allocate memory for "
-                 "precomp_vars.ch1dyz in dc_worker_receive_data");
-    MPI_Finalize();
-    exit(1);
-  }
   process->precomp_vars.ch1dxz = (float *)shared_malloc(count * sizeof(float));
-  if (process->precomp_vars.ch1dxz == NULL) {
-    dc_log_error(process->rank,
-                 "OOM: could not allocate memory for "
-                 "precomp_vars.ch1dxz in dc_worker_receive_data");
-    MPI_Finalize();
-    exit(1);
-  }
   process->precomp_vars.v2px = (float *)shared_malloc(count * sizeof(float));
-  if (process->precomp_vars.v2px == NULL) {
-    dc_log_error(process->rank, "OOM: could not allocate memory for "
-                                "precomp_vars.v2px in dc_worker_receive_data");
-    MPI_Finalize();
-    exit(1);
-  }
   process->precomp_vars.v2pz = (float *)shared_malloc(count * sizeof(float));
-  if (process->precomp_vars.v2pz == NULL) {
-    dc_log_error(process->rank, "OOM: could not allocate memory for "
-                                "precomp_vars.v2pz in dc_worker_receive_data");
-    MPI_Finalize();
-    exit(1);
-  }
   process->precomp_vars.v2sz = (float *)shared_malloc(count * sizeof(float));
-  if (process->precomp_vars.v2sz == NULL) {
-    dc_log_error(process->rank, "OOM: could not allocate memory for "
-                                "precomp_vars.v2sz in dc_worker_receive_data");
-    MPI_Finalize();
-    exit(1);
-  }
   process->precomp_vars.v2pn = (float *)shared_malloc(count * sizeof(float));
-  if (process->precomp_vars.v2pn == NULL) {
-    dc_log_error(process->rank, "OOM: could not allocate memory for "
-                                "precomp_vars.v2pn in dc_worker_receive_data");
+  if (process->precomp_vars.ch1dxx == NULL ||
+      process->precomp_vars.ch1dyy == NULL ||
+      process->precomp_vars.ch1dzz == NULL ||
+      process->precomp_vars.ch1dxy == NULL ||
+      process->precomp_vars.ch1dyz == NULL ||
+      process->precomp_vars.ch1dxz == NULL ||
+      process->precomp_vars.v2px == NULL ||
+      process->precomp_vars.v2pz == NULL ||
+      process->precomp_vars.v2sz == NULL ||
+      process->precomp_vars.v2pn == NULL) {
+    dc_log_error(process->rank, "OOM: could not allocate precomp_vars");
     MPI_Finalize();
     exit(1);
   }
 
-  MPI_Recv(process->precomp_vars.ch1dxx, count, MPI_FLOAT, COORDINATOR, 0, comm,
-           MPI_STATUS_IGNORE);
-  MPI_Recv(process->precomp_vars.ch1dyy, count, MPI_FLOAT, COORDINATOR, 0, comm,
-           MPI_STATUS_IGNORE);
-  MPI_Recv(process->precomp_vars.ch1dzz, count, MPI_FLOAT, COORDINATOR, 0, comm,
-           MPI_STATUS_IGNORE);
-  MPI_Recv(process->precomp_vars.ch1dxy, count, MPI_FLOAT, COORDINATOR, 0, comm,
-           MPI_STATUS_IGNORE);
-  MPI_Recv(process->precomp_vars.ch1dyz, count, MPI_FLOAT, COORDINATOR, 0, comm,
-           MPI_STATUS_IGNORE);
-  MPI_Recv(process->precomp_vars.ch1dxz, count, MPI_FLOAT, COORDINATOR, 0, comm,
-           MPI_STATUS_IGNORE);
-  MPI_Recv(process->precomp_vars.v2px, count, MPI_FLOAT, COORDINATOR, 0, comm,
-           MPI_STATUS_IGNORE);
-  MPI_Recv(process->precomp_vars.v2pz, count, MPI_FLOAT, COORDINATOR, 0, comm,
-           MPI_STATUS_IGNORE);
-  MPI_Recv(process->precomp_vars.v2sz, count, MPI_FLOAT, COORDINATOR, 0, comm,
-           MPI_STATUS_IGNORE);
-  MPI_Recv(process->precomp_vars.v2pn, count, MPI_FLOAT, COORDINATOR, 0, comm,
-           MPI_STATUS_IGNORE);
+  for (size_t i = 0; i < count; i++) {
+    // Use double-precision math to match original precomp.c
+    float sinTheta = sin(process->anisotropy_vars.theta[i]);
+    float cosTheta = cos(process->anisotropy_vars.theta[i]);
+    float sin2Theta = sin(2.0 * process->anisotropy_vars.theta[i]);
+    float sinPhi = sin(process->anisotropy_vars.phi[i]);
+    float cosPhi = cos(process->anisotropy_vars.phi[i]);
+    float sin2Phi = sin(2.0 * process->anisotropy_vars.phi[i]);
+
+    process->precomp_vars.ch1dxx[i] = sinTheta * sinTheta * cosPhi * cosPhi;
+    process->precomp_vars.ch1dyy[i] = sinTheta * sinTheta * sinPhi * sinPhi;
+    process->precomp_vars.ch1dzz[i] = cosTheta * cosTheta;
+    process->precomp_vars.ch1dxy[i] = sinTheta * sinTheta * sin2Phi;
+    process->precomp_vars.ch1dyz[i] = sin2Theta * sinPhi;
+    process->precomp_vars.ch1dxz[i] = sin2Theta * cosPhi;
+
+    process->precomp_vars.v2sz[i] =
+        process->anisotropy_vars.vsv[i] * process->anisotropy_vars.vsv[i];
+    process->precomp_vars.v2pz[i] =
+        process->anisotropy_vars.vpz[i] * process->anisotropy_vars.vpz[i];
+    process->precomp_vars.v2px[i] =
+        process->precomp_vars.v2pz[i] *
+        (1.0 + 2.0 * process->anisotropy_vars.epsilon[i]);
+    process->precomp_vars.v2pn[i] =
+        process->precomp_vars.v2pz[i] *
+        (1.0 + 2.0 * process->anisotropy_vars.delta[i]);
+  }
+
+  dc_log_info(process->rank, "Local initialization complete");
 }
 
 void dc_send_halo_to_neighbours(dc_process_t process, MPI_Comm comm, int tag,
@@ -529,7 +528,8 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
   size_t max_dim = 0;
   for (int i = 0; i < 3; i++) {
     size_t dim = process->sizes[i] - 2 * STENCIL;
-    if (dim > max_dim) max_dim = dim;
+    if (dim > max_dim)
+      max_dim = dim;
   }
   double efficiency_correction = sg_compute_efficiency_correction(max_dim);
 
@@ -551,14 +551,18 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
     sg_recv_halos(*process, comm, QP_TAG, 1);
 
     // Boundary computation (scaled by efficiency correction)
-    SMPI_SAMPLE_FLOPS(efficiency_correction * (double)(boundary_compute_count * BASE_FLOPS_PER_SAMPLE + BASE_FLOPS_PER_ITERATION / 2));
+    SMPI_SAMPLE_FLOPS(efficiency_correction *
+                      (double)(boundary_compute_count * BASE_FLOPS_PER_SAMPLE +
+                               BASE_FLOPS_PER_ITERATION / 2));
 
     // Post sends (zero-allocation)
     sg_send_halos(*process, comm, PP_TAG, pp_send_sizes);
     sg_send_halos(*process, comm, QP_TAG, qp_send_sizes);
 
     // Interior computation (scaled by efficiency correction)
-    SMPI_SAMPLE_FLOPS(efficiency_correction * (double)(interior_compute_count * BASE_FLOPS_PER_SAMPLE + BASE_FLOPS_PER_ITERATION / 2));
+    SMPI_SAMPLE_FLOPS(efficiency_correction *
+                      (double)(interior_compute_count * BASE_FLOPS_PER_SAMPLE +
+                               BASE_FLOPS_PER_ITERATION / 2));
 
     // Wait for receives and insert halos
     MPI_Waitall(sg_recv_count[0], sg_recv_requests[0], MPI_STATUSES_IGNORE);
@@ -589,13 +593,17 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
 
     dc_compute_boundaries(process, data);
 
-    dc_send_halo_to_neighbours(*process, comm, PP_TAG, data, data->pp, &all_send_requests);
-    dc_send_halo_to_neighbours(*process, comm, QP_TAG, data, data->qp, &all_send_requests);
+    dc_send_halo_to_neighbours(*process, comm, PP_TAG, data, data->pp,
+                               &all_send_requests);
+    dc_send_halo_to_neighbours(*process, comm, QP_TAG, data, data->qp,
+                               &all_send_requests);
 
     dc_compute_interior(process, data);
 
-    dc_concatenate_worker_requests(process->rank, &new_pp_halos.requests, &new_qp_halos.requests);
-    MPI_Waitall(new_pp_halos.requests.count, new_pp_halos.requests.requests, MPI_STATUSES_IGNORE);
+    dc_concatenate_worker_requests(process->rank, &new_pp_halos.requests,
+                                   &new_qp_halos.requests);
+    MPI_Waitall(new_pp_halos.requests.count, new_pp_halos.requests.requests,
+                MPI_STATUSES_IGNORE);
 
     dc_worker_insert_halos(process, &new_pp_halos, data, data->pp);
     dc_worker_insert_halos(process, &new_qp_halos, data, data->qp);
@@ -604,7 +612,8 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
 
     dc_device_swap_arrays(data);
 
-    MPI_Waitall(all_send_requests.count, all_send_requests.requests, MPI_STATUSES_IGNORE);
+    MPI_Waitall(all_send_requests.count, all_send_requests.requests,
+                MPI_STATUSES_IGNORE);
     dc_free_worker_requests(&all_send_requests);
   }
 #endif
@@ -618,7 +627,8 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
   size_t compute_size_y = process->sizes[1] - 2 * STENCIL;
   size_t compute_size_z = process->sizes[2] - 2 * STENCIL;
   double msamples = ((double)compute_size_x * compute_size_y * compute_size_z *
-                     process->iterations) / 1000000.0;
+                     process->iterations) /
+                    1000000.0;
   return msamples / elapsed;
 }
 

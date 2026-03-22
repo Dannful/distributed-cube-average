@@ -1,4 +1,5 @@
 #include <argp.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -100,52 +101,83 @@ int main(int argc, char **argv) {
   dc_process_t mpi_process =
       dc_process_init(communicator, rank, size, topology, sx, sy, sz,
                       arguments.dx, arguments.dy, arguments.dz, arguments.dt);
-  mpi_process.anisotropy_vars = dc_compute_anisotropy_vars(sx, sy, sz);
-
-  unsigned int seed = 0;
-  randomVelocityBoundary(sx, sy, sz, arguments.size_x, arguments.size_y,
-                         arguments.size_z, STENCIL, arguments.absorption_size,
-                         mpi_process.anisotropy_vars.vpz,
-                         mpi_process.anisotropy_vars.vsv, &seed);
 
   if (rank == COORDINATOR) {
-    mpi_process.precomp_vars =
-        dc_compute_precomp_vars(sx, sy, sz, mpi_process.anisotropy_vars);
-    dc_log_info(rank, "Initializing problem data...");
-    problem_data_t problem_data = dc_initialize_problem(
-        communicator, (unsigned int *)topology, STENCIL, size, arguments);
-    dc_log_info(rank, "Partitioning cube...");
-    dc_partition_cube(&problem_data, communicator, mpi_process.precomp_vars);
-    dc_log_info(rank, "Partition completed. Sending data to workers...");
-    dc_send_data_to_workers(problem_data, communicator);
-    memcpy(mpi_process.sizes, problem_data.worker_sizes[0],
-           sizeof(size_t) * DIMENSIONS);
-    size_t coordinator_size =
-        dc_compute_count_from_sizes(problem_data.worker_sizes[0]);
-    mpi_process.pp = (float *)malloc(sizeof(float) * coordinator_size);
-    mpi_process.pc = (float *)malloc(sizeof(float) * coordinator_size);
-    mpi_process.qp = (float *)malloc(sizeof(float) * coordinator_size);
-    mpi_process.qc = (float *)malloc(sizeof(float) * coordinator_size);
-    mpi_process.source_index = problem_data.source_index[0];
-    memcpy(mpi_process.pp, problem_data.pp_workers[0],
-           sizeof(float) * coordinator_size);
-    memcpy(mpi_process.qp, problem_data.qp_workers[0],
-           sizeof(float) * coordinator_size);
-    memcpy(mpi_process.pc, problem_data.pc_workers[0],
-           sizeof(float) * coordinator_size);
-    memcpy(mpi_process.qc, problem_data.qc_workers[0],
-           sizeof(float) * coordinator_size);
-    mpi_process.iterations = problem_data.iterations;
-    mpi_process.rank = rank;
-    dc_free_precomp_vars(&mpi_process.precomp_vars);
-    mpi_process.precomp_vars = *problem_data.precomp_vars_workers[0];
-    dc_free(problem_data.precomp_vars_workers[0]);
-    problem_data.precomp_vars_workers[0] = NULL;
-    dc_free_problem_data_mem(&problem_data);
+    dc_log_info(rank, "Distributing partition info to workers...");
+    dc_distribute_partition_info(communicator, (unsigned int *)topology,
+                                 arguments, size);
+
+    size_t partition_size_x = (sx - 2 * STENCIL) / topology[0];
+    size_t partition_size_y = (sy - 2 * STENCIL) / topology[1];
+    size_t partition_size_z = (sz - 2 * STENCIL) / topology[2];
+    size_t remainder_x = (sx - 2 * STENCIL) % topology[0];
+    size_t remainder_y = (sy - 2 * STENCIL) % topology[1];
+    size_t remainder_z = (sz - 2 * STENCIL) % topology[2];
+
+    // Coordinator is always at position (0,0,0)
+    mpi_process.sizes[0] = partition_size_x + 2 * STENCIL;
+    mpi_process.sizes[1] = partition_size_y + 2 * STENCIL;
+    mpi_process.sizes[2] = partition_size_z + 2 * STENCIL;
+
+    // Handle remainder for last process in each dimension
+    // Coordinator at (0,0,0) doesn't get remainder unless it's also the last
+    if (topology[0] == 1)
+      mpi_process.sizes[0] += remainder_x;
+    if (topology[1] == 1)
+      mpi_process.sizes[1] += remainder_y;
+    if (topology[2] == 1)
+      mpi_process.sizes[2] += remainder_z;
+
+    size_t count = dc_compute_count_from_sizes(mpi_process.sizes);
+    mpi_process.iterations = ceil(arguments.time_max / arguments.dt);
+
+    // Check if source is in coordinator's partition
+    size_t source_x, source_y, source_z;
+    dc_determine_source(sx, sy, sz, &source_x, &source_y, &source_z);
+    if (source_x < mpi_process.sizes[0] && source_y < mpi_process.sizes[1] &&
+        source_z < mpi_process.sizes[2]) {
+      mpi_process.source_index = (int)dc_get_index_for_coordinates(
+          source_x, source_y, source_z, mpi_process.sizes[0],
+          mpi_process.sizes[1], mpi_process.sizes[2]);
+    } else {
+      mpi_process.source_index = -1;
+    }
+
+    mpi_process.pp = (float *)calloc(count, sizeof(float));
+    mpi_process.pc = (float *)calloc(count, sizeof(float));
+    mpi_process.qp = (float *)calloc(count, sizeof(float));
+    mpi_process.qc = (float *)calloc(count, sizeof(float));
+    if (mpi_process.pp == NULL || mpi_process.pc == NULL ||
+        mpi_process.qp == NULL || mpi_process.qc == NULL) {
+      dc_log_error(rank, "OOM: could not allocate field arrays");
+      MPI_Finalize();
+      exit(1);
+    }
+
+    // Compute anisotropy and precomp vars for coordinator's partition
+    mpi_process.anisotropy_vars = dc_compute_anisotropy_vars(
+        mpi_process.sizes[0], mpi_process.sizes[1], mpi_process.sizes[2]);
+    unsigned int seed = 0;
+    // Coordinator is at global position (0,0,0)
+    randomVelocityBoundaryPartition(
+        mpi_process.sizes[0], mpi_process.sizes[1],
+        mpi_process.sizes[2], // Local sizes
+        sx, sy, sz,           // Global sizes
+        0, 0, 0,              // Start coords (coordinator at origin)
+        arguments.size_x, arguments.size_y, arguments.size_z, // Problem sizes
+        STENCIL, arguments.absorption_size, mpi_process.anisotropy_vars.vpz,
+        mpi_process.anisotropy_vars.vsv, &seed);
+    mpi_process.precomp_vars = dc_compute_precomp_vars(
+        mpi_process.sizes[0], mpi_process.sizes[1], mpi_process.sizes[2],
+        mpi_process.anisotropy_vars);
+
+    dc_log_info(
+        rank, "Coordinator initialized locally with sizes %zu x %zu x %zu",
+        mpi_process.sizes[0], mpi_process.sizes[1], mpi_process.sizes[2]);
   } else {
-    dc_log_info(rank, "Awaiting data from coordinator...");
-    dc_worker_receive_data(&mpi_process, communicator);
-    dc_log_info(rank, "Data received from coordinator.");
+    dc_log_info(rank, "Awaiting partition info from coordinator...");
+    dc_worker_init_from_partition_info(&mpi_process, communicator);
+    dc_log_info(rank, "Local initialization complete.");
   }
   dc_log_info(rank, "Starting worker process...");
   double start_time = MPI_Wtime();
@@ -154,14 +186,8 @@ int main(int argc, char **argv) {
   double total_time = end_time - start_time;
   dc_send_data_to_coordinator(mpi_process, communicator);
   if (rank == COORDINATOR) {
-    dc_result_t result =
-        dc_receive_data_from_workers(mpi_process, communicator, sx, sy, sz);
-    FILE *output = fopen(arguments.output_file, "wb");
-    fwrite(result.pc, sizeof(float), sx * sy * sz, output);
-    fwrite(result.qc, sizeof(float), sx * sy * sz, output);
-    fclose(output);
-    free(result.pc);
-    free(result.qc);
+    dc_receive_and_write_results(mpi_process, communicator, sx, sy, sz,
+                                 arguments.output_file);
   }
   dc_worker_free(mpi_process);
 

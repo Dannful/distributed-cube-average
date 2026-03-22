@@ -57,7 +57,6 @@ void dc_distribute_partition_info(MPI_Comm comm, unsigned int *topology,
         if (worker == COORDINATOR)
           continue;
 
-        // Calculate this worker's partition
         size_t local_size_x = (worker_x == topology[0] - 1)
                                   ? partition_size_x + remainder_x
                                   : partition_size_x;
@@ -75,7 +74,6 @@ void dc_distribute_partition_info(MPI_Comm comm, unsigned int *topology,
         size_t start_y = worker_y * partition_size_y;
         size_t start_z = worker_z * partition_size_z;
 
-        // Determine if source is in this partition
         int source_index = -1;
         if (source_x >= start_x && source_x < start_x + local_size_x &&
             source_y >= start_y && source_y < start_y + local_size_y &&
@@ -91,7 +89,6 @@ void dc_distribute_partition_info(MPI_Comm comm, unsigned int *topology,
                       source_index);
         }
 
-        // Build partition info
         dc_partition_info_t info;
         info.local_sizes[0] = local_size_x;
         info.local_sizes[1] = local_size_y;
@@ -109,7 +106,6 @@ void dc_distribute_partition_info(MPI_Comm comm, unsigned int *topology,
         info.source_index = source_index;
         info.absorption_size = arguments.absorption_size;
 
-        // Send partition info as a single message
         MPI_Send(&info, sizeof(dc_partition_info_t), MPI_BYTE, worker, 0, comm);
         dc_log_info(COORDINATOR, "Sent partition info to worker %d", worker);
       }

@@ -4,50 +4,37 @@
 #include "boundary.h"
 #include "indexing.h"
 
-// Partition-aware boundary computation: computes boundary for a local partition
-// Iterates through GLOBAL domain to maintain identical rand_r sequence
-void randomVelocityBoundaryPartition(
-    int local_sx, int local_sy, int local_sz,     // Local partition sizes
-    int global_sx, int global_sy, int global_sz,  // Global domain sizes
-    int start_x, int start_y, int start_z,        // Global start coordinates
-    int nx, int ny, int nz,                       // Original problem sizes
-    int bord, int absorb,
-    float *vpz, float *vsv,
-    unsigned int *seed) {
+void randomVelocityBoundaryPartition(int local_sx, int local_sy, int local_sz,
+                                     int global_sx, int global_sy,
+                                     int global_sz, int start_x, int start_y,
+                                     int start_z, int nx, int ny, int nz,
+                                     int bord, int absorb, float *vpz,
+                                     float *vsv, unsigned int *seed) {
 
   int bordLen = bord + absorb - 1;
   int firstIn = bordLen + 1;
   float frac = 1.0f / (float)(absorb);
 
-  // Max P and S are constants since we initialize with constant values
   float maxP = 3000.0f;
-  float maxS = maxP * sqrtf(fabsf(0.24f - 0.1f) / 0.75f);  // Using SIGMA=0.75
+  float maxS = maxP * sqrtf(fabsf(0.24f - 0.1f) / 0.75f);
 
   int end_x = start_x + local_sx;
   int end_y = start_y + local_sy;
   int end_z = start_z + local_sz;
 
-  // Iterate through GLOBAL coordinates in same order as original
-  // to maintain identical rand_r sequence
   for (int gz = 0; gz < global_sz; gz++) {
     for (int gy = 0; gy < global_sy; gy++) {
       for (int gx = 0; gx < global_sx; gx++) {
-        // Check if inside input grid (no action needed)
         if ((gz >= firstIn && gz <= bordLen + nz) &&
             (gy >= firstIn && gy <= bordLen + ny) &&
             (gx >= firstIn && gx <= bordLen + nx)) {
           continue;
-        }
-        // Check if in absorption zone (need to call rand_r)
-        else if ((gz >= bord && gz <= 2 * bordLen + nz) &&
-                 (gy >= bord && gy <= 2 * bordLen + ny) &&
-                 (gx >= bord && gx <= 2 * bordLen + nx)) {
-          // Always call rand_r to maintain sequence
+        } else if ((gz >= bord && gz <= 2 * bordLen + nz) &&
+                   (gy >= bord && gy <= 2 * bordLen + ny) &&
+                   (gx >= bord && gx <= 2 * bordLen + nx)) {
           float rfac = (float)rand_r(seed) / (float)RAND_MAX;
 
-          // Only update if this position is in our partition
-          if (gx >= start_x && gx < end_x &&
-              gy >= start_y && gy < end_y &&
+          if (gx >= start_x && gx < end_x && gy >= start_y && gy < end_y &&
               gz >= start_z && gz < end_z) {
             int local_ix = gx - start_x;
             int local_iy = gy - start_y;
@@ -93,7 +80,7 @@ void randomVelocityBoundaryPartition(
 
             int dist = (disty > distz) ? disty : distz;
             dist = (dist > distx) ? dist : distx;
-            float bordDist = (float)(dist) * frac;
+            float bordDist = (float)(dist)*frac;
 
             // Reference velocity: convert global ref coords to local
             int ref_local_x = ivelx - start_x;
@@ -110,7 +97,6 @@ void randomVelocityBoundaryPartition(
               ref_vpz = vpz[ref_i];
               ref_vsv = vsv[ref_i];
             } else {
-              // Reference is outside our partition - use base values
               ref_vpz = 3000.0f;
               ref_vsv = maxS;
             }
@@ -118,11 +104,8 @@ void randomVelocityBoundaryPartition(
             vpz[i] = ref_vpz * (1.0f - bordDist) + maxP * rfac * bordDist;
             vsv[i] = ref_vsv * (1.0f - bordDist) + maxS * rfac * bordDist;
           }
-        }
-        // Border zone - only update if in our partition
-        else if (gx >= start_x && gx < end_x &&
-                 gy >= start_y && gy < end_y &&
-                 gz >= start_z && gz < end_z) {
+        } else if (gx >= start_x && gx < end_x && gy >= start_y && gy < end_y &&
+                   gz >= start_z && gz < end_z) {
           int local_ix = gx - start_x;
           int local_iy = gy - start_y;
           int local_iz = gz - start_z;

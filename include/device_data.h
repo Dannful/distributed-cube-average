@@ -10,11 +10,8 @@ extern "C" {
 
 typedef struct {
   float *pp, *pc, *qp, *qc;
+  float *vpz, *vsv;
   dc_precomp_vars precomp_vars;
-
-  // CUDA-specific fields for kernel launch parameters
-#ifdef __CUDACC__
-#endif
 } dc_device_data;
 
 dc_device_data *dc_device_data_init(dc_process_t *process);

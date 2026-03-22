@@ -53,6 +53,7 @@ dc_device_data *dc_device_data_init(dc_process_t *process) {
   size_t total_size = dc_compute_count_from_sizes(process->sizes);
   size_t total_size_bytes = total_size * sizeof(float);
 
+  // Allocate field arrays (4 arrays)
   check_cuda_error(cudaMalloc(&data->pp, total_size_bytes), process->rank,
                    "cudaMalloc pp");
   check_cuda_error(cudaMalloc(&data->pc, total_size_bytes), process->rank,
@@ -75,67 +76,19 @@ dc_device_data *dc_device_data_init(dc_process_t *process) {
                               cudaMemcpyHostToDevice),
                    process->rank, "cudaMemcpy qc");
 
-  check_cuda_error(cudaMalloc(&data->precomp_vars.ch1dxx, total_size_bytes),
-                   process->rank, "cudaMalloc precomp_vars.ch1dxx");
-  check_cuda_error(cudaMalloc(&data->precomp_vars.ch1dyy, total_size_bytes),
-                   process->rank, "cudaMalloc precomp_vars.ch1dyy");
-  check_cuda_error(cudaMalloc(&data->precomp_vars.ch1dzz, total_size_bytes),
-                   process->rank, "cudaMalloc precomp_vars.ch1dzz");
-  check_cuda_error(cudaMalloc(&data->precomp_vars.ch1dxy, total_size_bytes),
-                   process->rank, "cudaMalloc precomp_vars.ch1dxy");
-  check_cuda_error(cudaMalloc(&data->precomp_vars.ch1dyz, total_size_bytes),
-                   process->rank, "cudaMalloc precomp_vars.ch1dyz");
-  check_cuda_error(cudaMalloc(&data->precomp_vars.ch1dxz, total_size_bytes),
-                   process->rank, "cudaMalloc precomp_vars.ch1dxz");
-  check_cuda_error(cudaMalloc(&data->precomp_vars.v2px, total_size_bytes),
-                   process->rank, "cudaMalloc precomp_vars.v2px");
-  check_cuda_error(cudaMalloc(&data->precomp_vars.v2pz, total_size_bytes),
-                   process->rank, "cudaMalloc precomp_vars.v2pz");
-  check_cuda_error(cudaMalloc(&data->precomp_vars.v2sz, total_size_bytes),
-                   process->rank, "cudaMalloc precomp_vars.v2sz");
-  check_cuda_error(cudaMalloc(&data->precomp_vars.v2pn, total_size_bytes),
-                   process->rank, "cudaMalloc precomp_vars.v2pn");
+  // Allocate only vpz and vsv (2 arrays instead of 10 precomp arrays)
+  // Other values (ch1d*, v2*) are computed on-the-fly in the kernel
+  check_cuda_error(cudaMalloc(&data->vpz, total_size_bytes), process->rank,
+                   "cudaMalloc vpz");
+  check_cuda_error(cudaMalloc(&data->vsv, total_size_bytes), process->rank,
+                   "cudaMalloc vsv");
 
-  check_cuda_error(cudaMemcpy(data->precomp_vars.ch1dxx,
-                              process->precomp_vars.ch1dxx, total_size_bytes,
-                              cudaMemcpyHostToDevice),
-                   process->rank, "cudaMemcpy precomp_vars.ch1dxx");
-  check_cuda_error(cudaMemcpy(data->precomp_vars.ch1dyy,
-                              process->precomp_vars.ch1dyy, total_size_bytes,
-                              cudaMemcpyHostToDevice),
-                   process->rank, "cudaMemcpy precomp_vars.ch1dyy");
-  check_cuda_error(cudaMemcpy(data->precomp_vars.ch1dzz,
-                              process->precomp_vars.ch1dzz, total_size_bytes,
-                              cudaMemcpyHostToDevice),
-                   process->rank, "cudaMemcpy precomp_vars.ch1dzz");
-  check_cuda_error(cudaMemcpy(data->precomp_vars.ch1dxy,
-                              process->precomp_vars.ch1dxy, total_size_bytes,
-                              cudaMemcpyHostToDevice),
-                   process->rank, "cudaMemcpy precomp_vars.ch1dxy");
-  check_cuda_error(cudaMemcpy(data->precomp_vars.ch1dyz,
-                              process->precomp_vars.ch1dyz, total_size_bytes,
-                              cudaMemcpyHostToDevice),
-                   process->rank, "cudaMemcpy precomp_vars.ch1dyz");
-  check_cuda_error(cudaMemcpy(data->precomp_vars.ch1dxz,
-                              process->precomp_vars.ch1dxz, total_size_bytes,
-                              cudaMemcpyHostToDevice),
-                   process->rank, "cudaMemcpy precomp_vars.ch1dxz");
-  check_cuda_error(cudaMemcpy(data->precomp_vars.v2px,
-                              process->precomp_vars.v2px, total_size_bytes,
-                              cudaMemcpyHostToDevice),
-                   process->rank, "cudaMemcpy precomp_vars.v2px");
-  check_cuda_error(cudaMemcpy(data->precomp_vars.v2pz,
-                              process->precomp_vars.v2pz, total_size_bytes,
-                              cudaMemcpyHostToDevice),
-                   process->rank, "cudaMemcpy precomp_vars.v2pz");
-  check_cuda_error(cudaMemcpy(data->precomp_vars.v2sz,
-                              process->precomp_vars.v2sz, total_size_bytes,
-                              cudaMemcpyHostToDevice),
-                   process->rank, "cudaMemcpy precomp_vars.v2sz");
-  check_cuda_error(cudaMemcpy(data->precomp_vars.v2pn,
-                              process->precomp_vars.v2pn, total_size_bytes,
-                              cudaMemcpyHostToDevice),
-                   process->rank, "cudaMemcpy precomp_vars.v2pn");
+  check_cuda_error(cudaMemcpy(data->vpz, process->anisotropy_vars.vpz,
+                              total_size_bytes, cudaMemcpyHostToDevice),
+                   process->rank, "cudaMemcpy vpz");
+  check_cuda_error(cudaMemcpy(data->vsv, process->anisotropy_vars.vsv,
+                              total_size_bytes, cudaMemcpyHostToDevice),
+                   process->rank, "cudaMemcpy vsv");
 
   return data;
 }
@@ -145,17 +98,8 @@ void dc_device_data_free(dc_device_data *data) {
   cudaFree(data->pc);
   cudaFree(data->qp);
   cudaFree(data->qc);
-
-  cudaFree(data->precomp_vars.ch1dxx);
-  cudaFree(data->precomp_vars.ch1dyy);
-  cudaFree(data->precomp_vars.ch1dzz);
-  cudaFree(data->precomp_vars.ch1dxy);
-  cudaFree(data->precomp_vars.ch1dyz);
-  cudaFree(data->precomp_vars.ch1dxz);
-  cudaFree(data->precomp_vars.v2px);
-  cudaFree(data->precomp_vars.v2pz);
-  cudaFree(data->precomp_vars.v2sz);
-  cudaFree(data->precomp_vars.v2pn);
+  cudaFree(data->vpz);
+  cudaFree(data->vsv);
 
   free(data);
 }

@@ -23,6 +23,8 @@ dc_device_data *dc_device_data_init(dc_process_t *process) {
   data->pc = process->pc;
   data->qp = process->qp;
   data->qc = process->qc;
+  data->vpz = process->anisotropy_vars.vpz;
+  data->vsv = process->anisotropy_vars.vsv;
   data->precomp_vars = process->precomp_vars;
 
   return data;

@@ -82,24 +82,8 @@ void randomVelocityBoundaryPartition(int local_sx, int local_sy, int local_sz,
             dist = (dist > distx) ? dist : distx;
             float bordDist = (float)(dist)*frac;
 
-            // Reference velocity: convert global ref coords to local
-            int ref_local_x = ivelx - start_x;
-            int ref_local_y = ively - start_y;
-            int ref_local_z = ivelz - start_z;
-
-            float ref_vpz, ref_vsv;
-            if (ref_local_x >= 0 && ref_local_x < local_sx &&
-                ref_local_y >= 0 && ref_local_y < local_sy &&
-                ref_local_z >= 0 && ref_local_z < local_sz) {
-              int ref_i = dc_get_index_for_coordinates(ref_local_x, ref_local_y,
-                                                       ref_local_z, local_sx,
-                                                       local_sy, local_sz);
-              ref_vpz = vpz[ref_i];
-              ref_vsv = vsv[ref_i];
-            } else {
-              ref_vpz = 3000.0f;
-              ref_vsv = maxS;
-            }
+            float ref_vpz = maxP;
+            float ref_vsv = maxS;
 
             vpz[i] = ref_vpz * (1.0f - bordDist) + maxP * rfac * bordDist;
             vsv[i] = ref_vsv * (1.0f - bordDist) + maxS * rfac * bordDist;

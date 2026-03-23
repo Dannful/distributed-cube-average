@@ -248,7 +248,6 @@ void dc_worker_init_from_partition_info(dc_process_t *process, MPI_Comm comm) {
   }
 
   for (size_t i = 0; i < count; i++) {
-    // Use double-precision math to match original precomp.c
     float sinTheta = sin(process->anisotropy_vars.theta[i]);
     float cosTheta = cos(process->anisotropy_vars.theta[i]);
     float sin2Theta = sin(2.0 * process->anisotropy_vars.theta[i]);
@@ -451,45 +450,86 @@ worker_halos_t dc_receive_halos(dc_process_t process, MPI_Comm comm, int tag) {
 }
 
 void dc_compute_boundaries(const dc_process_t *process, dc_device_data *data) {
-  const int radius = STENCIL;
+  const size_t radius = STENCIL;
+  const size_t *sizes = process->sizes;
 
-  for (unsigned int dimension = 0; dimension < DIMENSIONS; dimension++) {
-    for (int direction = -1; direction <= 1; direction += 2) {
-      int displacement[DIMENSIONS] = {0};
-      displacement[dimension] = direction;
-      size_t start_coords[DIMENSIONS], end_coords[DIMENSIONS];
-      for (unsigned int i = 0; i < DIMENSIONS; i++) {
-        if (i < dimension) {
-          start_coords[i] = 2 * radius;
-          end_coords[i] = process->sizes[i] - 2 * radius;
-        } else if (i == dimension) {
-          start_coords[i] =
-              (displacement[i] > 0) ? (process->sizes[i] - 2 * radius) : radius;
-          end_coords[i] =
-              (displacement[i] < 0) ? 2 * radius : process->sizes[i] - radius;
-        } else {
-          start_coords[i] = radius;
-          end_coords[i] = process->sizes[i] - radius;
-        }
-      }
-      dc_propagate(start_coords, end_coords, process->sizes,
-                   process->coordinates, process->topology, data, process->dx,
-                   process->dy, process->dz, process->dt);
+  int has_interior = (sizes[0] >= 4 * radius && sizes[1] >= 4 * radius &&
+                      sizes[2] >= 4 * radius);
+
+  if (!has_interior) {
+    size_t start[DIMENSIONS] = {radius, radius, radius};
+    size_t end[DIMENSIONS] = {sizes[0] - radius, sizes[1] - radius,
+                              sizes[2] - radius};
+    if (start[0] < end[0] && start[1] < end[1] && start[2] < end[2]) {
+      dc_propagate(start, end, process->sizes, process->coordinates,
+                   process->topology, data, process->dx, process->dy,
+                   process->dz, process->dt);
+    }
+    return;
+  }
+
+  size_t start[DIMENSIONS], end[DIMENSIONS];
+
+  for (int side = 0; side < 2; side++) {
+    start[0] = (side == 0) ? radius : sizes[0] - 2 * radius;
+    end[0] = (side == 0) ? 2 * radius : sizes[0] - radius;
+    start[1] = radius;
+    end[1] = sizes[1] - radius;
+    start[2] = radius;
+    end[2] = sizes[2] - radius;
+    if (start[0] < end[0] && start[1] < end[1] && start[2] < end[2]) {
+      dc_propagate(start, end, process->sizes, process->coordinates,
+                   process->topology, data, process->dx, process->dy,
+                   process->dz, process->dt);
+    }
+  }
+
+  for (int side = 0; side < 2; side++) {
+    start[0] = 2 * radius;
+    end[0] = sizes[0] - 2 * radius;
+    start[1] = (side == 0) ? radius : sizes[1] - 2 * radius;
+    end[1] = (side == 0) ? 2 * radius : sizes[1] - radius;
+    start[2] = radius;
+    end[2] = sizes[2] - radius;
+    if (start[0] < end[0] && start[1] < end[1] && start[2] < end[2]) {
+      dc_propagate(start, end, process->sizes, process->coordinates,
+                   process->topology, data, process->dx, process->dy,
+                   process->dz, process->dt);
+    }
+  }
+
+  for (int side = 0; side < 2; side++) {
+    start[0] = 2 * radius;
+    end[0] = sizes[0] - 2 * radius;
+    start[1] = 2 * radius;
+    end[1] = sizes[1] - 2 * radius;
+    start[2] = (side == 0) ? radius : sizes[2] - 2 * radius;
+    end[2] = (side == 0) ? 2 * radius : sizes[2] - radius;
+    if (start[0] < end[0] && start[1] < end[1] && start[2] < end[2]) {
+      dc_propagate(start, end, process->sizes, process->coordinates,
+                   process->topology, data, process->dx, process->dy,
+                   process->dz, process->dt);
     }
   }
 }
 
 void dc_compute_interior(const dc_process_t *process, dc_device_data *data) {
-  const int radius = STENCIL;
+  const size_t radius = STENCIL;
+  const size_t *sizes = process->sizes;
 
-  size_t start_coords[DIMENSIONS] = {2 * radius, 2 * radius, 2 * radius};
-  size_t end_coords[DIMENSIONS] = {process->sizes[0] - 2 * radius,
-                                   process->sizes[1] - 2 * radius,
-                                   process->sizes[2] - 2 * radius};
+  if (sizes[0] < 4 * radius || sizes[1] < 4 * radius || sizes[2] < 4 * radius) {
+    return;
+  }
 
-  dc_propagate(start_coords, end_coords, process->sizes, process->coordinates,
-               process->topology, data, process->dx, process->dy, process->dz,
-               process->dt);
+  size_t start[DIMENSIONS] = {2 * radius, 2 * radius, 2 * radius};
+  size_t end[DIMENSIONS] = {sizes[0] - 2 * radius, sizes[1] - 2 * radius,
+                            sizes[2] - 2 * radius};
+
+  if (start[0] < end[0] && start[1] < end[1] && start[2] < end[2]) {
+    dc_propagate(start, end, process->sizes, process->coordinates,
+                 process->topology, data, process->dx, process->dy, process->dz,
+                 process->dt);
+  }
 }
 
 void dc_send_data_to_coordinator(dc_process_t process, MPI_Comm comm) {

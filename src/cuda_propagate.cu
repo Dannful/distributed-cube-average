@@ -23,11 +23,9 @@ propagate_kernel(const size_t start_x, const size_t start_y, const size_t start_
   }
 
   for (size_t z = start_z; z < end_z; z++) {
-    sample_compute_optimized(x, y, z, size_x, size_y, size_z,
-                   process_coord_x, process_coord_y, process_coord_z,
-                   topology_x, topology_y, topology_z,
-                   dx, dy, dz, dt, pc, qc, pp, qp,
-                   vpz, vsv);
+    sample_compute_optimized(x, y, z, size_x, size_y, size_z, process_coord_x,
+                             process_coord_y, process_coord_z, topology_x, topology_y,
+                             topology_z, dx, dy, dz, dt, pc, qc, pp, qp, vpz, vsv);
   }
 }
 
@@ -39,13 +37,15 @@ extern "C" void dc_propagate(const size_t start_coords[DIMENSIONS],
                              dc_device_data *data, const float dx,
                              const float dy, const float dz, const float dt) {
 
+  if (end_coords[0] <= start_coords[0] ||
+      end_coords[1] <= start_coords[1] ||
+      end_coords[2] <= start_coords[2]) {
+    return;
+  }
+
   const size_t nx = end_coords[0] - start_coords[0];
   const size_t ny = end_coords[1] - start_coords[1];
   const size_t nz = end_coords[2] - start_coords[2];
-
-  if (nx == 0 || ny == 0 || nz == 0) {
-    return;
-  }
 
   const dim3 threadsPerBlock(THREADS_PER_BLOCK, THREADS_PER_BLOCK);
   const dim3 numBlocks((nx + threadsPerBlock.x - 1) / threadsPerBlock.x,

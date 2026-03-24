@@ -318,35 +318,157 @@ which is infeasible for a discrete problem. Thus, in order to solve that:
   s_y = \lfloor \frac{20}{3} \rfloor = 6 \\
   s_z = \lfloor \frac{20}{3} \rfloor = 6
 \end{gather*}
-However, that also leads to its own issue: the domain is $20 \times 20 \times 20$,
-but only $18 \times 18 \times 18$ ($6$ for each worker in the same axis) is being processed.
-The worker responsible for handling the end of the domain is thereby assigned the remainder,
-that is, $20 \bmod 3 = 2$ extra units for the last processes of each dimension, ensuring
+However, that also leads to its own issue: the domain is $20 \times
+20 \times 20$,
+but only $18 \times 18 \times 18$ ($6$ for each worker in the same
+axis) is being processed.
+The worker responsible for handling the end of the domain is thereby
+assigned the remainder,
+that is, $20 \bmod 3 = 2$ extra units for the last processes of each
+dimension, ensuring
 the entire grid is properly computed.
 
-\section{Project}
-The present research had two preliminary goals:
+\section{Initialization}
+The coordinator ($n_{process} = 0$) is responsible for partitioning the cube,
+effectively deciding which worker computes which part of the grid.
+
+After that, it sends this information to each worker, and every process begins
+computing their respective instances of the anisotropy variables and
+precomputation
+variables. The initial domain is zero-initialized.
+
+Succeeding the initial handshake between the coordinator and its
+workers, the next
+point of synchronization happens between the neighboring processes during the
+actual computation of the application.
+
+The following pseudocode describes this behavior:
+\begin{lstlisting}[style=CStyle, caption = {Main worker loop using Ghost Cells}]
+void worker_init() {
+  partitions_data data;
+  if(is_coordinator) {
+    partitions_data partitions = coordinator_partition_cube();
+    send_to_workers(partitions);
+    data = fetch_coordinator_partition(partitions);
+  } else {
+    data = receive_from_coordinator();
+  }
+  anisotropy_vars anisotropy = compute_anistropy_variables();
+  precomp_vars precomputation = compute_precomp_vars(anisotropy);
+
+  worker_process(data);
+}
+\end{lstlisting}
+
+\section{Communication}
+The application utilized both synchronous and asynchronous
+communication, leveraging
+their advantages for the proper tasks.
+
+\subsection{Synchronous}
+Synchronous communication is used in a few parts of the program:
 \begin{enumerate}
-  \item Craft a distributed MPI application for calculating
-    Fletcher's equations.
-  \item Run a performance analysis, in order to determine the bottlenecks and
-    most prominent parameters, aiming at maximizing the MSamples/s metric.
+  \item Initial worker partitioning (synchronous solely on the receiving side)
+
+    For the workers to start processing, it is mandatory that their
+    partition promptly informed,
+    so it is imperative to wait for that information to arrive.
+  \item Processing results synchronization
+
+    As soon as all workers are finished computing their subdomain, they send
+    their share to the coordinator, which receives and flushes each part
+    in a synchronous and streamlined manner.
 \end{enumerate}
 
-\section{Implementation}
-\subsection{Application}
+\subsection{Asynchronous}
+Asynchronous communication is the core of the program, essential to
+accomplishing
+the goal of overlapping communication with computation.
 
-The program sequence follows:
+The model employed by this application is the \textbf{Ghost Cells}
+method, which consists
+of leveraging asynchronous communication and memory redundancy to
+mitigate the impacts of
+the network.
+
+All workers operate on an extended version of their domain, which
+includes their own partition with the addition of their neighbors'
+borders. This version is present to the processes before the processing
+iterations begin.
+
+Let $t$ be the current timestamp.
+
+At $t = T$, a process:
+
 \begin{enumerate}
-  \item Coordinator determines each worker's partition (including its own).
-  \item Each worker computes their anisotropy variables,
-    precomputation variables and initializes their cubes (both
-    current and from previous iteration).
-  \item
+  \item Inserts the source of the pseudo-acoustic wave in its own domain.
+  \item Begins an asynchronous receive of the borders of $t = T + 1$.
+  \item Computes its own borders (the ones its neighbors need).
+  \item Asynchronously sends its borders to the neighbors.
+  \item Computes its interior.
+  \item Waits for the asynchronous operations to finish.
+  \item Proceeds to $T + 1$
 \end{enumerate}
 
-\subsection{Simulation}
+which can be translated into the following pseudocode:
+\begin{lstlisting}[style=CStyle, caption = {Main worker loop using Ghost Cells}]
+double dc_worker_process(problem_data data, unsigned int iterations) {
+  for (unsigned int i = 0; i < iterations; i++) {
+    add_source(data);
+
+    problem_data future_halos = async_receive_halos();
+
+    compute_boundaries(data);
+
+    async_send_halo_to_neighbours(data);
+
+    compute_interior(data);
+
+    merge_halos(data, future_halos);
+
+    wait_async_requests();
+  }
+}
+\end{lstlisting}
+
+This ensures that while the operating system handles the asynchronous
+network calls,
+the program continues to process its domain, effectively overlapping
+communication with
+computation.
+
+\section{Finalization}
+Once all workers are finished with their chunks of the domain,
+they send their share of the data to the coordinator, which
+takes turns in receiving and flushing the received parts,
+effectively avoiding the need to concentrate the entire cube in RAM.
+
+This process can be described in a pseudocode:
+\begin{lstlisting}[style=CStyle, caption = {Application finalization}]
+void receive_workers_data(worker_data coordinator_data, unsigned int num_workers) {
+  flush_worker_data_to_disk(coordinator_data);
+  num_workers -= 1; // ignore coordinator
+  while(num_workers > 0) {
+    worker_data data = sync_receive_worker_chunk();
+    flush_worker_data_to_disk(data);
+    num_workers--;
+  }
+}
+\end{lstlisting}
+
+\section{Simulation}
+The present project aimed at providing a simulation tool in addition
+to the implementation
+of the MPI application, with the goal of finding optimal environments and
+configurations for the program to run with.
+
+The simulations are handled by SimGrid, using sampling code interleaved with
+the application's source code.
+
+\newpage
 \chapter{Results}
+\newpage
+\chapter{Conclusion}
 \newpage
 \bibliographystyle{abntex2-alf}
 \bibliography{./references.bib}

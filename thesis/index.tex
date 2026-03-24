@@ -3,6 +3,44 @@
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}
 \usepackage{subcaption}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\definecolor{mGreen}{rgb}{0,0.6,0}
+\definecolor{mGray}{rgb}{0.5,0.5,0.5}
+\definecolor{mPurple}{rgb}{0.58,0,0.82}
+\definecolor{backgroundColour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{CStyle}{
+  backgroundcolor=\color{backgroundColour},
+  commentstyle=\color{mGreen},
+  keywordstyle=\color{blue},
+  numberstyle=\tiny\color{mGray},
+  stringstyle=\color{mPurple},
+  basicstyle=\ttfamily\footnotesize,
+  breakatwhitespace=false,
+  breaklines=true,
+  captionpos=b,
+  keepspaces=true,
+  numbers=left,
+  numbersep=5pt,
+  showspaces=false,
+  showstringspaces=false,
+  showtabs=false,
+  tabsize=2,
+  language=C,
+  morekeywords={MPI_Init, MPI_Finalize, MPI_Comm_rank, MPI_Comm_size,
+    MPI_Send, MPI_Recv, MPI_Isend, MPI_Irecv, MPI_Waitall,
+    MPI_Cart_create, MPI_Cart_shift, MPI_Comm, MPI_Dims_create,
+  MPI_Cart_coords, MPI_Cart_rank}
+}
+\lstset{
+  basicstyle=\ttfamily,
+  keywordstyle=\color{blue},
+  breaklines=true
+}
 
 \title{Distributed Implementation of Anisotropic RTM Using the
 Fletcher Method with MPI and Ghost Cells}
@@ -124,27 +162,168 @@ crashed.
   \centering
   \begin{subfigure}[b]{0.3\textwidth}
     \centering
-    \includegraphics{./assets/forward_propagation_1.jpg}
-    \caption{Forward propagation at $t = 2$}
+    \includegraphics[width=\textwidth]{./assets/forward_propagation_1.jpg}
+    \caption{Forward propagation at $t = 2$ \cite{seismiccity_rtm}}
     \label{fig:forward_propagation_1}
   \end{subfigure}
   \hfill
   \begin{subfigure}[b]{0.3\textwidth}
     \centering
-    \includegraphics{./assets/forward_propagation_2.jpg}
-    \caption{Forward propagation at $t = 4$}
+    \includegraphics[width=\textwidth]{./assets/forward_propagation_2.jpg}
+    \caption{Forward propagation at $t = 4$ \cite{seismiccity_rtm}}
     \label{fig:forward_propagation_2}
   \end{subfigure}
   \hfill
   \begin{subfigure}[b]{0.3\textwidth}
     \centering
-    \includegraphics{./assets/forward_propagation_3.jpg}
-    \caption{Forward propagation at $t = 6$}
+    \includegraphics[width=\textwidth]{./assets/forward_propagation_3.jpg}
+    \caption{Forward propagation at $t = 6$ \cite{seismiccity_rtm}}
     \label{fig:forward_propagation_3}
   \end{subfigure}
 \end{figure}
 
 \chapter{Methodology}
+
+\section{MPI}
+The application was built from using OpenMPI as the
+messaging interface, aiming at a reliable and well-established
+distributed computation framework.
+
+The first and arguably most important step of the program is to assign
+paritions of the domain to the available workers. This is accomplished
+through the use of MPI's \lstinline{MPI_Dims_create()} function, which
+seeks to elect a balanced distribution of processes per axis in each
+dimension, partitioning the group into an $n$-dimensional topology
+(in this case, $n = 3$ for a 3D problem). It is noteworthy, however, that this
+does not handle the segmentation of the problem domain itself, but rather only
+distributes the available workers across the carthesian grid.
+
+The aforemetioned partitioning, combined with \lstinline{MPI_Cart_create()},
+creates a global communicator through which all processes will pass messages
+for the rest of the program's lifespan. Furthermore, the concept of neighborhood
+is provided: each process possesses, henceforth, its own coordinates, defined by
+\lstinline{MPI_Cart_coords}. By combining this with \lstinline{MPI_Cart_rank},
+which provides the rank of the process assigned to a certain set of coordinates,
+a worker has the ability to receive messages from and send messages
+to its surrounding
+neighbors.
+
+The following code block illustrates this procedure at a high level:
+\begin{lstlisting}[style=CStyle, caption={Domain initialization in MPI}]
+#include <mpi.h>
+#include <stdio.h>
+
+int main(int argc, char** argv) {
+    MPI_Init(&argc, &argv);
+
+    int world_rank, world_size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+    // 1. Distribute the workers across the dimensions
+    int dims[3] = {0, 0, 0};
+    MPI_Dims_create(world_size, 3, dims);
+
+    // 2. Create the carthesian communicator
+    int periods[3] = {0, 0, 0};
+    MPI_Comm cart_comm;
+    MPI_Cart_create(MPI_COMM_WORLD, 3, dims, periods, 0, &cart_comm);
+
+    // 3. Fetch the current process' coordinates
+    int my_coords[3];
+    MPI_Cart_coords(cart_comm, world_rank, 3, my_coords);
+
+    // 4. Find and store all neighbors (26 neighbors + the current process)
+    int neighbors[27];
+    for (int face_index = 0; face_index < 27; face_index++) {
+        // Displacement in each axis
+        int dz = face_index / 9;
+        int dy = (face_index % 9) / 3;
+        int dx = face_index % 3;
+
+        // Offset the displacement to have 0 equal the current process
+        int neighbor_coords[3];
+        neighbor_coords[0] = my_coords[0] + (dx - 1);
+        neighbor_coords[1] = my_coords[1] + (dy - 1);
+        neighbor_coords[2] = my_coords[2] + (dz - 1);
+
+        // Fetch the neighbour's rank. If there is none, returns MPI_PROC_NULL
+        MPI_Cart_rank(cart_comm, neighbor_coords, &neighbors[face_index]);
+    }
+
+    // 5. Send the forward neighbour a message
+    int target_neighbor = neighbors[14];
+    int buffer_send = 123;
+    int buffer_recv = 0;
+    MPI_Request reqs[2];
+
+    if (target_neighbor != MPI_PROC_NULL) {
+        printf("Rank %d sending a message to rank %d...\n", world_rank, target_neighbor);
+        MPI_Isend(&buffer_send, 1, MPI_INT, target_neighbor, 0, cart_comm, &reqs[0]);
+    }
+
+    MPI_Finalize();
+    return 0;
+}
+\end{lstlisting}
+
+Furthermore, the mapping from the index $i \in [0, 27]$ to a
+displacement $d \in \{-1, 0, 1\}$ from the source is given by:
+\begin{equation}
+  \begin{cases}
+    d_x = i \bmod{3} \\
+    d_y = \lfloor (i \bmod{9}) / 3 \rfloor \\
+    d_z = \lfloor i / 9 \rfloor
+  \end{cases}
+\end{equation}
+
+Since $d_x, d_y, d_z \in \{0, 1, 2\}$, an offset is added so
+the set centers around $0$, representing the current process.
+With $d_x, d_y, d_z \in \{-1, 0, 1\}$, the neighbor's coordinate is
+thereby calculated as:
+\begin{equation}
+  \vec{C}_{neigh} = \vec{C}_{self} + (d_x - 1, d_y - 1, d_z - 1)
+\end{equation}
+
+\section{Partitioning}
+The partitioning of the domain attempts to disbribute the grid cells among
+the workers as evenly as possible. In this sense, if we suppose a hypothetical
+configuration:
+\begin{gather*}
+  s_x = 20 \\
+  s_y = 20 \\
+  s_z = 20 \\
+  n_{processes} = 8
+\end{gather*}
+Since $8 = 2^3$, a perfect segmentation is palpable, leaving each worker
+with $s_x = 10$, $s_y = 10$ and $s_z = 10$:
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{./assets/cube_partition_perfect.png}
+  \caption{Perfect cube partitioning}
+\end{figure}
+
+However, supposing $n_{processes} = 27$ for the same configuration, the perfect
+partitioning requires $3$ (since $3^3 = 27$) workers in each axis, which would
+lead to:
+\begin{gather*}
+  s_x = \frac{20}{3} \approx 6.67 \\
+  s_y = \frac{20}{3} \approx 6.67 \\
+  s_z = \frac{20}{3} \approx 6.67
+\end{gather*}
+
+which is infeasible for a discrete problem. Thus, in order to solve that:
+\begin{gather*}
+  s_x = \lfloor \frac{20}{3} \rfloor = 6 \\
+  s_y = \lfloor \frac{20}{3} \rfloor = 6 \\
+  s_z = \lfloor \frac{20}{3} \rfloor = 6
+\end{gather*}
+However, that also leads to its own issue: the domain is $20 \times 20 \times 20$,
+but only $18 \times 18 \times 18$ ($6$ for each worker in the same axis) is being processed.
+The worker responsible for handling the end of the domain is thereby assigned the remainder,
+that is, $20 \bmod 3 = 2$ extra units for the last processes of each dimension, ensuring
+the entire grid is properly computed.
+
 \section{Project}
 The present research had two preliminary goals:
 \begin{enumerate}
@@ -156,11 +335,19 @@ The present research had two preliminary goals:
 
 \section{Implementation}
 \subsection{Application}
-The application was built from the ground up using OpenMPI as the
-messaging interface, aiming at evenly distributing the domain across all workers
+
+The program sequence follows:
+\begin{enumerate}
+  \item Coordinator determines each worker's partition (including its own).
+  \item Each worker computes their anisotropy variables,
+    precomputation variables and initializes their cubes (both
+    current and from previous iteration).
+  \item
+\end{enumerate}
+
 \subsection{Simulation}
 \chapter{Results}
 \newpage
 \bibliographystyle{abntex2-alf}
-\bibliography{references}
+\bibliography{./references.bib}
 \end{document}

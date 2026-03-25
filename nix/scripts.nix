@@ -143,7 +143,7 @@
       --cfg=smpi/shared-malloc:global \
       --cfg=smpi/host-speed:"1f" \
       --cfg=smpi/display-allocs:yes \
-      --cfg=smpi/auto-shared-malloc-thresh:1024 \
+      --cfg=smpi/auto-shared-malloc-thresh:1073741824 \
       -trace --cfg=tracing/filename:dc.trace \
       $DC_BIN $ARGS 2>&1 | tee sim.log
 
@@ -154,40 +154,42 @@
     fi
   '';
   runSimGridExperiments = ''
-    export HOST_SPEED
-
     OUTPUT_CSV="simulation_results.csv"
     rm -rf "$OUTPUT_CSV" "sim_traces" "plots"
     echo "run,problem_size,mpi_time,computation_time,total_time" > $OUTPUT_CSV
 
-    echo "Running experiments (1..1 runs, sizes 32..256)..."
+    ANALYSIS_DIR=$1
+    PROBLEM_SIZES=$2
 
-    for i in {1..1}; do
-      echo "--- Run number $i ---"
-      for size in 32 64 128 256; do
-        echo "  Problem Size: $size"
+    IFS=',' read -r -a PROBLEM_SIZES <<< "$PROBLEM_SIZES"
 
-        output=$(${runSimgridPlatformCuda}/bin/run-simgrid-platform-cuda $NUM_HOSTS $NET_BW $NET_LAT $GPU_BW $GPU_LAT $GPU_POWER $HOST_SPEED \
-                 --size-x=$size --size-y=$size --size-z=$size --absorption=2 --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-3 --output-file=./validation/predicted.dc)
+    echo "Running experiments (sizes $PROBLEM_SIZES)..."
 
-        total_time=$(echo "$output" | grep "Total time:" | awk '{print $4}' | tr -d '"')
-        mpi_time=$(echo "$output" | grep "MPI time:" | awk '{print $4}' | tr -d '"')
-        comp_time=$(echo "$output" | grep "Computation time:" | awk '{print $4}' | tr -d '"')
+    for size in "''${PROBLEM_SIZES[@]}"; do
+      echo "  Problem Size: $size"
+      absorption=2
+      cuda_size=$(( size - 8 - 2 * absorption ))
 
-        if [ -n "$total_time" ]; then
-          echo "$i,$size,$mpi_time,$comp_time,$total_time" >> $OUTPUT_CSV
-          mkdir -p "sim_traces/$i/$size"
-          cp dc.csv "sim_traces/$i/$size/dc.csv"
-        else
-          echo "    Failed to parse metrics for run $i size $size"
-        fi
-      done
+      output=$(${runSimgridPlatformCuda}/bin/run-simgrid-platform-cuda $NUM_HOSTS $NET_BW $NET_LAT  \
+               --size-x=$cuda_size --size-y=$cuda_size --size-z=$cuda_size --absorption=$absorption --dx=1e-1 --dy=1e-1 --dz=1e-1 --dt=1e-6 --time-max=1e-3 --output-file=./validation/predicted.dc)
+
+      total_time=$(echo "$output" | grep "Total time:" | awk '{print $4}' | tr -d '"')
+      mpi_time=$(echo "$output" | grep "MPI time:" | awk '{print $4}' | tr -d '"')
+      comp_time=$(echo "$output" | grep "Computation time:" | awk '{print $4}' | tr -d '"')
+
+      if [ -n "$total_time" ]; then
+        echo "$i,$size,$mpi_time,$comp_time,$total_time" >> $OUTPUT_CSV
+        mkdir -p "sim_traces/$size"
+        cp dc.csv "sim_traces/$size/dc.csv"
+      else
+        echo "    Failed to parse metrics for run size $size:"
+        echo "    $output"
+      fi
     done
 
     echo "Comparison vs Real Data:"
-    ANALYSIS_DIR=''${ANALYSIS_DIR:-"analysis/2026-03-23"}
     if [ -d "$ANALYSIS_DIR" ]; then
-      ${rEnv}/bin/Rscript ./validation/compare_sim_real.R "$ANALYSIS_DIR" sim_traces
+      ${rEnv}/bin/Rscript ./validation/compare_sim_real.R $ANALYSIS_DIR sim_traces
     else
       echo "Warning: Analysis directory not found: $ANALYSIS_DIR"
       echo "Skipping comparison with real data."
@@ -206,9 +208,8 @@
     ]}:$PATH
 
     NUM_HOSTS=5
-    NET_BW="937Mbps"
+    NET_BW="1Gbps"
     NET_LAT="22.7us"
-    GPU_BW="457.54GBps"
 
     ${runSimGridExperiments}
   '';

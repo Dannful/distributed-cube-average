@@ -3,19 +3,37 @@ library(stringr)
 library(grid)
 
 # Setup directories
-base_dir <- "analysis/2026-03-18"
-sim_traces_dir <- "sim_traces"
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) == 0) {
+    stop("At least one argument must be supplied.", call. = FALSE)
+}
+base_dir <- args[1]
+sim_traces_dir <- args[2]
 
 # Helper to load and clean trace data into a dataframe
 load_trace <- function(csv_path) {
     if (!file.exists(csv_path))
         return(NULL)
-    read_csv(csv_path, show_col_types = FALSE, col_names = c("Nature", "Container",
+    df <- read_csv(csv_path, show_col_types = FALSE, col_names = c("Nature", "Container",
         "Type", "Start", "End", "Duration", "Imbrication", "Value")) |>
         mutate(Container = as.integer(gsub("rank-?", "", Container))) |>
         mutate(Value = str_trim(gsub("^\\s*PMPI_", "MPI_", str_trim(Value)))) |>
         mutate(Rank = Container) |>
-        mutate(Operation = as.factor(Value))
+        mutate(Operation = as.factor(Value)) |>
+        filter(Operation %in% c("MPI_Irecv", "MPI_Isend", "MPI_Waitall"))
+    core_start <- df |>
+        filter(Operation == "MPI_Irecv") |>
+        pull(Start) |>
+        min()
+    core_end <- df |>
+        filter(Operation == "MPI_Waitall") |>
+        pull(End) |>
+        max()
+    df |>
+        filter(Start < core_end) |>
+        filter(End > core_start) |>
+        mutate(Start = pmax(Start, core_start), End = pmin(End, core_end), Duration = End -
+            Start)
 }
 
 # Function to create a ggplot Gantt chart
@@ -74,50 +92,33 @@ df_real_all <- map_dfr(run_dirs, function(dir_path) {
 
 df_real_summary <- df_real_all |>
     group_by(problem_size, run_number, Rank) |>
-    summarise(
-        total_time = max(End, na.rm = TRUE) - min(Start, na.rm = TRUE),
-        mpi_time = sum(Duration, na.rm = TRUE),
-        .groups = "drop"
-    ) |>
+    summarise(total_time = max(End, na.rm = TRUE) - min(Start, na.rm = TRUE), mpi_time = sum(Duration,
+        na.rm = TRUE), .groups = "drop") |>
     mutate(compute_time = total_time - mpi_time) |>
     group_by(problem_size) |>
-    summarise(
-        total_time = mean(total_time),
-        mpi_time = mean(mpi_time),
-        compute_time = mean(compute_time)
-    )
+    summarise(total_time = mean(total_time), mpi_time = mean(mpi_time), compute_time = mean(compute_time))
 
-# 2. Process Simulated Data
-# Load all simulation trace data to calculate MPI/compute time breakdown
+# 2. Process Simulated Data Load all simulation trace data to calculate
+# MPI/compute time breakdown
 print("Loading simulation traces...")
-sim_runs <- list.dirs(sim_traces_dir, full.names = FALSE, recursive = FALSE)
-df_sim_all_traces <- map_dfr(sim_runs, function(run) {
-    size_dirs <- list.dirs(file.path(sim_traces_dir, run), full.names = FALSE, recursive = FALSE)
-    map_dfr(size_dirs, function(sz) {
-        sim_csv <- file.path(sim_traces_dir, run, sz, "dc.csv")
-        if (file.exists(sim_csv)) {
-            load_trace(sim_csv) |>
-                mutate(run_number = as.integer(run), problem_size = as.integer(sz))
-        } else {
-            NULL
-        }
-    })
+size_dirs <- list.dirs(sim_traces_dir, full.names = FALSE, recursive = FALSE)
+df_sim_all_traces <- map_dfr(size_dirs, function(sz) {
+    sim_csv <- file.path(sim_traces_dir, sz, "dc.csv")
+    if (file.exists(sim_csv)) {
+        load_trace(sim_csv) |>
+            mutate(problem_size = as.integer(sz))
+    } else {
+        NULL
+    }
 })
 
 df_sim_summary <- df_sim_all_traces |>
-    group_by(problem_size, run_number, Rank) |>
-    summarise(
-        total_time = max(End, na.rm = TRUE) - min(Start, na.rm = TRUE),
-        mpi_time = sum(Duration, na.rm = TRUE),
-        .groups = "drop"
-    ) |>
+    group_by(problem_size, Rank) |>
+    summarise(total_time = max(End, na.rm = TRUE) - min(Start, na.rm = TRUE), mpi_time = sum(Duration,
+        na.rm = TRUE), .groups = "drop") |>
     mutate(compute_time = total_time - mpi_time) |>
     group_by(problem_size) |>
-    summarise(
-        total_time = mean(total_time),
-        mpi_time = mean(mpi_time),
-        compute_time = mean(compute_time)
-    )
+    summarise(total_time = mean(total_time), mpi_time = mean(mpi_time), compute_time = mean(compute_time))
 
 if (nrow(df_sim_summary) > 0 && nrow(df_real_summary) > 0) {
     # 3. Compare and Plot
@@ -129,43 +130,27 @@ if (nrow(df_sim_summary) > 0 && nrow(df_real_summary) > 0) {
         # Print comparison table to stdout
         cat("\nTime Breakdown Comparison (seconds):\n")
         comparison_df <- merged_summary |>
-            select(problem_size,
-                   real_compute = compute_time_real,
-                   real_mpi = mpi_time_real,
-                   sim_compute = compute_time_sim,
-                   sim_mpi = mpi_time_sim)
+            select(problem_size, real_compute = compute_time_real, real_mpi = mpi_time_real,
+                sim_compute = compute_time_sim, sim_mpi = mpi_time_sim)
         print(as.data.frame(comparison_df))
         cat("\n")
 
         # Prepare data for stacked bar chart
         plot_data <- merged_summary |>
-            select(problem_size, compute_time_real, mpi_time_real, compute_time_sim, mpi_time_sim) |>
-            pivot_longer(
-                cols = -problem_size,
-                names_to = c("time_type", "source"),
-                names_pattern = "(.+)_(real|sim)",
-                values_to = "time"
-            ) |>
-            mutate(
-                source = factor(ifelse(source == "real", "Real", "Simulated"),
-                    levels = c("Real", "Simulated")),
-                time_type = factor(ifelse(time_type == "compute_time", "Computation", "MPI"),
-                    levels = c("MPI", "Computation"))
-            )
+            select(problem_size, compute_time_real, mpi_time_real, compute_time_sim,
+                mpi_time_sim) |>
+            pivot_longer(cols = -problem_size, names_to = c("time_type", "source"),
+                names_pattern = "(.+)_(real|sim)", values_to = "time") |>
+            mutate(source = factor(ifelse(source == "real", "Real", "Simulated"),
+                levels = c("Real", "Simulated")), time_type = factor(ifelse(time_type ==
+                "compute_time", "Computation", "MPI"), levels = c("MPI", "Computation")))
 
         # Stacked bar comparison plot
         p_comp <- ggplot(plot_data, aes(x = factor(problem_size), y = time, fill = time_type)) +
-            geom_bar(stat = "identity", position = "stack") +
-            facet_wrap(~source) +
-            scale_fill_manual(values = c("Computation" = "#4DAF4A", "MPI" = "#E41A1C")) +
-            labs(
-                title = "Execution Time Breakdown: Computation vs MPI",
-                x = "Problem Size",
-                y = "Time (s)",
-                fill = "Time Type"
-            ) +
-            theme_minimal() +
-            theme(legend.position = "top")
+            geom_bar(stat = "identity", position = "stack") + facet_wrap(~source) +
+            scale_fill_manual(values = c(Computation = "#4DAF4A", MPI = "#E41A1C")) +
+            labs(title = "Execution Time Breakdown: Computation vs MPI", x = "Problem Size",
+                y = "Time (s)", fill = "Time Type") + theme_minimal() + theme(legend.position = "top")
         ggsave("plots/comparison_plot.pdf", p_comp, width = 10, height = 6)
 
         # Gantt Chart Comparisons
@@ -188,7 +173,7 @@ if (nrow(df_sim_summary) > 0 && nrow(df_real_summary) > 0) {
             if (!is.null(df_sim_size) && nrow(df_sim_size) > 0) {
                 # Compute mean sim Gantt data
                 df_s_mean <- df_sim_size |>
-                  group_by(run_number, Rank) |>
+                  group_by(Rank) |>
                   arrange(Start) |>
                   mutate(event_id = row_number()) |>
                   group_by(Rank, event_id, Value) |>

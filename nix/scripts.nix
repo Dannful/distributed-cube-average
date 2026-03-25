@@ -86,29 +86,12 @@
     NUM_HOSTS=$1
     NET_BW=$2
     NET_LAT=$3
-    GPU_BW=$4
-    GPU_LAT=$5
-    GPU_POWER=$6
-    HOST_SPEED=$7
-    shift 7
+    shift 3
     ARGS="$@"
-
-    cat <<EOF
-    Hosts: $NUM_HOSTS
-    Network bandwidth: $NET_BW
-    Network latency: $NET_LAT
-    GPU bandwidth: $GPU_BW
-    GPU power: $GPU_POWER
-    Host speed: $HOST_SPEED
-    EOF
 
     export PLATFORM_NUM_HOSTS=$NUM_HOSTS
     export PLATFORM_NET_BW=$NET_BW
     export PLATFORM_NET_LAT=$NET_LAT
-    export PLATFORM_GPU_BW=$GPU_BW
-    export PLATFORM_GPU_LAT=$GPU_LAT
-    export PLATFORM_GPU_POWER=$GPU_POWER
-    export HOST_SPEED=$HOST_SPEED
     export PLATFORM_HOSTFILE=simgrid-config/hostfile.txt
 
     # CUDA Setup
@@ -150,16 +133,6 @@
     PLATFORM_LIB=${packages.dc-simgrid-platform}/lib/libplatform.so
     DC_BIN=${packages.dc-simgrid-cuda}/bin/dc
 
-    # Gaussian BW factor model: peaks around size 64
-    # Higher BW_FACTOR = more bandwidth = faster MPI
-    # BW_FACTOR = 1.1 + 1.5 * exp(-((size - 64)^2) / (2 * 30^2))
-    SIZE=$(echo "$ARGS" | grep -oP 'size-x=\K[0-9]+')
-    BW_FACTOR=$(${pkgs.gawk}/bin/awk -v s="$SIZE" 'BEGIN {
-      base = 1.1; amp = 1.5; peak = 64; sigma = 30;
-      exponent = -((s - peak)^2) / (2 * sigma^2);
-      printf "%.4f", base + amp * exp(exponent);
-    }')
-
     ${pkgs.simgrid}/bin/smpirun \
       -platform $PLATFORM_LIB \
       -hostfile simgrid-config/hostfile.txt \
@@ -168,9 +141,9 @@
       --cfg=precision/timing:1e-9 \
       --cfg=tracing/precision:9 \
       --cfg=smpi/shared-malloc:global \
-      --cfg=smpi/host-speed:"$HOST_SPEED" \
-      --cfg=network/latency-factor:1.0 \
-      --cfg=network/bandwidth-factor:$BW_FACTOR \
+      --cfg=smpi/host-speed:"1f" \
+      --cfg=smpi/display-allocs:yes \
+      --cfg=smpi/auto-shared-malloc-thresh:1024 \
       -trace --cfg=tracing/filename:dc.trace \
       $DC_BIN $ARGS 2>&1 | tee sim.log
 
@@ -191,7 +164,7 @@
 
     for i in {1..1}; do
       echo "--- Run number $i ---"
-      for size in 32 64 128 256 512; do
+      for size in 32 64 128 256; do
         echo "  Problem Size: $size"
 
         output=$(${runSimgridPlatformCuda}/bin/run-simgrid-platform-cuda $NUM_HOSTS $NET_BW $NET_LAT $GPU_BW $GPU_LAT $GPU_POWER $HOST_SPEED \
@@ -212,7 +185,13 @@
     done
 
     echo "Comparison vs Real Data:"
-    ${rEnv}/bin/Rscript ./validation/compare_sim_real.R $OUTPUT_CSV
+    ANALYSIS_DIR=''${ANALYSIS_DIR:-"analysis/2026-03-23"}
+    if [ -d "$ANALYSIS_DIR" ]; then
+      ${rEnv}/bin/Rscript ./validation/compare_sim_real.R "$ANALYSIS_DIR" sim_traces
+    else
+      echo "Warning: Analysis directory not found: $ANALYSIS_DIR"
+      echo "Skipping comparison with real data."
+    fi
   '';
 
   runPotiExperiments = pkgs.writeShellScriptBin "run-poti-experiments" ''
@@ -230,30 +209,6 @@
     NET_BW="937Mbps"
     NET_LAT="22.7us"
     GPU_BW="457.54GBps"
-    GPU_LAT="1.34us"
-    GPU_POWER="29Tf"
-    HOST_SPEED="auto"
-
-    ${runSimGridExperiments}
-  '';
-  runTupiExperiments = pkgs.writeShellScriptBin "run-tupi-experiments" ''
-    export PATH=${pkgs.lib.makeBinPath [
-      pkgs.coreutils
-      pkgs.gawk
-      pkgs.gnugrep
-      rEnv
-      pkgs.pandoc
-      akypuera
-      pajeng
-    ]}:$PATH
-
-    NUM_HOSTS=5
-    NET_BW="1000Mbps"
-    NET_LAT="10us"
-    GPU_BW="457.54GBps"
-    GPU_LAT="1.34us"
-    GPU_POWER="29Tf"
-    HOST_SPEED="auto"
 
     ${runSimGridExperiments}
   '';
@@ -283,5 +238,4 @@ in {
 
   run-simgrid-platform-cuda = runSimgridPlatformCuda;
   run-poti-experiments = runPotiExperiments;
-  run-tupi-experiments = runTupiExperiments;
 }

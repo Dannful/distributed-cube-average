@@ -185,10 +185,12 @@ int main(int argc, char **argv) {
   double end_time = MPI_Wtime();
   double total_time = end_time - start_time;
   dc_send_data_to_coordinator(mpi_process, communicator);
+#ifndef SIMGRID
   if (rank == COORDINATOR) {
     dc_receive_and_write_results(mpi_process, communicator, sx, sy, sz,
                                  arguments.output_file);
   }
+#endif
   dc_worker_free(mpi_process);
 
   free(arguments.output_file);

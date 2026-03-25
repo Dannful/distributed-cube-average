@@ -15,10 +15,12 @@ LDFLAGS  = -lm
 CUDA_CFLAGS    = -I$(INCDIR) -g -gencode arch=compute_$(subst sm_,,$(ARCH)),code=$(ARCH) -allow-unsupported-compiler
 CUDA_LINK_LIBS = -L/usr/local/cuda/lib64 -lcudart
 
-SOURCES_C_COMMON = $(filter-out $(wildcard $(SRCDIR)/*_propagate.c) $(SRCDIR)/device_data.c $(SRCDIR)/device_data_simgrid.c $(SRCDIR)/derivatives.c $(SRCDIR)/sample.c, $(wildcard $(SRCDIR)/*.c))
+SOURCES_C_COMMON = $(filter-out $(wildcard $(SRCDIR)/*_propagate.c) $(SRCDIR)/device_data.c $(SRCDIR)/derivatives.c $(SRCDIR)/sample.c, $(wildcard $(SRCDIR)/*.c))
 
 # Profile configuration
-ifeq ($(PROFILE), akypuera)
+ifeq ($(PROFILE), mpip)
+    LDFLAGS += -lmpiP
+else ifeq ($(PROFILE), akypuera)
     LDFLAGS += -laky
 endif
 
@@ -41,8 +43,13 @@ else ifeq ($(BACKEND), cuda)
 else ifeq ($(BACKEND), simgrid_cuda)
     CC           := smpicc
     CFLAGS       += -DSIMGRID
-    SOURCES_C    := $(SOURCES_C_COMMON) $(SRCDIR)/simgrid_propagate.c $(SRCDIR)/device_data_simgrid.c
-    SOURCES_CUDA :=
+    SOURCES_C    := $(SOURCES_C_COMMON)
+    SOURCES_CUDA := $(SRCDIR)/cuda_propagate.cu $(SRCDIR)/device_data.cu
+    
+    CUDA_CFLAGS  += -Xcompiler -fPIC
+    CUDA_CFLAGS  += -ccbin g++
+    CUDA_CFLAGS  += -DSIMGRID
+    LDFLAGS      += -L/usr/local/cuda/lib64 -lcudart_static -lstdc++ -lpthread -ldl -lrt
 
 else
     $(error Unsupported backend: $(BACKEND). Supported: openmp, simgrid, cuda, simgrid_cuda)

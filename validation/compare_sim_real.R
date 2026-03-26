@@ -29,11 +29,14 @@ load_trace <- function(csv_path) {
         filter(Operation == "MPI_Waitall") |>
         pull(End) |>
         max()
-    df |>
+    df <- df |>
         filter(Start < core_end) |>
         filter(End > core_start) |>
         mutate(Start = pmax(Start, core_start), End = pmin(End, core_end), Duration = End -
             Start)
+    df |>
+        mutate(Start = Start - min(df$Start)) |>
+        mutate(End = End - min(df$Start))
 }
 
 # Function to create a ggplot Gantt chart

@@ -18,6 +18,7 @@
 #include "propagate.h"
 #include "sys/time.h"
 #include "worker.h"
+#include <smpi/smpi.h>
 
 #ifdef SIMGRID
 #include <smpi/smpi.h>
@@ -417,34 +418,34 @@ void dc_send_data_to_coordinator(dc_process_t process, MPI_Comm comm) {
 double get_time_micros() {
   struct timeval time;
   gettimeofday(&time, NULL);
-  return (double)time.tv_usec;
+  return ((double)time.tv_sec * 1e6) + (double)time.tv_usec;
 }
 
 #ifdef SIMGRID
-void sampled_computation(dc_process_t *process, dc_device_data *device_data,
+void sampled_computation(double *average, int *count, int *stopped,
+                         dc_process_t *process, dc_device_data *device_data,
                          void (*computation)(const dc_process_t *,
                                              dc_device_data *)) {
-  return;
-  const double threshold = 1e5;
-  static double average = -1;
-  static int count = 0;
-  static int stopped = 0;
+  const double threshold = 0.05;
+  const unsigned short min_samples = 10;
 
-  if (stopped) {
-    SMPI_SAMPLE_DELAY(average / 1e6);
+  if (*stopped) {
+    smpi_execute_benched(*average / 1e6);
     return;
   }
 
   double start = get_time_micros();
   computation(process, device_data);
   double end = get_time_micros();
-  double new_average = average * count + (end - start) / (count + 1);
-  count++;
-  new_average /= count;
+  double value = end - start;
+  double new_average =
+      *average == -1 ? value : (*average * *count + value) / (*count + 1);
+  (*count)++;
 
-  stopped = fabs(new_average - average) < threshold;
+  *stopped = *average != -1 && *count >= min_samples &&
+             (fabs(*average - value) / *average) < threshold;
 
-  average = new_average;
+  *average = new_average;
 }
 #endif
 
@@ -459,6 +460,10 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
 
   double start_time = MPI_Wtime();
 
+  int count = 0;
+  int stopped = 0;
+  double average = -1;
+
   for (unsigned int i = 0; i < process->iterations; i++) {
     if (process->source_index != -1) {
       float source = dc_calculate_source(process->dt, i);
@@ -469,7 +474,8 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
     worker_halos_t new_qp_halos = dc_receive_halos(*process, comm, QP_TAG);
 
 #ifdef SIMGRID
-    sampled_computation(process, data, dc_compute_boundaries);
+    sampled_computation(&average, &count, &stopped, process, data,
+                        dc_compute_boundaries);
 #else
     dc_compute_boundaries(process, data);
 #endif
@@ -480,7 +486,8 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
                                &all_send_requests);
 
 #ifdef SIMGRID
-    sampled_computation(process, data, dc_compute_interior);
+    sampled_computation(&average, &count, &stopped, process, data,
+                        dc_compute_interior);
 #else
     dc_compute_interior(process, data);
 #endif

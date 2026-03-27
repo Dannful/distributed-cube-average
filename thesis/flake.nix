@@ -11,10 +11,11 @@
       system: let
         pkgs = nixpkgs.legacyPackages.${system};
         thesis = pkgs.writeShellScriptBin "build-latex" ''
-          pdflatex *.tex
-          bibtex *.aux
-          pdflatex *.tex
-          pdflatex *.tex
+          pdflatex index.tex
+          makeglossaries index
+          bibtex index.aux
+          pdflatex index.tex
+          pdflatex index.tex
         '';
       in {
         devShell = pkgs.mkShell {

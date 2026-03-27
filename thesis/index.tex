@@ -2,11 +2,43 @@
 
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}
-\usepackage{subcaption}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{xcolor}
 \usepackage{listings}
+\usepackage[toc]{glossaries}
+
+\definecolor{darkblue}{rgb}{0,0,0.5}
+\renewcommand{\glstextformat}[1]{\textit{\color{darkblue}#1}}
+\makeglossaries
+\newglossaryentry{dynamic partitioning}
+{
+  name=dynamic partitioning,
+  description={A type of partitioning in which the segmentation of
+    the domain varies throughout the application's lifetime, increasing or
+    decreasing the amount of computation handled by the works as the
+  execution moves forward}
+}
+\newglossaryentry{worker}
+{
+  name=worker,
+  description={A process in the topology responsible for
+  one or more chunks of computational jobs}
+}
+\newglossaryentry{sample}
+{
+  name=sample,
+  description={The smallest computational unit to be processed}
+}
+\newglossaryentry{halo}
+{
+  name=halo,
+  description={The region on the outskirts of a process's
+    computational grid on which
+  neighboring nodes depend for their calculations}
+}
+\newacronym{vti}{VTI}{Vertical Transversal Isotropy}
+\newacronym{tti}{TTI}{Tilted Transversal Isotropy}
 
 \definecolor{mGreen}{rgb}{0,0.6,0}
 \definecolor{mGray}{rgb}{0.5,0.5,0.5}
@@ -44,7 +76,6 @@
 
 \title{Distributed Implementation of Anisotropic RTM Using the
 Fletcher Method with MPI and Ghost Cells}
-\translatedtitle{Translated Title}
 \author{Spadotto}{Vinícius Daniel}
 \advisor[Prof.~Dr.]{Mello Schnorr}{Lucas}
 \date{March}{2026}
@@ -141,11 +172,96 @@ application was conceived to fully explore the application's parameters and
 suitable High-Performance Computing (HPC)
 cluster characteristics, in order to discover the most suitable environment
 for the program's overall performance.
-\chapter{Related work}
+
+\chapter{Theoretical framework}
+As a distributed HPC application, the present program being discussed implies
+the need of some technical foundation in order to be conveyed in a clear and
+concise manner. It is imperative, therefore, that some concepts are clarified
+beforehand.
+
+\section{Partitioning}
+The partitioning performed by the distributed application is static, that is,
+the input domain is segmented once in the program's lifetime and
+remains unchanged
+for the remainder of the execution. This has been chosen over
+\gls{dynamic partitioning}, since the \glspl{worker}'s workload is
+homonogeous throughout
+their domains, meaning there is no benefit to be gained from such
+segmentation, resulting
+in computational overhead.
+
+Therefore, since the domain is statically segmented, it is imperative to
+ensure the most balanced distribution along the dimensions, since that keeps
+the workers evenly busy, guaranteeing no node is either underloaded
+or overloaded. For this purpose, it is optimal to split the grid equally in each
+axis to each process, leading us to thereby suppose:
+\begin{gather*}
+  size_x = 20 \\
+  size_y = 20 \\
+  size_z = 20 \\
+  n_{processes} = 8
+\end{gather*}
+Since $8 = 2^3$, a perfect segmentation is palpable, leaving each worker
+with $size_x = 10$, $size_y = 10$ and $size_z = 10$:
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{./assets/cube_partition_perfect.png}
+  \caption{Perfect cube partitioning}
+\end{figure}
+
+However, supposing $n_{processes} = 27$ for the same configuration, the perfect
+partitioning requires $3$ (since $3^3 = 27$) workers in each axis, which would
+lead to:
+\begin{gather*}
+  size_x = \frac{20}{3} \approx 6.67 \\
+  size_y = \frac{20}{3} \approx 6.67 \\
+  size_z = \frac{20}{3} \approx 6.67
+\end{gather*}
+
+which is infeasible for a discrete problem. Thus, in order to solve that:
+\begin{gather*}
+  size_x = \lfloor \frac{20}{3} \rfloor = 6 \\
+  size_y = \lfloor \frac{20}{3} \rfloor = 6 \\
+  size_z = \lfloor \frac{20}{3} \rfloor = 6
+\end{gather*}
+However, that also leads to its own issue: the domain is $20 \times
+20 \times 20$ computational units wide,
+but only $18 \times 18 \times 18$ ($6$ for each worker in the same
+axis) \glspl{sample} are being processed.
+The worker responsible for handling the end of the domain is thereby
+assigned the remainder,
+that is, $20 \bmod 3 = 2$ extra units for the last processes of each
+dimension, ensuring
+the entire grid is properly computed.
+
+\section{Ghost Cells}
+This method consists in allocating additional space for
+\textit{ghost cells} around the edges of each computational chunk,
+extending the computational grid of a worker with the \gls{halo} of its
+neighbours, as shown in figure \ref{fig:halo_exchange}
+\cite{ghost_cells}. Although these
+extra cells are solely used by others without ever being updated, the
+memory tradeoff is justified, given that it mitigates
+the latency costs of retrieving the data only when it is immediately
+required.
+
+\begin{figure}[H]
+  \centering
+  \caption{Halo exchange between neighboring processes \cite{ghost_cells}}
+  \label{fig:halo_exchange}
+  \includegraphics[width=0.9\textwidth]{./assets/ghost_cells.png}
+\end{figure}
+
+Such method is often combined with the use of asynchronous
+communication, in order to
+attain greater performance gains. By using non-blocking message passing,
+one can overlap the retrieval of their ghost cells with computation, effectively
+reducing potential network bottlenecks.
+
 \section{Fletcher modeling}
 Reverse Time Migration (RTM), of which Fletcher consists, is defined
 as a seismic imaging method to map the subsurface reflectivity using recorded
-seismic waveforms (Hua-Wei Zhou et al., 2018). In petroleum
+seismic waveforms \cite{rtm}. In petroleum
 exploration, the wave is emitted at the vessel and propagates
 outwards in a radial manner, eventually reflecting, in the subsurface, at
 velocity boundaries until it is recaptured at sea level.
@@ -158,29 +274,70 @@ $t$, making
 it feasible to reconstruct the depth and the location of the moment the echoes
 crashed.
 
-\begin{figure}[htbp]
-  \centering
-  \begin{subfigure}[b]{0.3\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{./assets/forward_propagation_1.jpg}
-    \caption{Forward propagation at $t = 2$ \cite{seismiccity_rtm}}
-    \label{fig:forward_propagation_1}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[b]{0.3\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{./assets/forward_propagation_2.jpg}
-    \caption{Forward propagation at $t = 4$ \cite{seismiccity_rtm}}
-    \label{fig:forward_propagation_2}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[b]{0.3\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{./assets/forward_propagation_3.jpg}
-    \caption{Forward propagation at $t = 6$ \cite{seismiccity_rtm}}
-    \label{fig:forward_propagation_3}
-  \end{subfigure}
-\end{figure}
+The hardship, however, arises when dealing with anisotropic media.
+Isotropy occurs when
+physical properties are shared along all axes, as defined by the
+acoustic equation:
+\begin{equation}
+  \frac{\partial^2 p}{\partial t^2} = v^2 \nabla^2 p
+\end{equation}
+where $p(x, y, z, t)$ represents the pressure and $v(x, y, z)$ is the
+velocity at each point in the grid \cite{fletcher_modeling}.
+
+Nonetheless, when dealing with anisotropy, which defined by the parameters
+$\epsilon(x, y, z)$ and $\delta(x, y, z)$ \cite{anisotropy}, the
+simmetry axis is tilted, being characterized by an azimuth ($\phi$)
+and dip ($\theta$) angle. When $\phi = \theta = 0$, \acrfull{vti}
+occurs, implying that the physical properties are equal along the $x$
+axis, but vary throughout the $y$. This happens due to the natural
+process of sedimentation, where rocks are formed by the accumulation
+of matter over time, creating solid, vertically stacked layers.
+
+Furthermore, due to natural geological events, such as tectonics,
+$\phi$ and $\theta$ may not be equal to $0$, leading to a tilted
+simmetry axis \cite{fletcher}. In this context of anisotropy, waveforms $P$ and
+$S$ are defined: the former shifting in the same direction as
+propagation and the latter moving perpendicularly to it
+\cite{fletcher}. In this sense, two different velocities are
+established: $v_{pz}$ (for $P$) and $v_{sz}$ (for $S$)
+\cite{fletcher_modeling}, which are later used by Fletcher through
+the establishment of pseudo-acoustic equations:
+\begin{gather}
+  v_{pn}(x, y, z) = v_{pz}(x, y, z)\sqrt{1 + 2\delta(x, y, z)} \\
+  v_{px}(x, y, z) = v_{pz}(x, y, z)\sqrt{1 + 2\epsilon(x, y, z)}
+\end{gather}
+which act as intermediary variables in order to simplify the
+equations for the propagation of pressure $p$ with auxiliary field
+$q$ \cite{fletcher_modeling, fletcher}:
+\begin{gather}
+  \frac{\partial^{2}p}{\partial t^{2}} = v_{px}^{2}H_{2}p + \alpha
+  v_{px}^{2}H_{1}q + v_{sx}^{2}H_{1}(p - \alpha q) \\
+  \frac{\partial^{2}q}{\partial t^{2}} =
+  \frac{v_{pn}^{2}}{\alpha}H_{2}p + v_{px}^{2}H_{1}q -
+  v_{sx}^{2}H_{2}(\frac{1}{\alpha}p - q)
+\end{gather}
+where $\alpha$ is a coupling parameter, typically set to $1$, as suggested
+by Fletcher, in order to define the differential operators $H_1$ and
+$H_2$ \cite{fletcher}:
+\begin{equation}
+  \begin{aligned}
+    H_{1} = &\sin^{2}\theta \cos^{2}\phi \frac{\partial^{2}}{\partial
+    x^{2}} + \sin^{2}\theta \sin^{2}\phi \frac{\partial^{2}}{\partial
+    y^{2}} + \cos^{2}\theta \frac{\partial^{2}}{\partial z^{2}} \\
+    &+ \sin^{2}\theta \sin 2\phi \frac{\partial^{2}}{\partial x
+    \partial y} + \sin 2\theta \sin \phi \frac{\partial^{2}}{\partial
+    y \partial z} + \sin 2\theta \cos \phi
+    \frac{\partial^{2}}{\partial x \partial z}
+  \end{aligned}
+\end{equation}
+
+\begin{equation}
+  H_{2} = \left( \frac{\partial^{2}}{\partial x^{2}} +
+    \frac{\partial^{2}}{\partial y^{2}} + \frac{\partial^{2}}{\partial
+  z^{2}} \right) - H_{1}
+\end{equation}
+
+\chapter{Related work}
 
 \chapter{Methodology}
 
@@ -284,49 +441,6 @@ thereby calculated as:
 \begin{equation}
   \vec{C}_{neigh} = \vec{C}_{self} + (d_x - 1, d_y - 1, d_z - 1)
 \end{equation}
-
-\section{Partitioning}
-The partitioning of the domain attempts to disbribute the grid cells among
-the workers as evenly as possible. In this sense, if we suppose a hypothetical
-configuration:
-\begin{gather*}
-  s_x = 20 \\
-  s_y = 20 \\
-  s_z = 20 \\
-  n_{processes} = 8
-\end{gather*}
-Since $8 = 2^3$, a perfect segmentation is palpable, leaving each worker
-with $s_x = 10$, $s_y = 10$ and $s_z = 10$:
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.9\textwidth]{./assets/cube_partition_perfect.png}
-  \caption{Perfect cube partitioning}
-\end{figure}
-
-However, supposing $n_{processes} = 27$ for the same configuration, the perfect
-partitioning requires $3$ (since $3^3 = 27$) workers in each axis, which would
-lead to:
-\begin{gather*}
-  s_x = \frac{20}{3} \approx 6.67 \\
-  s_y = \frac{20}{3} \approx 6.67 \\
-  s_z = \frac{20}{3} \approx 6.67
-\end{gather*}
-
-which is infeasible for a discrete problem. Thus, in order to solve that:
-\begin{gather*}
-  s_x = \lfloor \frac{20}{3} \rfloor = 6 \\
-  s_y = \lfloor \frac{20}{3} \rfloor = 6 \\
-  s_z = \lfloor \frac{20}{3} \rfloor = 6
-\end{gather*}
-However, that also leads to its own issue: the domain is $20 \times
-20 \times 20$,
-but only $18 \times 18 \times 18$ ($6$ for each worker in the same
-axis) is being processed.
-The worker responsible for handling the end of the domain is thereby
-assigned the remainder,
-that is, $20 \bmod 3 = 2$ extra units for the last processes of each
-dimension, ensuring
-the entire grid is properly computed.
 
 \section{Initialization}
 The coordinator ($n_{process} = 0$) is responsible for partitioning the cube,
@@ -465,11 +579,9 @@ configurations for the program to run with.
 The simulations are handled by SimGrid, using sampling code interleaved with
 the application's source code.
 
-\newpage
 \chapter{Results}
-\newpage
 \chapter{Conclusion}
-\newpage
 \bibliographystyle{abntex2-alf}
 \bibliography{./references.bib}
+\printglossary
 \end{document}

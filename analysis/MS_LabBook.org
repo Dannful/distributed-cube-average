@@ -4952,7 +4952,7 @@ df |>
 
 ** 2026-04-03
 :PROPERTIES:
-:header-args: :tangle "do.R" :tangle-mode (identity #o755) :shebang "#!/usr/bin/Rscript"
+:header-args: :tangle "do-2026-04-03.R" :tangle-mode (identity #o755) :shebang "#!/usr/bin/Rscript"
 :END:
 *** The aggregation framework (starvz-inspired)
 **** integrateStepFunc
@@ -5020,47 +5020,36 @@ remyTimeIntegrationPrep <- function(dfv = NULL, myStep = 100) {
 #+end_src
 
 #+RESULTS:
-**** StarVZ adapted functions so they can be faster
+
+**** NEW StarVZ adapted functions so they can be faster
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 do_the_aggregation <- function(df, step_width) {
   df |>
-    rename(Task = Value) |> # Task is the Operation (MPI_Send)
-    rename(ResourceId = Container) |> # ResourceId is the Process (Container, Rank, Thread)
+  select(ResourceId = Container, Task = Value, Start, End) |>
+    arrange(ResourceId, Task, Start) |>
     group_by(ResourceId, Task) |>
-    mutate(Value = 1) -> dfw_initial
-
-# Define the first zero
-  dfw_initial |>
-    slice(1) |>
-    mutate(StartN = 0) |>
-    mutate(EndN = Start) |>
-    mutate(Value = 0) -> dfw_zero_1
-
-# Define other zeroes
-  dfw_initial |>
-    mutate(StartN = End) |>
-    mutate(EndN = lead(Start)) |>
-    mutate(Value = 0) -> dfw_zero_N
-
-# Row bind them
-  bind_rows(dfw_zero_1, dfw_zero_N) |>
-    mutate(Start = StartN) |>
-    mutate(End = EndN) |>
-    select(-StartN, -EndN) |>
-    bind_rows(dfw_initial) |>
-    ungroup() -> dfw_agg_prep
-
-# Set max end time for NA cases
-  dfw_agg_prep %>%
-    filter(!complete.cases(.)) |>
-    mutate(End = max(dfw_initial$End)) %>%
-    bind_rows(dfw_agg_prep %>% filter(complete.cases(.))) %>%
-    mutate(Duration = End - Start) |>
-    arrange(ResourceId, Task, Start) -> dfw_agg_prep_ready
-
-# Time aggregation do
-  dfw_agg_prep_ready %>%
+    reframe(
+      bind_rows(
+        tibble(
+          Start = Start,
+          End   = End,
+          Active = 1
+        ),
+        tibble(
+          Start = End,
+          End   = lead(Start),
+          Active = 0
+        ) |> filter(!is.na(End)),
+        tibble(
+          Start = 0,
+          End   = first(Start),
+          Active = 0
+        )
+      )
+    ) |>
+    rename(Value = Active) |>
+    arrange(ResourceId, Task, Start) |>
     group_by(ResourceId, Task) |>
     do(remyTimeIntegrationPrep(., myStep = step_width)) |>
     mutate(Start = Slice,
@@ -5081,16 +5070,15 @@ do_the_reference_aggregation <- function(df, nb_intervals) {
   df |> pull(End) |> max() -> t.end
   step_width = (t.end-t.start)/nb_intervals
   df |>
-    group_by(Container) |> # aggregate per process (Container, Rank, Thread)
     do_the_aggregation(step_width) |>
     # make it has the same columns for our do_the_viz fun
     mutate(Slice = round(Slice / step_width)) |>
     rename(Container = ResourceId,
            Value = Task,
-           StartTS = Start,
-           EndTS = End,
-           DurationTS = Duration,
-           Percent = Value) |>
+           Percent = Value,
+           StartTS = Start, # Start of the timeslice (TS)
+           EndTS = End,     # End of the timeslice (TS)
+           DurationTS = Duration) |> # Duration of the timeslice (TS)
     mutate(Time.Sum = Percent * DurationTS)
 }
 #+end_src
@@ -5103,15 +5091,15 @@ do_the_reference_aggregation <- function(df, nb_intervals) {
 library(patchwork)
 do_the_viz <- function(df, has.summary = FALSE)
 {
-  print(df)
+  df |>
+    rename(Rank = Container) -> df
+  
   # Prep Y labels
   df |>
-    filter(Rank %in% 0:1) |>
     distinct(Rank) |>
     arrange(Rank) |>
     mutate(Position = 0:(n()-1)) |>
-    mutate(Label = Position) |>
-    print() -> yconfm
+    mutate(Label = Position) -> yconfm
   
   df |>
     filter(Time.Sum != 0) |>
@@ -5178,8 +5166,16 @@ do_the_viz <- function(df, has.summary = FALSE)
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 my_style <- function() {
   list(
-    scale_fill_brewer(palette = "Set1"),
-    scale_color_brewer(palette = "Set1"),
+#    scale_fill_brewer(palette = "Set1"),
+#    scale_color_brewer(palette = "Set1"),
+    scale_fill_manual(
+      values = c(
+        MPI_Irecv  = "#4DAF4A",  # Set1 green
+        MPI_Isend  = "#E41A1C",  # Set1 red
+        MPI_Waitall = "#377EB8", # Set1 blue
+        Compute     = "#FFD92F"  # yellow        
+      )
+    ),
     theme_bw(base_size = 16),
     theme(legend.position="top"),
     theme(
@@ -5212,10 +5208,11 @@ our_read_function <- function(f) {
                          "Duration",
                          "Imbrication",
                          "Value")) |> # name of the Operation
-    mutate(Container = as.integer(gsub("rank-?", "", Container))) |>    
+    mutate(Container = as.integer(gsub("rank-?", "", Container))) |>
     mutate(Value = str_trim(gsub("^\\s*PMPI_", "MPI_", str_trim(Value)))) |>    
     mutate(Value = as.factor(Value)) |>
-    filter(Value %in% c("MPI_Irecv", "MPI_Isend", "MPI_Waitall")) ->df
+    filter(Value %in% c("MPI_Irecv", "MPI_Isend", "MPI_Waitall")) |>
+    mutate(Value = factor(Value, levels=c("MPI_Irecv", "MPI_Isend", "MPI_Waitall"))) -> df
 # Keep only the part that interest us
 # Highly dependent on parallel design
   core_start <- df |>    
@@ -5236,6 +5233,35 @@ our_read_function <- function(f) {
 #+end_src
 
 #+RESULTS:
+**** Compute
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+add_compute_state <- function(df) {
+
+  compute <- df |>
+    arrange(Container, Start) |>
+    group_by(Container) |>
+    mutate(next_start = lead(Start)) |>
+    filter(!is.na(next_start), next_start > End) |>
+    transmute(
+      Nature = "State",
+      Container,
+      Type = "MPI_STATE",
+      Start = End,
+      End = next_start,
+      Duration = End - Start,
+      Imbrication = 0,
+      Value = factor("Compute", levels = c(levels(df$Value), "Compute"))
+    )
+
+  bind_rows(df, compute) |>
+    arrange(Container, Start) |>
+    ungroup()
+}
+#+end_src
+
+#+RESULTS:
+
 **** Plot ST
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
@@ -5244,6 +5270,7 @@ our_st_plot <- function(data) {
   library(ggplot2)
 
   data %>%
+    rename(Rank = Container) |>
     mutate(
       ymin = Rank - 0.45,
       ymax = Rank + 0.45
@@ -5269,7 +5296,94 @@ our_st_plot <- function(data) {
       panel.grid = element_blank(),
       strip.text = element_text(face = "bold"),
       legend.position = "bottom"
+    ) +
+    my_style()
+}
+#+end_src
+
+#+RESULTS:
+**** Summary per Task
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+summary_per_operation <- function(dfa) {
+  dfa |>
+    group_by(Value) |>
+    summarise(
+      n      = n(),
+      mean   = mean(Duration, na.rm = TRUE),
+      sd     = sd(Duration, na.rm = TRUE),
+      min    = min(Duration, na.rm = TRUE),
+      p25    = quantile(Duration, 0.25, na.rm = TRUE),
+      median = median(Duration, na.rm = TRUE),
+      p75    = quantile(Duration, 0.75, na.rm = TRUE),
+      p90    = quantile(Duration, 0.90, na.rm = TRUE),
+      p99    = quantile(Duration, 0.99, na.rm = TRUE),
+      max    = max(Duration, na.rm = TRUE),
+      .groups = "drop"
     )
+}
+#+end_src
+
+#+RESULTS:
+**** Plot the summary per task
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+plot_summary_per_operation <- function(df) {
+
+  ggplot(df, aes(x = Value)) +
+
+    # min → max range
+    geom_linerange(aes(ymin = min, ymax = max),
+                   linewidth = 0.6, alpha = 0.5) +
+
+    # interquartile range
+    geom_linerange(aes(ymin = p25, ymax = p75),
+                   linewidth = 3) +
+
+    # median
+    geom_point(aes(y = median), size = 3, shape = 21, fill = "white") +
+
+    # p90 and p99 markers
+    geom_point(aes(y = p90), shape = 17, size = 2) +
+    geom_point(aes(y = p99), shape = 18, size = 2) +
+
+    # sample size label
+    geom_text(aes(y = max, label = paste0("n=", n)),
+              vjust = -0.5, size = 3) +
+
+#    scale_y_log10() +
+
+    labs(
+      x = "Operation",
+      y = "Duration",
+    ) +
+
+    theme_bw()
+}
+#+end_src
+
+#+RESULTS:
+**** Plot total time per operation
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+plot_total_time_per_operation <- function(df) {
+
+  df |>
+    group_by(Value) |>
+    summarise(total_duration = sum(Duration, na.rm = TRUE),
+              .groups = "drop") |>
+    ggplot(aes(x = Value, y = total_duration, fill = Value)) +
+    
+    geom_col(width = 0.7) +
+    
+    geom_text(aes(label = scales::scientific(total_duration)),
+              vjust = -0.3, size = 3) +
+    
+    labs(
+      x = "Operation",
+      y = "Total Duration",
+    ) +
+    
+    theme_bw() +
+    theme(legend.position = "none")
 }
 #+end_src
 
@@ -5285,28 +5399,55 @@ suppressMessages(library(patchwork))
 tibble(FILE = dir_ls("2026-04-03", pattern="*.csv")) |>
   mutate(KEY = str_remove(basename(FILE), "\\.csv$")) |>  
   mutate(DATA = map(FILE, our_read_function)) |>
-  mutate(DATA.AGG = map(DATA, do_the_reference_aggregation, 5)) |>
+  mutate(DATA = map(DATA, add_compute_state)) |>
+  mutate(SUMMARY = map(DATA, summary_per_operation)) |>
+  mutate(SUMMARY.PLOT = map(SUMMARY, plot_summary_per_operation)) |>
+  mutate(SUMMARY.TIME.PLOT = map(DATA, plot_total_time_per_operation)) |>
+  mutate(SUMMARY.COMBINED = map2(SUMMARY.PLOT, SUMMARY.TIME.PLOT, `|`)) |>
+  mutate(DATA.AGG = map(DATA, do_the_reference_aggregation, 100)) |>
   # tradicional ST view
-  # mutate(ST = map(DATA, our_st_plot)) |>  
-  # mutate(ST = map(ST, ~ .x + coord_cartesian(
-  #   xlim = range(unlist(map(DATA, ~ c(.x$Start, .x$End))), na.rm = TRUE)
-  # ))) |>
-  slice(1) |>
-  unnest(DATA.AGG) |>
-  select(-FILE, -KEY, -DATA) |>
-  filter(Slice == 0) |>
-  filter(Container == 1) |>
-  print()
-#  mutate(ST.AGG = map(DATA.AGG, do_the_viz, has.summary=TRUE)) |>
-#  slice(1) |>
-#  pull(ST.AGG)
+  mutate(ST = map(DATA, our_st_plot)) |>  
+  mutate(ST.AGG = map(DATA.AGG, \(x) do_the_viz(x, has.summary = TRUE))) -> df
+
+library(purrr)
+pdf("plots.pdf", width = 10, height = 8)
+
+df |>
+  select(ST, ST.AGG, SUMMARY.COMBINED) |>
+  pwalk(function(ST, ST.AGG, SUMMARY.COMBINED) {
+
+    page <- (ST / ST.AGG) | SUMMARY.COMBINED
+    print(page)
+
+  })
+
+dev.off()
 #+end_src
 
 #+RESULTS:
-: # A tibble: 3 × 8
-:   Container Value       Slice   Percent StartTS EndTS DurationTS Time.Sum
-:       <int> <fct>       <dbl>     <dbl>   <dbl> <dbl>      <dbl>    <dbl>
-: 1         1 MPI_Irecv       0 0.585           0  49.9       49.9 29.2    
-: 2         1 MPI_Isend       0 0.0000752       0  49.9       49.9  0.00375
-: 3         1 MPI_Waitall     0 0.777           0  49.9       49.9 38.7
+#+begin_example
+Warning messages:
+1: In scale_y_log10() : log-10 transformation introduced infinite values.
+2: In scale_y_log10() : log-10 transformation introduced infinite values.
+3: In scale_y_log10() : log-10 transformation introduced infinite values.
+4: In scale_y_log10() : log-10 transformation introduced infinite values.
+5: In scale_y_log10() : log-10 transformation introduced infinite values.
+6: In scale_y_log10() : log-10 transformation introduced infinite values.
+7: In scale_y_log10() : log-10 transformation introduced infinite values.
+8: In scale_y_log10() : log-10 transformation introduced infinite values.
+9: In scale_y_log10() : log-10 transformation introduced infinite values.
+10: In scale_y_log10() : log-10 transformation introduced infinite values.
+null device 
+          1
+#+end_example
 
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df$DATA[[1]] |>
+  filter(Value == "MPI_Waitall") |>
+  pull(Duration) |>
+  sum()
+#+end_src
+
+#+RESULTS:
+: [1] 220.1621

@@ -338,6 +338,37 @@ $H_2$ \cite{fletcher}:
 \end{equation}
 
 \chapter{Related work}
+The fletcher application, although not explored through the lens of
+distributed computation,
+has been the target of various optimizations and reimplementations.
+In this section, some
+inspirations for the present work will be explored.
+
+\section{Multi-GPU Fletcher}
+\cite{multi-gpu} explores the distribution of the computation
+workload of Fletcher
+throughout multiple GPUs, aiming at analyzing its performance through the lens
+of scalability and efficiency when compared to its single GPU
+baseline counterpart. Similarly to the present work, the domain must
+be partitioned between the GPUs (which would be equivalent to workers in MPI),
+implying additional synchronization and communication efforts required.
+
+In this sense, the multi-GPU implementation is closely related to the
+present one:
+the grid is initially partitioned in the Z axis, in order to maximize the use of
+of the device's L1 and L2 caches. Then, during the actual
+computation, ghost cells are used to synchronize the halo regions,
+employing device-to-device memory transfers for communication.
+
+Finally, the results reveal a speedup of 2.77 for certain grid sizes,
+displaying a linear growth of performance and efficiency as the input size
+increases. This, however, is severely degraded for small grids, since GPU
+latency, combined with synchronization and communication, easily become the
+bottlenecks of the application, becoming computational overheads rather than
+required efforts for performance gains. This phenomenon is intrinsically present
+in the present MPI implementation at a much greater scale, since
+network bandwidth and latency are far more noteworthy bottlenecks
+than PCIe transfers, requiring more thorough efforts to mitigate them.
 
 \chapter{Methodology}
 

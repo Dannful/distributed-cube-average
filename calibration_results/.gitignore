@@ -1,0 +1,23 @@
+# Generated outputs
+outputs/
+*.pdf
+*.png
+smpi_flags.txt
+
+# Experimental data (regenerate via calibration)
+data/
+
+# Jupyter artifacts
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Slurm outputs
+*.out
+*.err
+nodes.slurm
+
+# Nix artifacts
+result
+result-*
+.direnv/
+.envrc

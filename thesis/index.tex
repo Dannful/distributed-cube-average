@@ -37,8 +37,16 @@
     computational grid on which
   neighboring nodes depend for their calculations}
 }
+\newglossaryentry{coordinator}
+{
+  name=coordinator,
+  description={A specific process, commonly the one identified by
+    rank $0$, which is often responsible for distributing work across
+  all nodes and reassembling the generated data.}
+}
 \newacronym{vti}{VTI}{Vertical Transversal Isotropy}
 \newacronym{tti}{TTI}{Tilted Transversal Isotropy}
+\newacronym{oom}{OOM}{Out Of Memory}
 
 \definecolor{mGreen}{rgb}{0,0.6,0}
 \definecolor{mGray}{rgb}{0.5,0.5,0.5}
@@ -235,6 +243,7 @@ dimension, ensuring
 the entire grid is properly computed.
 
 \section{Ghost Cells}
+\label{sec:ghost_cells}
 This method consists in allocating additional space for
 \textit{ghost cells} around the edges of each computational chunk,
 extending the computational grid of a worker with the \gls{halo} of its
@@ -259,6 +268,7 @@ one can overlap the retrieval of their ghost cells with computation, effectively
 reducing potential network bottlenecks.
 
 \section{Fletcher modeling}
+\label{sec:fletcher_modeling}
 Reverse Time Migration (RTM), of which Fletcher consists, is defined
 as a seismic imaging method to map the subsurface reflectivity using recorded
 seismic waveforms \cite{rtm}. In petroleum
@@ -355,7 +365,8 @@ implying additional synchronization and communication efforts required.
 
 In this sense, the multi-GPU implementation is closely related to the
 present one:
-the grid is initially partitioned in the Z axis, in order to maximize the use of
+the grid is initially partitioned in the $z$ axis, in order to
+maximize the use of
 of the device's L1 and L2 caches. Then, during the actual
 computation, ghost cells are used to synchronize the halo regions,
 employing device-to-device memory transfers for communication.
@@ -396,7 +407,128 @@ a worker has the ability to receive messages from and send messages
 to its surrounding
 neighbors.
 
-The following code block illustrates this procedure at a high level:
+Furthermore, the mapping from the neighboring index $i \in [0, 27]$ to a
+displacement $d \in \{-1, 0, 1\}$ from the source is given by:
+\begin{equation}
+  \begin{cases}
+    d_x = i \bmod{3} \\
+    d_y = \lfloor (i \bmod{9}) / 3 \rfloor \\
+    d_z = \lfloor i / 9 \rfloor
+  \end{cases}
+\end{equation}
+
+Since $d_x, d_y, d_z \in \{0, 1, 2\}$, an offset is added so
+the set centers around $0$, representing the current process.
+With $d_x, d_y, d_z \in \{-1, 0, 1\}$, the neighbor's coordinate is
+thereby calculated as:
+\begin{equation}
+  \vec{C}_{neigh} = \vec{C}_{self} + (d_x - 1, d_y - 1, d_z - 1)
+\end{equation}
+
+\section{Initialization}
+The \gls{coordinator} is responsible for partitioning the cube,
+effectively deciding which worker computes which part of the grid.
+This information, which is essential for the workers to begin their computation,
+is promptly sent to each process, allowing them to initiate the processing of
+their chunk.
+
+The anisotropy variables (described in \ref{sec:fletcher_modeling})
+are calculated by each process independently, leveraging the
+advantages of splitting memory in a distributed setup, preventing
+\acrshort{oom} interruptions on the coordinator.
+
+\section{Communication}
+The application utilized both synchronous and asynchronous
+communication, using the most proper approach depending on the scenario
+requiring it.
+
+\subsection{Synchronous}
+Synchronous communication is scarcely used in the program, being employed
+solely at synchronization points, behaving akin to barrier mechanisms.
+The only events that represent that scenario are the initialization
+and the finalization, since these are defined by the distribution and
+the reassembling of data, respectively. In such context, synchronous
+communication
+offers greater integrity, since it prevents data corruption caused by
+the premature
+use of receiving buffers.
+
+
+\subsection{Asynchronous}
+Asynchronous communication is the core of the program, essential to
+accomplishing
+the goal of overlapping communication with computation, greatly backed
+by the use of ghost cells (\ref{sec:ghost_cells}).
+All workers operate on an extended version of their domain, which
+includes their own partition with the addition of their neighbors'
+borders. This version is present to the processes before the processing
+iterations begin.
+
+If we suppose $t$ to be the current timestamp, at $t = T$, a process:
+
+\begin{enumerate}
+  \item Inserts the source of the pseudo-acoustic wave in its own domain.
+  \item Begins an asynchronous receive of the borders of $t = T + 1$.
+  \item Computes its own borders (the ones its neighbors need).
+  \item Asynchronously sends its borders to the neighbors.
+  \item Computes its interior.
+  \item Waits for the asynchronous operations to finish.
+  \item Proceeds to $T + 1$
+\end{enumerate}
+
+which can be translated into the following pseudocode:
+\begin{lstlisting}[style=CStyle, caption = {Main worker loop using Ghost Cells}]
+double dc_worker_process(problem_data data, unsigned int iterations) {
+  for (unsigned int i = 0; i < iterations; i++) {
+    add_source(data);
+
+    problem_data future_halos = async_receive_halos();
+
+    compute_boundaries(data);
+
+    async_send_halo_to_neighbours(data);
+
+    compute_interior(data);
+
+    merge_halos(data, future_halos);
+
+    wait_async_requests();
+  }
+}
+\end{lstlisting}
+
+This ensures that while the operating system handles the asynchronous
+network calls,
+the program continues to process its domain, effectively overlapping
+communication with
+computation.
+
+\section{Finalization}
+Once all workers are finished with their chunks of the domain,
+they send their share of the data to the coordinator, which
+takes turns in receiving and flushing the received parts,
+effectively avoiding the need to concentrate the entire cube in RAM.
+
+\section{Simulation}
+The present project aimed at providing a simulation tool in addition
+to the implementation
+of the MPI application, with the goal of finding optimal environments and
+configurations for the program to run with.
+
+The simulations are handled by SimGrid, using sampling code interleaved with
+the application's source code.
+
+\chapter{Results}
+\chapter{Conclusion}
+\bibliographystyle{abntex2-alf}
+\bibliography{./references.bib}
+\printglossary
+\appendix
+\chapter{MPI carthesian topology creation}
+\label{ap:mpi_cart_create}
+The code below illustrates the creation of a carthesian topology in MPI
+at a high level.
+
 \begin{lstlisting}[style=CStyle, caption={Domain initialization in MPI}]
 #include <mpi.h>
 #include <stdio.h>
@@ -455,40 +587,11 @@ int main(int argc, char** argv) {
 }
 \end{lstlisting}
 
-Furthermore, the mapping from the index $i \in [0, 27]$ to a
-displacement $d \in \{-1, 0, 1\}$ from the source is given by:
-\begin{equation}
-  \begin{cases}
-    d_x = i \bmod{3} \\
-    d_y = \lfloor (i \bmod{9}) / 3 \rfloor \\
-    d_z = \lfloor i / 9 \rfloor
-  \end{cases}
-\end{equation}
+\chapter{Process initialization}
+The pseudocode below illustrates how each process is initialized at a
+high level.
 
-Since $d_x, d_y, d_z \in \{0, 1, 2\}$, an offset is added so
-the set centers around $0$, representing the current process.
-With $d_x, d_y, d_z \in \{-1, 0, 1\}$, the neighbor's coordinate is
-thereby calculated as:
-\begin{equation}
-  \vec{C}_{neigh} = \vec{C}_{self} + (d_x - 1, d_y - 1, d_z - 1)
-\end{equation}
-
-\section{Initialization}
-The coordinator ($n_{process} = 0$) is responsible for partitioning the cube,
-effectively deciding which worker computes which part of the grid.
-
-After that, it sends this information to each worker, and every process begins
-computing their respective instances of the anisotropy variables and
-precomputation
-variables. The initial domain is zero-initialized.
-
-Succeeding the initial handshake between the coordinator and its
-workers, the next
-point of synchronization happens between the neighboring processes during the
-actual computation of the application.
-
-The following pseudocode describes this behavior:
-\begin{lstlisting}[style=CStyle, caption = {Main worker loop using Ghost Cells}]
+\begin{lstlisting}[style=CStyle, caption = {Worker initialization}]
 void worker_init() {
   partitions_data data;
   if(is_coordinator) {
@@ -504,115 +607,4 @@ void worker_init() {
   worker_process(data);
 }
 \end{lstlisting}
-
-\section{Communication}
-The application utilized both synchronous and asynchronous
-communication, leveraging
-their advantages for the proper tasks.
-
-\subsection{Synchronous}
-Synchronous communication is used in a few parts of the program:
-\begin{enumerate}
-  \item Initial worker partitioning (synchronous solely on the receiving side)
-
-    For the workers to start processing, it is mandatory that their
-    partition promptly informed,
-    so it is imperative to wait for that information to arrive.
-  \item Processing results synchronization
-
-    As soon as all workers are finished computing their subdomain, they send
-    their share to the coordinator, which receives and flushes each part
-    in a synchronous and streamlined manner.
-\end{enumerate}
-
-\subsection{Asynchronous}
-Asynchronous communication is the core of the program, essential to
-accomplishing
-the goal of overlapping communication with computation.
-
-The model employed by this application is the \textbf{Ghost Cells}
-method, which consists
-of leveraging asynchronous communication and memory redundancy to
-mitigate the impacts of
-the network.
-
-All workers operate on an extended version of their domain, which
-includes their own partition with the addition of their neighbors'
-borders. This version is present to the processes before the processing
-iterations begin.
-
-Let $t$ be the current timestamp.
-
-At $t = T$, a process:
-
-\begin{enumerate}
-  \item Inserts the source of the pseudo-acoustic wave in its own domain.
-  \item Begins an asynchronous receive of the borders of $t = T + 1$.
-  \item Computes its own borders (the ones its neighbors need).
-  \item Asynchronously sends its borders to the neighbors.
-  \item Computes its interior.
-  \item Waits for the asynchronous operations to finish.
-  \item Proceeds to $T + 1$
-\end{enumerate}
-
-which can be translated into the following pseudocode:
-\begin{lstlisting}[style=CStyle, caption = {Main worker loop using Ghost Cells}]
-double dc_worker_process(problem_data data, unsigned int iterations) {
-  for (unsigned int i = 0; i < iterations; i++) {
-    add_source(data);
-
-    problem_data future_halos = async_receive_halos();
-
-    compute_boundaries(data);
-
-    async_send_halo_to_neighbours(data);
-
-    compute_interior(data);
-
-    merge_halos(data, future_halos);
-
-    wait_async_requests();
-  }
-}
-\end{lstlisting}
-
-This ensures that while the operating system handles the asynchronous
-network calls,
-the program continues to process its domain, effectively overlapping
-communication with
-computation.
-
-\section{Finalization}
-Once all workers are finished with their chunks of the domain,
-they send their share of the data to the coordinator, which
-takes turns in receiving and flushing the received parts,
-effectively avoiding the need to concentrate the entire cube in RAM.
-
-This process can be described in a pseudocode:
-\begin{lstlisting}[style=CStyle, caption = {Application finalization}]
-void receive_workers_data(worker_data coordinator_data, unsigned int num_workers) {
-  flush_worker_data_to_disk(coordinator_data);
-  num_workers -= 1; // ignore coordinator
-  while(num_workers > 0) {
-    worker_data data = sync_receive_worker_chunk();
-    flush_worker_data_to_disk(data);
-    num_workers--;
-  }
-}
-\end{lstlisting}
-
-\section{Simulation}
-The present project aimed at providing a simulation tool in addition
-to the implementation
-of the MPI application, with the goal of finding optimal environments and
-configurations for the program to run with.
-
-The simulations are handled by SimGrid, using sampling code interleaved with
-the application's source code.
-
-\chapter{Results}
-\chapter{Conclusion}
-\bibliographystyle{abntex2-alf}
-\bibliography{./references.bib}
-\printglossary
 \end{document}

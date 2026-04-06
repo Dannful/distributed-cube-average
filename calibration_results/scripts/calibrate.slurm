@@ -17,6 +17,6 @@ nixw nix develop ..#default --command python3 ../scripts/generate_experiment_pla
 mpirun -np $SLURM_NTASKS \
   -machinefile ../$MACHINEFILE \
   --mca btl ^openib \
-  nixw nix develop ..#default --command calibrate -s ./zoo_sizes -d . -p exp -e exp_plan.csv
+  nixw nix develop ..#default --command calibrate -d . -p exp -s exp_plan.csv
 
 echo "Calibration complete. Data written to calibration_results/data/"

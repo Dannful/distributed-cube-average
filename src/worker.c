@@ -18,7 +18,6 @@
 #include "propagate.h"
 #include "sys/time.h"
 #include "worker.h"
-#include <smpi/smpi.h>
 
 #ifdef SIMGRID
 #include <smpi/smpi.h>

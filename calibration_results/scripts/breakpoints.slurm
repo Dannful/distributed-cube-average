@@ -3,7 +3,7 @@
 #SBATCH --partition=PARTITION_NAME
 #SBATCH --nodes=2
 #SBATCH --ntasks=2
-#SBATCH --time=01:00:00
+#SBATCH --time=02:00:00
 #SBATCH --output=%x_%j.out
 #SBATCH --error=%x_%j.err
 
@@ -12,8 +12,8 @@ srun -l hostname | sort -n | awk '{print $2 " slots=1"}' >$MACHINEFILE
 
 OUTPUT_FILE="data/breakpoints"
 
-BP1=$(mpirun -np $SLURM_NTASKS -machinefile $MACHINEFILE --mca btl ^openib nixw nix develop --command bp_search1 | tail -1)
-BP2=$(mpirun -np $SLURM_NTASKS -machinefile $MACHINEFILE --mca btl ^openib nixw nix develop --command bp_search2 | tail -1)
+BP1=$(mpirun -np $SLURM_NTASKS -machinefile $MACHINEFILE --mca btl ^openib --mca btl_tcp_if_include 192.168.30.0/24 nixw nix develop --command bp_search1 | tail -1)
+BP2=$(mpirun -np $SLURM_NTASKS -machinefile $MACHINEFILE --mca btl ^openib --mca btl_tcp_if_include 192.168.30.0/24 nixw nix develop --command bp_search2 | tail -1)
 
 echo "$BP1" > $OUTPUT_FILE
 echo "$BP2" >> $OUTPUT_FILE

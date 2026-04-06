@@ -8,6 +8,9 @@ smpi_flags.txt
 data/*
 !data/zoo_sizes
 
+# Generated experiment plans
+exp_plan.csv
+
 # Jupyter artifacts
 .ipynb_checkpoints/
 *.ipynb_checkpoints

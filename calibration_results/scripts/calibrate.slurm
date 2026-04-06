@@ -12,16 +12,11 @@ srun -l hostname | sort -n | awk '{print $2 " slots=1"}' >$MACHINEFILE
 
 cd data
 
-nixw nix develop ..#default --command python3 -c "
-import sys
-n = int(sys.argv[1])
-for i in range(1, n+1):
-    print(int(1.1**i))
-" 220 > sizes.txt
+nixw nix develop ..#default --command python3 ../scripts/generate_experiment_plan.py exp_plan.csv
 
 mpirun -np $SLURM_NTASKS \
   -machinefile ../$MACHINEFILE \
   --mca btl ^openib \
-  nixw nix develop ..#default --command calibrate -d . -p exp -s sizes.txt
+  nixw nix develop ..#default --command calibrate -s ./zoo_sizes -d . -p exp -e exp_plan.csv
 
 echo "Calibration complete. Data written to calibration_results/data/"

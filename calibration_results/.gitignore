@@ -4,8 +4,9 @@ outputs/
 *.png
 smpi_flags.txt
 
-# Experimental data (regenerate via calibration)
-data/
+# Experimental data
+data/*
+!data/zoo_sizes
 
 # Jupyter artifacts
 .ipynb_checkpoints/
@@ -21,3 +22,4 @@ result
 result-*
 .direnv/
 .envrc
+

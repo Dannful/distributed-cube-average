@@ -17,6 +17,8 @@ nixw nix develop ..#default --command python3 ../scripts/generate_experiment_pla
 mpirun -np $SLURM_NTASKS \
   -machinefile ../$MACHINEFILE \
   --mca btl ^openib \
+  --mca btl_tcp_if_include 192.168.30.0/24 \
+  --bind-to none \
   nixw nix develop ..#default --command calibrate -d . -p exp -s exp_plan.csv
 
 echo "Calibration complete. Data written to calibration_results/data/"

@@ -101,6 +101,7 @@
       packages = with pkgs.rPackages; [Ckmeans_1d_dp];
     };
   in {
+    packages.${system}.platform-calibration = platform-calibration;
     devShells.${system}.default = pkgs.mkShell {
       buildInputs = [
         pkgs.simgrid

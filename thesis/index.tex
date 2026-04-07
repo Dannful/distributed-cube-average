@@ -6,6 +6,7 @@
 \usepackage{algpseudocode}
 \usepackage{xcolor}
 \usepackage{listings}
+\usepackage{hyperref}
 \usepackage[toc]{glossaries}
 
 \definecolor{darkblue}{rgb}{0,0,0.5}
@@ -47,6 +48,8 @@
 \newacronym{vti}{VTI}{Vertical Transversal Isotropy}
 \newacronym{tti}{TTI}{Tilted Transversal Isotropy}
 \newacronym{oom}{OOM}{Out Of Memory}
+\newacronym{fma}{FMA}{Fused Multiply-Add}
+\newacronym{flop}{FLOP}{Floating-point operation}
 
 \definecolor{mGreen}{rgb}{0,0.6,0}
 \definecolor{mGray}{rgb}{0.5,0.5,0.5}
@@ -181,6 +184,7 @@ suitable High-Performance Computing (HPC)
 cluster characteristics, in order to discover the most suitable environment
 for the program's overall performance.
 
+\chapter{Summary}
 \chapter{Theoretical framework}
 As a distributed HPC application, the present program being discussed implies
 the need of some technical foundation in order to be conveyed in a clear and
@@ -453,7 +457,6 @@ offers greater integrity, since it prevents data corruption caused by
 the premature
 use of receiving buffers.
 
-
 \subsection{Asynchronous}
 Asynchronous communication is the core of the program, essential to
 accomplishing
@@ -509,14 +512,61 @@ they send their share of the data to the coordinator, which
 takes turns in receiving and flushing the received parts,
 effectively avoiding the need to concentrate the entire cube in RAM.
 
+\section{Numerical validation}
+In order to guarantee that the present MPI implementation properly
+addressed the base
+program, it was imperative that the numerical results produced
+properly matched the reference. Therefore, several runs with different
+amount of workers, problem sizes and iterations were executed both in the
+MPI and in the base version. Then, the SHA-256 checksum of both were
+compared against each other, in order to attain a reliable and reproducible
+validation process.
+
+In this context, in regrads to the OpenMP version of the program, the
+ground truth produces the exact same
+hash as the MPI implementation, which indicates flawless precision.
+The CUDA version, however, required a delta-based approach, since tiny numerical
+differences are expected due to hardware differences in floating
+point arithmetic, such as \acrfull{fma},
+between the CPU and the GPU, as documented in the IEEE 754 compliance
+standards. Therefore, the MPI CUDA version was compared to
+the ground truth within a small tolerance ($10^{-15}$), having
+succeeded in such comparison. It is noteworthy, however, that such
+tiny differences eventually accumulate through iterations:
+\begin{equation}
+  E_{total} \approx \sum_{t = 1}^{n}{\delta_t}
+\end{equation}
+where $\delta_t$ is the error introduced by each time step,
+which leads to the accumulated error being a linear function in
+respect to time.
+
 \section{Simulation}
 The present project aimed at providing a simulation tool in addition
 to the implementation
 of the MPI application, with the goal of finding optimal environments and
 configurations for the program to run with.
+The simulations are handled by SimGrid \cite{simgrid} by modeling the target
+HPC cluster's network topology through the
+\href{https://simgrid.org/doc/latest/app_s4u.html}{S4U}
+interface and providing the nominal bandwidth and latency values to the
+program, which proceeds henceforth to execute the application code.
 
-The simulations are handled by SimGrid, using sampling code interleaved with
-the application's source code.
+In this scenario, pure sampling methods were tested for the purpose of
+accelerating the simulation. One such approach, for instance, was to
+replace every computation call with a sampling function that merely executed
+a certain amount of \acrshortpl{flop}, which value was determined based on
+the actual kernel's mathematical operations. This, however, proved to be
+a severe oversimplification of the program, reducing it to a pure mathematical
+function based on linear and non-linear regressions, which thoroughly
+disregarded the complex nature of the application, such as PCIe transfers,
+cache hits/misses, memory copies, etc.
+
+For this reason, it was decided to leverage SimGrid's potential to fully emulate
+the source code while reducing total simulation time by sampling the
+main computation
+kernel iteratively until it stabilizes. Appendix
+\ref{ap:sampled_comp} demonstrates
+how this is performed.
 
 \chapter{Results}
 \chapter{Conclusion}
@@ -607,4 +657,48 @@ void worker_init() {
   worker_process(data);
 }
 \end{lstlisting}
+
+\chapter{SimGrid computation sampling}
+\label{ap:sampled_comp}
+The C code below presents the algorithm behind the
+sampling of the core computation of the program.
+
+\begin{lstlisting}[style=CStyle, caption={Sampling and convergence mechanism for computation in SimGrid}, label={lst:sampled_comp}]
+void sampled_computation(double *average, int *count, bool *converged,
+                         void (*computation)(...)) {
+    const double threshold = 0.05; // 5% error margin
+    const int min_samples = 10;    // Minimum of samples for stability
+
+    // If convergence has already been attained, we can just
+    // simulate the workload
+    if (*converged) {
+        smpi_execute_benched(*average / 1e6); // Simulate time in SimGrid
+        return;
+    }
+
+    // Measure real execution time
+    double start = get_time_micros();
+    computation(process, device_data); // Run actual kernel
+    double end = get_time_micros();
+
+    double current_val = end - start;
+
+    // Update the average
+    if (*average == -1) {
+        *average = current_val;
+    } else {
+        *average = (*average * *count + current_val) / (*count + 1);
+    }
+    (*count)++;
+
+    // Verify statistical stability convergence
+    bool has_min_samples = (*count >= min_samples);
+    bool is_stable = (fabs(*average - current_val) / *average) < threshold;
+
+    if (has_min_samples && is_stable) {
+        *converged = true;
+    }
+}
+\end{lstlisting}
+
 \end{document}

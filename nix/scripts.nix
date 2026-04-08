@@ -224,6 +224,7 @@ in {
     rm -f *.rst dc.trace dc.csv dc.output
 
     echo "Running $APP_DIR/bin/dc with args: $ARGS"
+    export RST_BUFFER_SIZE=1073741824
     ${pkgs.openmpi}/bin/mpirun -np $np --bind-to none $APP_DIR/bin/dc $ARGS | tee dc.output
 
     ${postProcessLogic}

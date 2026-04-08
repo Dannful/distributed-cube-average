@@ -7,7 +7,7 @@
 \usepackage{xcolor}
 \usepackage{listings}
 \usepackage{hyperref}
-\usepackage[toc]{glossaries}
+\usepackage{glossaries}
 
 \definecolor{darkblue}{rgb}{0,0,0.5}
 \renewcommand{\glstextformat}[1]{\textit{\color{darkblue}#1}}
@@ -184,7 +184,7 @@ suitable High-Performance Computing (HPC)
 cluster characteristics, in order to discover the most suitable environment
 for the program's overall performance.
 
-\chapter{Summary}
+\chapter{Abstract}
 \chapter{Theoretical framework}
 As a distributed HPC application, the present program being discussed implies
 the need of some technical foundation in order to be conveyed in a clear and
@@ -384,6 +384,78 @@ required efforts for performance gains. This phenomenon is intrinsically present
 in the present MPI implementation at a much greater scale, since
 network bandwidth and latency are far more noteworthy bottlenecks
 than PCIe transfers, requiring more thorough efforts to mitigate them.
+
+\section{Stencil communication in heterogeneous supercomputers}
+\cite{stencil_supercomputers} discourses about the optimization of
+work distribution along a carthesian grid, emphasizing its importance
+in communication-heavy applications, specially when executed on heterogeneous
+HPC clusters. The approach consists of a three-step process employing CUDA and
+MPI with the goal of distributing work in a node-aware manner whilst leveraging
+the most out of the GPUs present in each host.
+
+Akin to this research, the aforementioned approach initiates by partitioning the
+domain in order to minimize data exchange. In this context, the immediate goal
+is to minimize the surface-to-volume ratio, since halo communications happen on
+the faces of the mesh, whilst the computation itself depends directly
+on its volume,
+leading to an $O(n^2)$ and $O(n^3)$ growth, respectively. Therefore,
+it is imperative
+to proceed in a manner that directs the greater increase to the part
+of the grid that
+does not constitute a halo region, thus leading to decomposition in
+smaller cubes.
+In order to accomplish so, the domain is repeatedly partitioned among
+the longest
+dimension by the prime factors of the number of nodes sorted in descending order
+\cite{stencil_supercomputers}, until the grid is completely
+partitioned. Finally,
+each unit undergoes the same process for the purpose of distributing
+work among a
+host's GPUs, as shown in figure \ref{fig:node_decomposition}.
+
+\begin{figure}[H]
+  \centering
+  \caption{Decomposition of $24$ nodes \cite{stencil_supercomputers}}
+  \label{fig:node_decomposition}
+  \includegraphics[width=0.9\textwidth]{./assets/supercomputers_domain_decomposition.pdf}
+\end{figure}
+
+Subsequently, after the topology has been properly projected on the input mesh,
+it is vital to assign the most proper nodes to certain chunks of data, based
+on optimization algorithms run on the underlying platform.
+In this sense, it is sensible to model the topology as as a bijector assignment
+between $n$ facilities and $n$ locations, with the goal of placing
+the facilities
+with the highest flow between them close to one another
+\cite{stencil_supercomputers}.
+Such optimization problem may be applied to GPUs, aiming at placing
+subdomains with
+wider halos on GPUs with higher communication bandwidth
+\cite{stencil_supercomputers}.
+Supposing that $w$ represents the flow matrix between facilities $i$
+and $j$, and $d$
+represents the distance between locations $i$ and $j$, it is then viable
+to model the cost function with $f$ being the bijection between factories and
+locations:
+\begin{equation}
+  w_{i, j}d_{f(i), f(j)} \quad \text{s.t.} \quad i, j \in [0, n)
+\end{equation}
+which can then be minimized to find the optimal $f$ assignment. Notably,
+this is an np-hard problem, implying the need for integer programming
+or brute force algorithms. The article in question chooses the latter,
+due to the search space for GPUs usually not being high enough to justify
+employing more advanced strategies.
+
+Ultimately, once every node and GPU has its share of the domain
+assigned to them,
+it becomes necessary to decide on the communication strategy to be elected.
+This is based on multiple possible scenarios, such as a process being its own
+neighbor (no device-to-device transfers needed), multiple processes residing
+on a single node (no MPI calls needed, only CUDA IPC instructions) or
+many subdomains
+in the same MPI process (direct device-to-device communication
+through PCIe buses). Such approach leverages the most out of each distinct
+circumstance, maximizing the use of the heterogeneity of the HPC cluster.
 
 \chapter{Methodology}
 

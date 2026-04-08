@@ -235,6 +235,7 @@ in {
     shift 1
 
     echo "Running direct binary execution (no mpirun): $APP_DIR/bin/dc $@"
+    export RST_BUFFER_SIZE=1073741824
     exec $APP_DIR/bin/dc "$@"
   '';
 

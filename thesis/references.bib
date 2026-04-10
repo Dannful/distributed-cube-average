@@ -60,13 +60,34 @@
   keywords      = {Large-scale systems;Distributed computing;Peer to peer computing;Grid computing;Clustering algorithms;Performance analysis;Algorithm design and analysis;Heuristic algorithms;Engines;User interfaces},
   doi           = {10.1109/UKSIM.2008.28}
 }
-@INPROCEEDINGS{stencil_supercomputers,
-  author={Pearson, Carl and Hidayetoğlu, Mert and Almasri, Mohammad and Anjum, Omer and Chung, I-Hsin and Xiong, Jinjun and Hwu, Wen-Mei W.},
-  booktitle={2020 IEEE International Parallel and Distributed Processing Symposium Workshops (IPDPSW)}, 
-  title={Node-Aware Stencil Communication for Heterogeneous Supercomputers}, 
-  year={2020},
-  volume={},
-  number={},
-  pages={796-805},
-  keywords={Graphics processing units;Indexes;Three-dimensional displays;Peer-to-peer computing;Libraries;Bandwidth;Two dimensional displays;stencil;CUDA;GPU;heterogeneous;MPI;communication;topology;node},
-  doi={10.1109/IPDPSW50202.2020.00136}}
+@inproceedings{stencil_supercomputers,
+  author        = {Pearson, Carl and Hidayeto\u{g}lu, Mert and Almasri, Mohammad and Anjum, Omer and Chung, I-Hsin and Xiong, Jinjun and Hwu, Wen-Mei W.},
+  booktitle     = {2020 IEEE International Parallel and Distributed Processing Symposium Workshops (IPDPSW)},
+  title         = {Node-Aware Stencil Communication for Heterogeneous Supercomputers},
+  year          = {2020},
+  volume        = {},
+  number        = {},
+  pages         = {796--805},
+  keywords      = {Graphics processing units;Indexes;Three-dimensional displays;Peer-to-peer computing;Libraries;Bandwidth;Two dimensional displays;stencil;CUDA;GPU;heterogeneous;MPI;communication;topology;node},
+  doi           = {10.1109/IPDPSW50202.2020.00136}
+}
+@article{okamoto2010,
+  author        = {Okamoto, Taro and Takenaka, Hiroshi and Nakamura, Takeshi and Aoki, Takayuki},
+  title         = {Accelerating large-scale simulation of seismic wave propagation by multi-GPUs and three-dimensional domain decomposition},
+  journal       = {Earth, Planets and Space},
+  year          = {2010},
+  volume        = {62},
+  number        = {12},
+  pages         = {939--942},
+  abstract      = {We adopted the GPU (graphics processing unit) to accelerate the large-scale finite-difference simulation of seismic wave propagation. The simulation can benefit from the high-memory bandwidth of GPU because it is a ``memory intensive'' problem. In a single-GPU case we achieved a performance of about 56 GFlops, which was about 45-fold faster than that achieved by a single core of the host central processing unit (CPU). We confirmed that the optimized use of fast shared memory and registers were essential for performance. In the multi-GPU case with three-dimensional domain decomposition, the non-contiguous memory alignment in the ghost zones was found to impose quite long time in data transfer between GPU and the host node. This problem was solved by using contiguous memory buffers for ghost zones. We achieved a performance of about 2.2 TFlops by using 120 GPUs and 330 GB of total memory: nearly (or more than) 2200 cores of host CPUs would be required to achieve the same performance. The weak scaling was nearly proportional to the number of GPUs. We therefore conclude that GPU computing for large-scale simulation of seismic wave propagation is a promising approach as a faster simulation is possible with reduced computational resources compared to CPUs.},
+  issn          = {1880-5981},
+  doi           = {10.5047/eps.2010.11.009},
+  url           = {https://doi.org/10.5047/eps.2010.11.009}
+}
+@book{grama2003,
+  title={Introduction to Parallel Computing},
+  author={Grama, Ananth and Gupta, Anshul and Karypis, George and Kumar, Vipin},
+  year={2003},
+  publisher={Pearson Education},
+  edition={2nd}
+}

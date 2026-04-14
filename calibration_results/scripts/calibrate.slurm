@@ -17,7 +17,8 @@ srun --ntasks=$SLURM_NTASKS --nodes=$SLURM_NNODES nixw nix build ..#platform-cal
 echo "Done."
 
 echo "Generating experiments..."
-nixw nix develop ..#default --command python3 ../scripts/generate_experiment_plan.py exp_plan.csv
+nixw nix develop ..#default --command python3 ../scripts/generate_experiment_plan.py exp_plan.csv \
+  --num-sizes 150 --repetitions 15 --max-size 134217728
 echo "Done."
 
 echo "Calibrating..."

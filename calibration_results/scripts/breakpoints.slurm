@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=smpi-breakpoints
-#SBATCH --partition=PARTITION_NAME
+#SBATCH --partition=poti
 #SBATCH --nodes=2
 #SBATCH --ntasks=2
 #SBATCH --time=02:00:00

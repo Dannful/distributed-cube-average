@@ -19,7 +19,7 @@ print(f'pycewise version: {pycewise.__version__}')
 # Configuration & Constants
 # ==========================================
 expected_bandwidth = 937e6 / 8
-expected_latency   = 22.7e-9
+expected_latency   = 22.7e-6
 
 expected_loopback_bandwidth = 2e11 / 8
 expected_loopback_latency = 1e-7
@@ -52,14 +52,37 @@ def extract_local_dir(dir_name='.'):
     return result
 
 def aggregate_dataframe(dataframe):
-    numeric_cols = dataframe.select_dtypes(include='number').columns.drop('msg_size', errors='ignore')
-    df = dataframe.groupby('msg_size')[numeric_cols].mean().reset_index()
+    # Sort by start time and drop first measurement per (op, msg_size) group (warmup)
+    df_sorted = dataframe.sort_values('start')
+    df_filtered = df_sorted.groupby(['op', 'msg_size'], sort=False).apply(
+        lambda g: g.iloc[1:] if len(g) > 2 else g, include_groups=False
+    ).reset_index(level=['op', 'msg_size'])
+
+    # Use median for robust aggregation (resilient to outliers)
+    numeric_cols = df_filtered.select_dtypes(include='number').columns.drop('msg_size', errors='ignore')
+    df = df_filtered.groupby('msg_size')[numeric_cols].median().reset_index()
     for col in dataframe.columns:
         if col not in df.columns:
             value = list(dataframe[col].unique())
             if len(value) == 1:
                 df[col] = value[0]
     return df
+
+def filter_pathological_sizes(raw_df, expected_lat, expected_bw, multiplier=20):
+    """Remove message sizes whose median duration is >multiplier× the physical expectation.
+
+    Catches systematic TCP/MPI pathologies at specific sizes (e.g., a size that
+    always takes 1.4ms when the expected time is 23µs). The physics-based reference
+    is expected_latency + size/expected_bandwidth, which is the minimum possible time.
+    """
+    medians = raw_df.groupby('msg_size')['duration'].median()
+    expected = medians.index.to_series().map(lambda s: expected_lat + s / expected_bw)
+    ratio = medians / expected
+    bad_sizes = ratio[ratio > multiplier].index.tolist()
+    if bad_sizes:
+        print(f" -> Removed {len(bad_sizes)} pathological size(s): {bad_sizes} "
+              f"(>{multiplier}× expected physical time)")
+    return raw_df[~raw_df['msg_size'].isin(bad_sizes)]
 
 def load_experiment(dir_name='.'):
     result = extract_local_dir(dir_name)
@@ -93,12 +116,35 @@ def load_experiment(dir_name='.'):
     pingpong_send = df_pingpong[df_pingpong.op=='MPI_Send'].reset_index(drop=True)
     pingpong_recv = df_pingpong[df_pingpong.op=='MPI_Recv'].reset_index(drop=True)
 
+    # Detect and correct the polling artifact: for small messages, the calibrate
+    # tool's PingPong Recv duration is a constant ~10ms (iteration interval), not
+    # actual network time. For these sizes, 2*Send_duration is a better estimate
+    # of the round-trip, since Send blocks until the reply arrives.
+    recv_medians = pingpong_recv.groupby('msg_size')['duration'].median()
+    baseline_recv = recv_medians.iloc[:3].median()  # median of smallest sizes
+    artifact_threshold = baseline_recv * 2.0
+
+    corrected_duration = []
+    for _, (send_dur, recv_dur, size) in enumerate(
+        zip(pingpong_send.duration, pingpong_recv.duration, pingpong_send.msg_size)
+    ):
+        median_recv_for_size = recv_medians.loc[size]
+        if median_recv_for_size < artifact_threshold and recv_dur > send_dur * 100:
+            corrected_duration.append(2 * send_dur)
+        else:
+            corrected_duration.append(send_dur + recv_dur)
+
     df_pingpong_combined = pd.DataFrame(dict(
         op       = 'PingPong',
         msg_size = pingpong_send.msg_size,
         start    = pingpong_send.start,
-        duration = pingpong_recv.duration + pingpong_send.duration
+        duration = corrected_duration
     ))
+
+    n_corrected = sum(1 for d, s in zip(corrected_duration, pingpong_send.duration + pingpong_recv.duration)
+                      if abs(d - s) > 1e-12)
+    print(f"PingPong artifact correction: {n_corrected}/{len(corrected_duration)} rows corrected "
+          f"(baseline Recv={baseline_recv:.4e}s, threshold={artifact_threshold:.4e}s)")
 
     def get_csv(name):
         return next((result[k] for k in result.keys() if k.endswith(name)), None)
@@ -186,6 +232,54 @@ def pretty_plot(df, reg, title, n=10000):
            xlab('Message size (bytes)') + ylab('Duration (seconds)') + ggtitle(title)
     return plot
 
+def validate_data_quality(experiment):
+    """Warn about potential data quality issues."""
+    warnings = []
+
+    # Check PingPong duration grows with message size
+    pp = aggregate_dataframe(experiment['pingpong'])
+    if len(pp) > 5:
+        corr = pp[['msg_size', 'duration']].corr().iloc[0, 1]
+        if corr < 0.5:
+            warnings.append(f"PingPong duration poorly correlated with msg_size (r={corr:.3f})")
+
+    # Check standalone Recv monotonicity
+    recv = aggregate_dataframe(experiment['recv']).sort_values('msg_size')
+    if len(recv) > 5:
+        violations = (recv.duration.diff().dropna() < 0).sum()
+        if violations > len(recv) * 0.3:
+            warnings.append(f"Recv duration non-monotonic: {violations}/{len(recv)-1} decreasing steps")
+
+    # Check per-size variance
+    for op_key in ['send', 'recv', 'isend']:
+        df = experiment[op_key]
+        if df is None:
+            continue
+        grouped = df.groupby('msg_size')['duration']
+        for size, group in grouped:
+            if len(group) < 3:
+                continue
+            cv = group.std() / group.mean() if group.mean() > 0 else 0
+            if cv > 1.0:
+                warnings.append(f"{op_key} msg_size={size}: CV={cv:.1f} (high variance)")
+
+    # Check minimum data points
+    for op_key in ['send', 'recv', 'isend', 'pingpong']:
+        df = experiment[op_key]
+        if df is None:
+            continue
+        sizes = df.groupby('msg_size').size()
+        sparse = sizes[sizes < 5]
+        if len(sparse) > 0:
+            warnings.append(f"{op_key}: {len(sparse)} sizes have fewer than 5 data points")
+
+    if warnings:
+        print(f"\nDATA QUALITY WARNINGS ({len(warnings)}):")
+        for w in warnings:
+            print(f"  - {w}")
+    else:
+        print("\nData quality checks passed.")
+
 # ==========================================
 # Execution Pipeline
 # ==========================================
@@ -195,7 +289,14 @@ if __name__ == "__main__":
                         help='Directory containing experimental CSV files (default: ./data)')
     parser.add_argument('--output-dir', type=str, default='.',
                         help='Directory for output files (default: current directory)')
+    parser.add_argument('--bandwidth', type=float, default=937e6 / 8,
+                        help='Expected network bandwidth in bytes/s (default: 937Mbps / 8)')
+    parser.add_argument('--latency', type=float, default=22.7e-6,
+                        help='Expected network latency in seconds (default: 22.7us)')
     args = parser.parse_args()
+
+    expected_bandwidth = args.bandwidth
+    expected_latency = args.latency
 
     data_dir = Path(args.data_dir)
     output_dir = Path(args.output_dir)
@@ -205,6 +306,16 @@ if __name__ == "__main__":
     experiment, semantic_breaks = load_experiment(args.data_dir)
     drop_thresh = max(semantic_breaks)
 
+    validate_data_quality(experiment)
+
+    # Pre-filter pathological message sizes from all operations
+    print("\nFiltering pathological message sizes...")
+    for op_key in ['send', 'recv', 'isend', 'pingpong']:
+        if experiment[op_key] is not None:
+            experiment[op_key] = filter_pathological_sizes(
+                experiment[op_key], expected_latency, expected_bandwidth
+            )
+
     # --- Pass 1: Auto-discover Breakpoints ---
     print("\nDiscovering natural breakpoints...")
     discovered_bps = set()
@@ -213,9 +324,21 @@ if __name__ == "__main__":
         reg = pycewise.compute_regression(x=tmp.msg_size.values, y=tmp.duration.values, mode='log').auto_simplify()
         discovered_bps.update(reg.breakpoints)
 
-    # Filter out known anomalies and inject semantic breaks
-    remove_anomalies = {8, 10, 3761, 10208, 16457, 63785, 4153567, 99962271, 193591133}
-    breakpoints = sorted(list((discovered_bps - remove_anomalies) | set(semantic_breaks)))
+    # Statistically filter spurious breakpoints: keep only those where both adjacent
+    # segments have enough data and the slope changes meaningfully.
+    all_x = np.sort(np.unique(np.concatenate([
+        aggregate_dataframe(experiment[k]).msg_size.values for k in ['send', 'isend', 'recv', 'pingpong']
+    ])))
+    filtered_bps = set()
+    for bp in sorted(discovered_bps):
+        left_count = np.sum(all_x <= bp)
+        right_count = np.sum(all_x > bp)
+        if left_count >= 3 and right_count >= 3:
+            filtered_bps.add(bp)
+        else:
+            print(f" -> Dropped breakpoint {bp} (left={left_count}, right={right_count} points)")
+
+    breakpoints = sorted(list(filtered_bps | set(semantic_breaks)))
 
     # --- Pass 2: Final Regressions ---
     reg_send     = safe_compute_regression(experiment['send'], "MPI_Send", breakpoints, output_dir)
@@ -239,7 +362,8 @@ if __name__ == "__main__":
     df_reg_transfer.loc[mask, 'coefficient'] -= df_reg_recv[df_reg_recv['max_x'] <= drop_thresh]['coefficient'].values
     df_reg_transfer.loc[mask, 'intercept'] -= df_reg_recv[df_reg_recv['max_x'] <= drop_thresh]['intercept'].values
     
-    df_reg_transfer.loc[df_reg_transfer['coefficient'] < 0, 'coefficient'] = 1 / expected_bandwidth
+    # Clamp non-positive coefficients: coefficient=0 causes inf bw-factor, negative is unphysical
+    df_reg_transfer.loc[df_reg_transfer['coefficient'] <= 0, 'coefficient'] = 1 / expected_bandwidth
     df_reg_transfer.loc[df_reg_transfer['intercept'] < 0, 'intercept'] = 0
 
     # Draw synthetic transfer plot with strict validation
@@ -271,6 +395,12 @@ if __name__ == "__main__":
 
     df_reg_transfer['bandwidth_factor'] = 1 / (df_reg_transfer.coefficient * expected_bandwidth)
     df_reg_transfer['latency_factor']   = df_reg_transfer.intercept / expected_latency
+
+    # Clamp unphysical bw-factor values: inf/nan → 1.0 (no scaling = use platform bandwidth as-is)
+    bad_bw = df_reg_transfer['bandwidth_factor'].isna() | np.isinf(df_reg_transfer['bandwidth_factor'])
+    if bad_bw.any():
+        print(f" -> Clamped {bad_bw.sum()} unphysical bandwidth_factor value(s) to 1.0")
+        df_reg_transfer.loc[bad_bw, 'bandwidth_factor'] = 1.0
 
     bandwidth_str = regression_to_str(df_reg_transfer, drop_threshold=drop_thresh, keys=['bandwidth_factor'])
     latency_str   = regression_to_str(df_reg_transfer, drop_threshold=drop_thresh, keys=['latency_factor'])

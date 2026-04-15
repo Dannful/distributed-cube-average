@@ -10,18 +10,20 @@
 MACHINEFILE="nodes.slurm"
 srun -l hostname | sort -n | awk '{print $2 " slots=1"}' >$MACHINEFILE
 
-OUTPUT_FILE="data/breakpoints"
-
 BP_SEARCH1_CMD="nixw nix develop --command bp_search1"
 BP_SEARCH2_CMD="nixw nix develop --command bp_search2"
+
+OUTPUT_FILE="../data/breakpoints"
 
 nixw nix develop --command python3 scripts/find_breakpoints.py \
   "$BP_SEARCH1_CMD" \
   "$BP_SEARCH2_CMD" \
   -np $SLURM_NTASKS \
   -machinefile $MACHINEFILE \
-  --mca btl ^openib \
-  --mca btl_tcp_if_include 192.168.30.0/24 \
+  --mca pml ob1 \
+  --mca btl tcp,self \
+  --mca btl_tcp_if_include enp4s0 \
+  --mca oob_tcl_if_include enp4s0 \
   > breakpoints_search.log 2>&1
 
 if [ $? -ne 0 ]; then
@@ -30,11 +32,27 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-BP1=$(grep "First breakpoint:" breakpoints_search.log | awk '{print $NF}')
-BP2=$(grep "Second breakpoint:" breakpoints_search.log | awk '{print $NF}')
+# Extract last word of each line; "no breakpoint found" lines produce a non-integer
+BP1_RAW=$(grep "First breakpoint:" breakpoints_search.log | awk '{print $NF}')
+BP2_RAW=$(grep "Second breakpoint:" breakpoints_search.log | awk '{print $NF}')
 
-echo "$BP1" > $OUTPUT_FILE
-echo "$BP2" >> $OUTPUT_FILE
+is_integer() { [[ "$1" =~ ^[0-9]+$ ]]; }
 
+if is_integer "$BP2_RAW"; then
+  BP_DEADLOCK="$BP2_RAW"
+else
+  echo "WARNING: No deadlock breakpoint found. Defaulting to 65536."
+  BP_DEADLOCK=65536
+fi
+
+# Corruption threshold absent → use deadlock threshold for both
+if is_integer "$BP1_RAW"; then
+  BP_CORRUPTION="$BP1_RAW"
+else
+  echo "WARNING: No corruption breakpoint found. Using deadlock threshold ($BP_DEADLOCK) for both."
+  BP_CORRUPTION="$BP_DEADLOCK"
+fi
+
+printf '%s\n%s\n' "$BP_CORRUPTION" "$BP_DEADLOCK" > "$OUTPUT_FILE"
 echo "Breakpoints written to $OUTPUT_FILE:"
-cat $OUTPUT_FILE
+cat "$OUTPUT_FILE"

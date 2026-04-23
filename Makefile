@@ -46,6 +46,7 @@ else ifeq ($(BACKEND), simgrid_cuda)
     SOURCES_C    := $(SOURCES_C_COMMON)
     SOURCES_CUDA := $(SRCDIR)/cuda_propagate.cu $(SRCDIR)/device_data.cu
     
+    CFLAGS       += -DSIMGRID
     CUDA_CFLAGS  += -Xcompiler -fPIC
     CUDA_CFLAGS  += -ccbin g++
     CUDA_CFLAGS  += -DSIMGRID

@@ -141,9 +141,7 @@
       --cfg=precision/timing:1e-9 \
       --cfg=tracing/precision:9 \
       --cfg=smpi/shared-malloc:global \
-      --cfg=smpi/host-speed:"1f" \
-      --cfg=smpi/display-allocs:yes \
-      --cfg=smpi/auto-shared-malloc-thresh:1073741824 \
+      --cfg=smpi/host-speed:1 \
       -trace --cfg=tracing/filename:dc.trace \
       $DC_BIN $ARGS 2>&1 | tee sim.log
 
@@ -163,7 +161,7 @@
 
     IFS=',' read -r -a PROBLEM_SIZES <<< "$PROBLEM_SIZES"
 
-    echo "Running experiments (sizes $PROBLEM_SIZES)..."
+    echo "Running experiments (sizes $2)..."
 
     for size in "''${PROBLEM_SIZES[@]}"; do
       echo "  Problem Size: $size"
@@ -189,7 +187,7 @@
 
     echo "Comparison vs Real Data:"
     if [ -d "$ANALYSIS_DIR" ]; then
-      ${rEnv}/bin/Rscript ./validation/compare_sim_real.R $ANALYSIS_DIR sim_traces
+      ${rEnv}/bin/Rscript ./validation/compare_sim_real.R $ANALYSIS_DIR "sim_traces" $2
     else
       echo "Warning: Analysis directory not found: $ANALYSIS_DIR"
       echo "Skipping comparison with real data."

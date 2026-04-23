@@ -107,13 +107,13 @@ summarized_dataset <- function(df) {
 }
 
 save_gantt_charts <- function(real_dataset, simulation_dataset) {
-    walk(problem_sizes, \(problem_size) {
+    walk(problem_sizes, \(size) {
         base_dir <- "plots"
         dir.create(base_dir, showWarnings = FALSE)
         plot <- generate_combined_gantt_chart(real_dataset |>
-            filter(problem_size == problem_size), simulation_dataset |>
-            filter(problem_size == problem_size))
-        pdf_path <- paste0(base_dir, "/gantt_", problem_size, ".pdf")
+            filter(problem_size == size), simulation_dataset |>
+            filter(problem_size == size))
+        pdf_path <- paste0(base_dir, "/gantt_", size, ".pdf")
         ggsave(pdf_path, plot, width = 10, height = 3)
         print(paste0("Saving ", pdf_path, "..."))
     })

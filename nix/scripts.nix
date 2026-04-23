@@ -206,7 +206,7 @@
     ]}:$PATH
 
     NUM_HOSTS=5
-    NET_BW="937Mbps"
+    NET_BW="1Gbps"
     NET_LAT="22.7us"
 
     ${runSimGridExperiments}

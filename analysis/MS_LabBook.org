@@ -5496,3 +5496,493 @@ dev.off()
 #+RESULTS:
 : null device 
 :           1
+
+** 2026-04-26
+:PROPERTIES:
+:header-args: :tangle "do-2026-04-26.R" :tangle-mode (identity #o755) :shebang "#!/usr/bin/Rscript"
+:END:
+
+*** DIR
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+THE.DIR <- "../2026-04-26-fake-net-capacity/"
+#+end_src
+
+*** The aggregation framework (starvz-inspired)
+**** integrateStepFunc
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+source("integrateStepFunc.R")
+#+end_src
+
+#+RESULTS:
+
+**** StarVZ functions copied "as is"
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+integrate.stepfunc.Rcpp <- function(inter, b, f) integrateStepFunc(inter, c(-Inf, b, Inf), c(0, f, 0))
+
+getBreaks <- function(dfv = NULL) {
+  if (is.null(dfv)) {
+    return(NULL)
+  }
+  breaks <- c(dfv$Start, dfv$End[length(dfv$End)])
+  return(breaks)
+}
+
+getSlices <- function(dfv = NULL, step = 100) {
+  tstart <- dfv %>%
+    .$Start %>%
+    min()
+  tend <- (dfv %>% .$End %>% max())
+  # TODO: Explain how we ignore the last slice if tend is not multiple
+  # of step. This will make us ignore all behavior from the beginning
+  # of that last slice until tend. This is unimportant for visualization
+  # purposes but it can be important for stats. On that case, replace
+  # the second argument by =tend+step= to make sure all data is considered.
+  slices <- c(seq(0, tend, step), tend)
+  return(slices)
+}
+
+remyTimeIntegration <- function(dfv = NULL, slices = NULL) {
+  if (is.null(dfv)) {
+    return(NULL)
+  }
+  if (is.null(slices)) {
+    return(NULL)
+  }
+
+  # Define breaks
+  breaks <- getBreaks(dfv)
+
+  # Define values on breaks
+  values <- dfv$Value
+
+  result <- integrate.stepfunc.Rcpp(slices, breaks, values)
+
+  return(result)
+}
+
+remyTimeIntegrationPrep <- function(dfv = NULL, myStep = 100) {
+  if (is.null(dfv)) {
+    return(NULL)
+  }
+  if (nrow(dfv) == 0) {
+    return(NULL)
+  }
+  mySlices <- getSlices(dfv, step = myStep)
+  tibble(Slice = mySlices, Value = c(remyTimeIntegration(dfv, slices = mySlices), 0) / myStep)
+}
+#+end_src
+
+#+RESULTS:
+
+**** NEW StarVZ adapted functions so they can be faster
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+do_the_aggregation <- function(df, step_width) {
+  df |>
+  select(ResourceId = Container, Task = Value, Start, End) |>
+    arrange(ResourceId, Task, Start) |>
+    group_by(ResourceId, Task) |>
+    reframe(
+      bind_rows(
+        tibble(
+          Start = Start,
+          End   = End,
+          Active = 1
+        ),
+        tibble(
+          Start = End,
+          End   = lead(Start),
+          Active = 0
+        ) |> filter(!is.na(End)),
+        tibble(
+          Start = 0,
+          End   = first(Start),
+          Active = 0
+        )
+      )
+    ) |>
+    rename(Value = Active) |>
+    arrange(ResourceId, Task, Start) |>
+    group_by(ResourceId, Task) |>
+    do(remyTimeIntegrationPrep(., myStep = step_width)) |>
+    mutate(Start = Slice,
+           End = lead(Slice),
+           Duration = End - Start) |>
+    ungroup() |>
+    na.omit() 
+}
+#+end_src
+
+#+RESULTS:
+
+**** The reference aggregation
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+do_the_reference_aggregation <- function(df, nb_intervals) {
+  df |> pull(Start) |> min() -> t.start
+  df |> pull(End) |> max() -> t.end
+  step_width = (t.end-t.start)/nb_intervals
+  df |>
+    do_the_aggregation(step_width) |>
+    # make it has the same columns for our do_the_viz fun
+    mutate(Slice = round(Slice / step_width)) |>
+    rename(Container = ResourceId,
+           Value = Task,
+           Percent = Value,
+           StartTS = Start, # Start of the timeslice (TS)
+           EndTS = End,     # End of the timeslice (TS)
+           DurationTS = Duration) |> # Duration of the timeslice (TS)
+    mutate(Time.Sum = Percent * DurationTS)
+}
+#+end_src
+
+#+RESULTS:
+
+**** Plot function (do-the-viz)
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+library(patchwork)
+do_the_viz <- function(df, has.summary = "Both")
+{
+  df |>
+    rename(Rank = Container) -> df
+  
+  # Prep Y labels
+  df |>
+    distinct(Rank) |>
+    arrange(Rank) |>
+    mutate(Position = 0:(n()-1)) |>
+    mutate(Label = Position) -> yconfm
+  
+  df |>
+    filter(Time.Sum != 0) |>
+    group_by(Rank, Slice, StartTS, EndTS, DurationTS, Value) |>
+    summarize(Time.Sum = sum(Time.Sum), .groups="drop_last") |>
+    ungroup(Value) |>
+    arrange(Value) |>
+    mutate(TaskHeight = Time.Sum / DurationTS) |>
+    mutate(TaskPosition = cumsum(TaskHeight) - TaskHeight) |>
+    left_join(yconfm, by="Rank") |>
+    ggplot() +
+    scale_y_continuous(
+      breaks = yconfm$Position,
+      labels = yconfm$Label
+    ) +    
+    geom_rect(alpha=.5, aes(
+      fill = Value,
+      xmin = StartTS,
+      xmax = EndTS,
+      ymin = Position + TaskPosition,
+      ymax = Position + (TaskPosition + TaskHeight)
+    )) +
+    my_style() +
+    theme(axis.title.x = element_blank(),
+          axis.text.x = element_blank()) +
+    ylab("Rank [index]") +
+    xlab("Time [seconds]") -> p
+
+# summary plot
+  df |>
+    filter(Time.Sum != 0) |>
+    group_by(Slice, StartTS, EndTS, DurationTS, Value) |>
+    summarize(N=n(), Time.Sum = sum(Time.Sum), .groups="drop_last") |>
+    ungroup(Value) |>
+    arrange(Value) |>
+    mutate(TaskHeight = Time.Sum / (DurationTS * N)) |>
+    mutate(TaskPosition = cumsum(TaskHeight) - TaskHeight) |>
+    ggplot() +
+    coord_cartesian(ylim=c(0,1)) +
+    geom_rect(alpha=.5, aes(
+      fill = Value,
+      xmin = StartTS,
+      xmax = EndTS,
+      ymin = TaskPosition,
+      ymax = (TaskPosition + TaskHeight)
+    )) +
+    my_style() +
+    theme(legend.position="none") +
+    ylab("Load [%]") +
+    xlab("Time [seconds]") -> p.summary
+ 
+  if (has.summary == "Both") {
+    p / p.summary + plot_layout(heights = c(1, 0.15))
+  }else if (has.summary == "Summary") {
+    p.summary
+  }else{
+    p
+  }
+}
+#+end_src
+
+#+RESULTS:
+
+**** My style
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+my_style <- function() {
+  list(
+#    scale_fill_brewer(palette = "Set1"),
+#    scale_color_brewer(palette = "Set1"),
+    scale_fill_manual(
+      values = c(
+        MPI_Irecv  = "#4DAF4A",  # Set1 green
+        MPI_Isend  = "#E41A1C",  # Set1 red
+        MPI_Waitall = "#377EB8", # Set1 blue
+        Compute     = "#FFD92F"  # yellow        
+      )
+    ),
+    theme_bw(base_size = 16),
+    theme(legend.position="top"),
+    theme(
+      legend.title = element_blank(),
+      plot.margin = unit(c(0, 0, 0, 0), "cm"),
+      legend.spacing = unit(1, "mm"),
+      legend.justification = "left",
+      legend.box.spacing = unit(0, "pt"),
+      legend.box.margin = margin(0, 0, 0, 0),
+      axis.text.x = element_text(angle=45, vjust=1, hjust=1)
+    ))
+}
+#+end_src
+
+#+RESULTS:
+
+*** Functions
+**** Read
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+our_read_function <- function(f) {
+  read_csv(f,
+           show_col_types=FALSE,
+           progress=FALSE,
+           col_names = c("Nature",
+                         "Container",    
+                         "Type",
+                         "Start",
+                         "End",
+                         "Duration",
+                         "Imbrication",
+                         "Value")) |> # name of the Operation
+    mutate(Container = as.integer(gsub("rank-?", "", Container))) |>
+    mutate(Value = str_trim(gsub("^\\s*PMPI_", "MPI_", str_trim(Value)))) |>    
+    mutate(Value = as.factor(Value)) |>
+    filter(Value %in% c("MPI_Irecv", "MPI_Isend", "MPI_Waitall")) |>
+    mutate(Value = factor(Value, levels=c("MPI_Irecv", "MPI_Isend", "MPI_Waitall"))) -> df
+# Keep only the part that interest us
+# Highly dependent on parallel design
+  core_start <- df |>    
+    filter(Value == "MPI_Irecv") |>    
+    pull(Start) |>    
+    min()    
+  core_end <- df |>    
+    filter(Value == "MPI_Waitall") |>    
+    pull(End) |>    
+    max()    
+  df <- df |>    
+    filter(Start < core_end) |>    
+    filter(End > core_start) |>    
+    mutate(Start = pmax(Start, core_start), End = pmin(End, core_end), Duration = End - Start)
+# Return the data frame
+  return(df)
+}
+#+end_src
+
+#+RESULTS:
+**** Compute
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+add_compute_state <- function(df) {
+
+  compute <- df |>
+    arrange(Container, Start) |>
+    group_by(Container) |>
+    mutate(next_start = lead(Start)) |>
+    filter(!is.na(next_start), next_start > End) |>
+    transmute(
+      Nature = "State",
+      Container,
+      Type = "MPI_STATE",
+      Start = End,
+      End = next_start,
+      Duration = End - Start,
+      Imbrication = 0,
+      Value = factor("Compute", levels = c(levels(df$Value), "Compute"))
+    )
+
+  bind_rows(df, compute) |>
+    arrange(Container, Start) |>
+    ungroup()
+}
+#+end_src
+
+#+RESULTS:
+
+**** Plot ST
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+our_st_plot <- function(data) {
+  library(dplyr)
+  library(ggplot2)
+
+  data %>%
+    rename(Rank = Container) |>
+    mutate(
+      ymin = Rank - 0.45,
+      ymax = Rank + 0.45
+    ) %>%
+    ggplot() +
+    geom_rect(
+      aes(
+        xmin = Start,
+        xmax = End,
+        ymin = ymin,
+        ymax = ymax,
+        fill = Value
+      ),
+      colour = NA
+    ) +
+    labs(
+      x = "Time",
+      y = "Rank",
+      fill = "Value"
+    ) +
+    theme_bw(base_size = 12) +
+    theme(
+      panel.grid = element_blank(),
+      strip.text = element_text(face = "bold"),
+      legend.position = "bottom"
+    ) +
+    my_style()
+}
+#+end_src
+
+#+RESULTS:
+**** Summary per Task
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+summary_per_operation <- function(dfa) {
+  dfa |>
+    group_by(Value) |>
+    summarise(
+      n      = n(),
+      mean   = mean(Duration, na.rm = TRUE),
+      sd     = sd(Duration, na.rm = TRUE),
+      min    = min(Duration, na.rm = TRUE),
+      p25    = quantile(Duration, 0.25, na.rm = TRUE),
+      median = median(Duration, na.rm = TRUE),
+      p75    = quantile(Duration, 0.75, na.rm = TRUE),
+      p90    = quantile(Duration, 0.90, na.rm = TRUE),
+      p99    = quantile(Duration, 0.99, na.rm = TRUE),
+      max    = max(Duration, na.rm = TRUE),
+      .groups = "drop"
+    )
+}
+#+end_src
+
+#+RESULTS:
+**** Plot the summary per task
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+plot_summary_per_operation <- function(df) {
+
+  ggplot(df, aes(x = Value)) +
+
+    # min → max range
+    geom_linerange(aes(ymin = min, ymax = max),
+                   linewidth = 0.6, alpha = 0.5) +
+
+    # interquartile range
+    geom_linerange(aes(ymin = p25, ymax = p75),
+                   linewidth = 3) +
+
+    # median
+    geom_point(aes(y = median), size = 3, shape = 21, fill = "white") +
+
+    # p90 and p99 markers
+    geom_point(aes(y = p90), shape = 17, size = 2) +
+    geom_point(aes(y = p99), shape = 18, size = 2) +
+
+    # sample size label
+    geom_text(aes(y = max, label = paste0("n=", n)),
+              vjust = -0.5, size = 3) +
+
+#    scale_y_log10() +
+
+    labs(
+      x = "Operation",
+      y = "Duration",
+    ) +
+
+    theme_bw()
+}
+#+end_src
+
+#+RESULTS:
+**** Plot total time per operation
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+plot_total_time_per_operation <- function(df) {
+
+  df |>
+    group_by(Value) |>
+    summarise(total_duration = sum(Duration, na.rm = TRUE),
+              .groups = "drop") |>
+    ggplot(aes(x = Value, y = total_duration, fill = Value)) +
+    
+    geom_col(width = 0.7) +
+    
+    geom_text(aes(label = scales::scientific(total_duration)),
+              vjust = -0.3, size = 3) +
+    
+    labs(
+      x = "Operation",
+      y = "Total Duration",
+    ) +
+    
+    theme_bw() +
+    theme(legend.position = "none")
+}
+#+end_src
+
+#+RESULTS:
+
+*** Do the thing
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+options(crayon.enabled=FALSE)
+suppressMessages(library(tidyverse))
+suppressMessages(library(fs))
+suppressMessages(library(patchwork))
+tibble(FILE = dir_ls(THE.DIR, pattern="*.csv")) |>
+  mutate(KEY = str_remove(basename(FILE), "\\.csv$")) |>  
+  mutate(DATA = map(FILE, our_read_function)) |>
+  mutate(DATA = map(DATA, add_compute_state)) |>
+  mutate(SUMMARY = map(DATA, summary_per_operation)) |>
+  mutate(SUMMARY.PLOT = map(SUMMARY, plot_summary_per_operation)) |>
+  mutate(SUMMARY.TIME.PLOT = map(DATA, plot_total_time_per_operation)) |>
+  mutate(SUMMARY.COMBINED = map2(SUMMARY.PLOT, SUMMARY.TIME.PLOT, `|`)) |>
+  mutate(DATA.AGG = map(DATA, do_the_reference_aggregation, 50)) |>
+  # tradicional ST view
+  mutate(ST = map(DATA, our_st_plot)) |>  
+  mutate(ST.AGG = map(DATA.AGG, \(x) do_the_viz(x, has.summary = ""))) -> df
+#+end_src
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df
+#+end_src
+
+*** Plot
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+library(purrr)
+pdf("plots.pdf", width = 10, height = 8)
+df |>
+  select(FILE, ST.AGG) |>
+  pwalk(function(FILE, ST.AGG) {
+
+    page <- (ST.AGG)
+    print(page + ggtitle(FILE))# + coord_cartesian(xlim=c(0,1)))
+
+  })
+
+dev.off()
+#+end_src

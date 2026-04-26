@@ -251,7 +251,10 @@ print(s.end)
 #+RESULTS:
 : [1] 42.18672
 : [1] 69630.57
-: wrote 1.00TB in  0s, 55.19PB/s                                                                              > > > . + > Saving 18.5 x 4.51 in image
+: 
+wrote 1.00TB in  0s, 55.19PB/s
+                                                                              
+> > > . + > Saving 18.5 x 4.51 in image
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 df.filtered
@@ -5508,6 +5511,8 @@ dev.off()
 THE.DIR <- "../2026-04-26-fake-net-capacity/"
 #+end_src
 
+#+RESULTS:
+
 *** The aggregation framework (starvz-inspired)
 **** integrateStepFunc
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
@@ -5699,7 +5704,7 @@ do_the_viz <- function(df, has.summary = "Both")
   if (has.summary == "Both") {
     p / p.summary + plot_layout(heights = c(1, 0.15))
   }else if (has.summary == "Summary") {
-    p.summary
+    p.summary + theme(legend.justification = "left", legend.position="top")
   }else{
     p
   }
@@ -5951,29 +5956,54 @@ tibble(FILE = dir_ls(THE.DIR, pattern="*.csv")) |>
   mutate(SUMMARY.PLOT = map(SUMMARY, plot_summary_per_operation)) |>
   mutate(SUMMARY.TIME.PLOT = map(DATA, plot_total_time_per_operation)) |>
   mutate(SUMMARY.COMBINED = map2(SUMMARY.PLOT, SUMMARY.TIME.PLOT, `|`)) |>
-  mutate(DATA.AGG = map(DATA, do_the_reference_aggregation, 50)) |>
+  mutate(DATA.AGG = map(DATA, do_the_reference_aggregation, 100)) |>
   # tradicional ST view
   mutate(ST = map(DATA, our_st_plot)) |>  
-  mutate(ST.AGG = map(DATA.AGG, \(x) do_the_viz(x, has.summary = ""))) -> df
+  mutate(ST.AGG = map(DATA.AGG, \(x) do_the_viz(x, has.summary = "Summary"))) -> df
 #+end_src
+
+#+RESULTS:
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 df
 #+end_src
 
+#+RESULTS:
+: # A tibble: 3 × 10
+:   FILE       KEY   DATA     SUMMARY  SUMMARY.PLOT SUMMARY.TIME.PLOT SUMMARY.COMBINED DATA.AGG
+:   <fs::path> <chr> <named > <named > <named list> <named list>      <named list>     <named >
+: 1 …0Gpbs.csv 256-… <tibble> <tibble> <ggplt2::>   <ggplt2::>        <patchwrk>       <tibble>
+: 2 …0Gpbs.csv 256-… <tibble> <tibble> <ggplt2::>   <ggplt2::>        <patchwrk>       <tibble>
+: 3 …1Gpbs.csv 256-… <tibble> <tibble> <ggplt2::>   <ggplt2::>        <patchwrk>       <tibble>
+: # ℹ 2 more variables: ST <named list>, ST.AGG <named list>
+
 *** Plot
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 library(purrr)
-pdf("plots.pdf", width = 10, height = 8)
+pdf("plots.pdf", width = 10, height = 2.5)
 df |>
+  slice(1,3) |>
+  arrange(desc(FILE)) |>
   select(FILE, ST.AGG) |>
-  pwalk(function(FILE, ST.AGG) {
+  mutate(CASE = basename(FILE)) |>
+  mutate(CASE = gsub("256-", "", CASE)) |>
+  mutate(CASE = gsub(".csv", "", CASE)) |>
+  select(CASE, ST.AGG) |>
+  pwalk(function(CASE, ST.AGG) {
 
     page <- (ST.AGG)
-    print(page + ggtitle(FILE))# + coord_cartesian(xlim=c(0,1)))
+    print(page + ggtitle(CASE) + coord_cartesian(xlim=c(0,84)))
 
   })
 
 dev.off()
 #+end_src
+
+#+RESULTS:
+: Coordinate system already present.
+: ℹ Adding new coordinate system, which will replace the existing one.
+: Coordinate system already present.
+: ℹ Adding new coordinate system, which will replace the existing one.
+: null device 
+:           1

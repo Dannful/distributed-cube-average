@@ -5583,27 +5583,18 @@ do_the_aggregation <- function(df, step_width) {
   select(ResourceId = Container, Task = Value, Start, End) |>
     arrange(ResourceId, Task, Start) |>
     group_by(ResourceId, Task) |>
-    reframe(
+    reframe({
+      # Capture original Start/End before tibble() column shadowing can occur
+      s <- Start
+      e <- End
       bind_rows(
-        tibble(
-          Start = Start,
-          End   = End,
-          Active = 1
-        ),
-        tibble(
-          Start = End,
-          End   = lead(Start),
-          Active = 0
-        ) |> filter(!is.na(End)),
-        tibble(
-          Start = 0,
-          End   = first(Start),
-          Active = 0
-        )
+        tibble(Start = s, End = e, Active = 1),
+        tibble(Start = e, End = lead(s), Active = 0) |> filter(!is.na(End)),
+        tibble(Start = 0, End = first(s), Active = 0)
       )
-    ) |>
+    }) |>
     rename(Value = Active) |>
-    arrange(ResourceId, Task, Start) |>
+    arrange(ResourceId, Task, Start, End) |>
     group_by(ResourceId, Task) |>
     do(remyTimeIntegrationPrep(., myStep = step_width)) |>
     mutate(Start = Slice,

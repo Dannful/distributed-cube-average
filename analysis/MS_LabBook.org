@@ -5450,4 +5450,49 @@ df$DATA[[1]] |>
 #+end_src
 
 #+RESULTS:
-: [1] 220.1621
+: [1] 1053.443
+
+*** Plots for the report
+**** Very simply plot of first five seconds
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df |>
+  filter(KEY == "real") |>
+  select(ST) |>
+  pull(ST) -> p
+p[[1]] +
+  coord_cartesian(xlim=c(0,5))
+#+end_src
+
+#+RESULTS:
+
+**** Another plot with an aggregated view
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df |>
+  filter(KEY == "real") |>
+  select(ST.AGG) |>
+  pull(ST.AGG) -> p
+p[[1]] #+
+#  coord_cartesian(xlim=c(0,5))
+#+end_src
+
+#+RESULTS:
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+library(purrr)
+pdf("plots-report.pdf", width = 10, height = 8)
+
+df |>
+  filter(KEY == "real") |>
+  select(ST, ST.AGG) |>
+  pwalk(function(ST, ST.AGG) {
+    page <- (ST / ST.AGG)
+    print(page)
+  })
+dev.off()
+#+end_src
+
+#+RESULTS:
+: null device 
+:           1

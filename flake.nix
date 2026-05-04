@@ -26,6 +26,9 @@
           digest
           tidyverse
           plotly
+          styler
+          patchwork
+          optparse
         ];
       };
 

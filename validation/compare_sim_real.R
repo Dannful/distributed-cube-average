@@ -270,11 +270,7 @@ generate_combined_load_chart <- function(real_df, sim_df) {
 simplify_dataset <- function(df) {
   df <- df |>
     filter(problem_size %in% problem_sizes) |>
-    arrange(Rank, problem_size, Start) |>
-    group_by(Rank, problem_size) |>
-    mutate(End = coalesce(min(End, lead(Start)), End)) |>
-    mutate(Duration = End - Start) |>
-    ungroup()
+    arrange(Rank, problem_size, Start)
   core_start <- df |>
     filter(Operation == "MPI_Irecv") |>
     pull(Start) |>
@@ -288,8 +284,7 @@ simplify_dataset <- function(df) {
     filter(End > core_start) |>
     mutate(Start = Start - core_start) |>
     mutate(End = End - core_start) |>
-    filter(Operation %in% c("MPI_Irecv", "MPI_Isend", "MPI_Waitall")) |>
-    mutate(Operation = as.factor(Operation))
+    filter(Operation %in% c("MPI_Irecv", "MPI_Isend", "MPI_Waitall"))
   compute_rows <- df |>
     group_by(Rank, problem_size) |>
     mutate(next.start = lead(Start)) |>
@@ -298,26 +293,16 @@ simplify_dataset <- function(df) {
     filter(Duration > 0) |>
     ungroup()
   bind_rows(df, compute_rows) |>
-    arrange(Rank, problem_size, Start)
+    arrange(Rank, problem_size, Start) |>
+    mutate(Operation = as.factor(Operation))
 }
 
 summarized_dataset <- function(df) {
   df |>
-    filter(Operation != "Compute") |>
-    group_by(Rank, problem_size, Operation) |>
-    arrange(Start, .by_group = TRUE) |>
-    mutate(event_id = row_number()) |>
-    ungroup() |>
-    group_by(problem_size, Operation, event_id) |>
-    summarise(
-      Duration = median(Duration),
-      End = median(End),
-      Start = median(Start),
-      .groups = "drop"
-    ) |>
+    filter(Rank == 0) |>
+    select(-Rank) |>
     group_by(problem_size) |>
-    summarize(mpi_time = sum(Duration), total_time = max(End) - min(Start)) |>
-    mutate(compute_time = total_time - mpi_time) |>
+    summarize(mpi_time = sum(Duration[Operation != "Compute"], na.rm = TRUE), compute_time = sum(Duration[Operation == "Compute"], na.rm = TRUE), total_time = max(End, na.rm = TRUE) - min(Start, na.rm = TRUE)) |>
     relocate(problem_size, compute_time, mpi_time, total_time)
 }
 

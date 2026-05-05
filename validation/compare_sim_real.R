@@ -7,9 +7,10 @@ library(patchwork)
 library(optparse)
 
 option_list <- list(
-  make_option("--real-data-dir",       type = "character", default = NULL),
+  make_option("--real-data-dir", type = "character", default = NULL),
   make_option("--simulation-data-dir", type = "character", default = NULL),
-  make_option("--problem-sizes",       type = "character", default = NULL)
+  make_option("--problem-sizes", type = "character", default = NULL),
+  make_option("--time-max", type = "integer", default = NULL)
 )
 opts <- parse_args(OptionParser(option_list = option_list))
 
@@ -21,10 +22,11 @@ if (is.null(opts$`problem-sizes`)) {
 }
 
 real_traces_path <- opts$`real-data-dir`
-sim_traces_path  <- opts$`simulation-data-dir`
-problem_sizes    <- as.numeric(str_split_1(opts$`problem-sizes`, ","))
-has_real         <- !is.null(real_traces_path)
-has_sim          <- !is.null(sim_traces_path)
+sim_traces_path <- opts$`simulation-data-dir`
+problem_sizes <- as.numeric(str_split_1(opts$`problem-sizes`, ","))
+has_real <- !is.null(real_traces_path)
+has_sim <- !is.null(sim_traces_path)
+time_max <- opts$`time-max`
 
 read_dataset <- function(file_path) {
   dta <- read_csv(file_path, show_col_types = FALSE, col_names = c(
@@ -40,6 +42,17 @@ read_dataset <- function(file_path) {
     rename(Rank = Container, Operation = Value) -> df.states
 
   df.states
+}
+
+better_contrast_style <- function() {
+  scale_fill_manual(
+    values = c(
+      MPI_Irecv = "#4DAF4A",
+      MPI_Isend = "#E41A1C",
+      MPI_Waitall = "#377EB8",
+      Compute = "#FFD92F"
+    )
+  )
 }
 
 load_simulation <- function(traces_path) {
@@ -100,7 +113,8 @@ generate_gantt_chart <- function(df) {
         0,
         "pt"
       ), legend.box.margin = margin(0, 0, 0, 0), legend.title = element_text(size = 10)
-    )
+    ) +
+    better_contrast_style()
 }
 
 generate_combined_gantt_chart <- function(real_df, sim_df) {
@@ -137,7 +151,8 @@ generate_load_chart <- function(df) {
       legend.box.spacing = unit(0, "pt"),
       legend.box.margin = margin(0, 0, 0, 0),
       legend.title = element_text(size = 10)
-    )
+    ),
+    better_contrast_style()
   )
   yconfm <- df |>
     distinct(Rank) |>
@@ -245,8 +260,10 @@ generate_combined_load_chart <- function(real_df, sim_df) {
     ylab("Load [%]") +
     xlab("Time [seconds]") +
     load_theme +
-    theme(legend.position = "none", strip.text = element_blank(),
-          strip.background = element_blank())
+    theme(
+      legend.position = "none", strip.text = element_blank(),
+      strip.background = element_blank()
+    )
   p_rank / p_load + plot_layout(heights = c(1, 0.15))
 }
 
@@ -304,18 +321,28 @@ summarized_dataset <- function(df) {
     relocate(problem_size, compute_time, mpi_time, total_time)
 }
 
+filter_time_max <- function(df) {
+  if (is.null(time_max)) {
+    df
+  } else {
+    df |>
+      filter(Start < time_max) |>
+      mutate(End = pmin(time_max, End))
+  }
+}
+
 save_load_charts <- function(real_dataset = NULL, simulation_dataset = NULL) {
   walk(problem_sizes, \(size) {
     base_dir <- "plots"
     dir.create(base_dir, showWarnings = FALSE)
     plot <- if (!is.null(real_dataset) && !is.null(simulation_dataset)) {
       generate_combined_load_chart(
-        real_dataset |> filter(problem_size == size),
-        simulation_dataset |> filter(problem_size == size)
+        real_dataset |> filter(problem_size == size) |> filter_time_max(),
+        simulation_dataset |> filter(problem_size == size) |> filter_time_max()
       )
     } else {
       df <- if (!is.null(real_dataset)) real_dataset else simulation_dataset
-      generate_load_chart(compute_load_data(df |> filter(problem_size == size)))
+      generate_load_chart(compute_load_data(df |> filter(problem_size == size) |> filter_time_max()))
     }
     pdf_path <- paste0(base_dir, "/load_", size, ".pdf")
     ggsave(pdf_path, plot, width = 15, height = 8)
@@ -329,12 +356,12 @@ save_gantt_charts <- function(real_dataset = NULL, simulation_dataset = NULL) {
     dir.create(base_dir, showWarnings = FALSE)
     if (!is.null(real_dataset) && !is.null(simulation_dataset)) {
       plot <- generate_combined_gantt_chart(
-        real_dataset |> filter(problem_size == size),
-        simulation_dataset |> filter(problem_size == size)
+        real_dataset |> filter(problem_size == size) |> filter_time_max(),
+        simulation_dataset |> filter(problem_size == size) |> filter_time_max()
       )
     } else {
-      df   <- if (!is.null(real_dataset)) real_dataset else simulation_dataset
-      plot <- generate_gantt_chart(df |> filter(problem_size == size, Start < 3))
+      df <- if (!is.null(real_dataset)) real_dataset else simulation_dataset
+      plot <- generate_gantt_chart(df |> filter(problem_size == size) |> filter_time_max())
     }
     pdf_path <- paste0(base_dir, "/gantt_", size, ".pdf")
     ggsave(pdf_path, plot, width = 15, height = 6)
@@ -347,18 +374,22 @@ real_dataset <- if (has_real) {
     filter(run_number == 1) |>
     select(-run_number) |>
     simplify_dataset()
-} else NULL
+} else {
+  NULL
+}
 
 simulation_dataset <- if (has_sim) {
   load_simulation(sim_traces_path) |>
     simplify_dataset()
-} else NULL
+} else {
+  NULL
+}
 
 save_gantt_charts(real_dataset, simulation_dataset)
 save_load_charts(real_dataset, simulation_dataset)
 
 if (has_real && has_sim) {
-  real_summary       <- real_dataset |> summarized_dataset()
+  real_summary <- real_dataset |> summarized_dataset()
   simulation_summary <- simulation_dataset |> summarized_dataset()
   comparison_summary <- inner_join(real_summary, simulation_summary, by = "problem_size") |>
     rename(

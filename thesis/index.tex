@@ -2,6 +2,7 @@
 
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}
+\usepackage{subcaption}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{xcolor}
@@ -1020,77 +1021,74 @@ up for the lack of computational resources for further experimenting.
 
 \section{HPC cluster executions}
 
-\subsection{PCAD}
-\label{sec:pcad_results}
-The experiments were conducted on the \textit{poti} cluster of the
-PCAD. The cluster consists of five computational nodes, each
-equipped with an Intel Core i7-14700KF processor at 3.4~GHz, offering
-a hybrid architecture of 20 cores and 28 threads. Each machine is
-equipped with 96~GB of DDR5 RAM, an NVIDIA GeForce RTX~4070 GPU with
-12~GB for hardware acceleration, and a mixed storage system combining
-the speed of a 119~GB NVMe with the capacity of a 1.7~TB SSD. The
-nodes are interconnected by a Gigabit network. The experiments
-described below use all five nodes and employ only the five RTX~4070
-accelerators. For software, Nix is used for computational
-reproducibility, with MPI tracing via the akypuera tool
-\cite{akypuera}. A trace is generated with all MPI operations
-performed per MPI process, which are integrated through conversion to
-the Paj\'{e} format and finally converted into a single CSV file
-describing all MPI operations performed by each rank, using the PajeNG
-tool \cite{pajeng}. This file is then subjected to scripts developed in
-the R language with the tidyverse/ggplot2 meta-package for data
-analysis and computation of masking ratios and performance.
+The experiments cover both CPU and GPU hardwares, highlighting their
+implications
+in the final result and respective performance analysis.
 
-Figure~\ref{fig:gantt_waitall_compute} illustrates a space-time chart
-that reflects the behavior of each of the ranks (Y axis) over time (X
-axis), where the colors of the rectangles represent which operations
-were performed and their durations. The first five seconds are shown to
-illustrate the initial behavior. Although the chart contains the three
-MPI operations in the legend---\texttt{Irecv}, \texttt{Isend},
-\texttt{Waitall}---one can observe that the \texttt{Waitall} operation
-is the most present in time, since \texttt{Irecv} and \texttt{Isend}
-are practically instantaneous operations. The most relevant
-observation indicates that \texttt{Waitall} is predominant over
-computation (\texttt{Compute}), demonstrating the inefficacy of
-masking on the chosen experimental platform.
+\subsection{CPU}
 
-\begin{figure}[H]
+The experiments were conducted on the \textit{cei} cluster of the
+PCAD. The cluster consists of six computational nodes, connected by
+a 10~Gbit network, each equipped with two Intel Xeon E5-2699 at
+2.0~GHz, offering 48 threads with 24
+cores and a 256~GB DDR4 with a 1.9~TB SSD. The experiments utilize
+OpenMP to leverage each node's parallelism capabilities, as well
+as Nix for reproducibility. Tracing is handled by akypuera
+\cite{akypuera}, which tracks every MPI action performed by
+the processes, to be later converted to a single CSV file
+describing all MPI operations executed by each rank, using the
+PajeNG tool \cite{pajeng}. This file is then subjected to scripts
+developed in the R language with the tidyverse/ggplot2 meta-package
+for data analysis and computation of masking ratios and performance.
+
+Figure~\ref{fig:real_cpu_gantt_256}
+illustrates a space-time chart of a $256 \times 256 \times 256$
+problem size execution, reflecting the behavior of each of the ranks
+(Y axis) over time (X
+axis), with the colors of the rectangles representing which operations
+were performed and their durations. Only the first second is shown, in
+order to illustrate the overall behavior within the iterations. Although
+the chart contains three distinct MPI operations---\texttt{Irecv},
+\texttt{Isend}
+and \texttt{Waitall}---one can observe that the latter is the most
+present in time,
+since the other two are practically instantaneous operations. The most relevant
+observation to be made here is the predominance of computation over
+communication time, which is more clearly observable in
+figure~\ref{fig:real_cpu_load_256}:
+the aggregate load sits at $\approx 75\%$ compute per quantile, pointing that
+a $256^3$ problem size requires more time from an Intel Xeon E5-2699 than from
+a 10~Gbit network.
+
+\begin{figure}[ht]
   \centering
-  \caption{Space-time chart of the first five seconds of the MPI
-    program execution with 5 ranks, where colors represent MPI
-  operations (green, red and blue) and computation (yellow).}
-  \label{fig:gantt_waitall_compute}
-  \includegraphics[width=\textwidth]{./assets/gantt_waitall_compute.pdf}
+  \caption{Gantt and load charts of a $256^3$ problem size execution}
+  \begin{subfigure}{\textwidth}
+    \centering
+    \caption{Gantt chart of a $256^3$ execution}
+    \label{fig:real_cpu_gantt_256}
+    \includegraphics[width=\textwidth]{./assets/real_cpu/gantt_256.pdf}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+    \caption{Space-time load chart of a $256^3$ execution, split by
+    quantiles with the respective load of each operation}
+    \label{fig:real_cpu_load_256}
+    \includegraphics[width=\textwidth]{./assets/real_cpu/load_256.pdf}
+  \end{subfigure}
 \end{figure}
 
-Figure~\ref{fig:gantt_load} illustrates a space-time chart that
-reflects the totality of the execution of the five MPI processes (Y
-axis) over time (X axis). A summary (Load~[\%]) is added to the chart,
-indicating globally the presence of each operation considering all
-ranks aggregated. This chart confirms that, throughout the entire
-80-second execution using five RTX~4070 accelerators, the
-\texttt{Waitall} (wait) operation is predominant, again indicating a
-low masking rate. The reason for this is that the computational
-capacity of an RTX~4070 is far superior to the network throughput,
-causing computations to be too fast for a slow Gigabit network.
-
-\begin{figure}[H]
-  \centering
-  \caption{Space-time chart of the entire execution of the MPI program
-    with 5 ranks, where colors represent the \texttt{MPI\_Waitall}
-    (blue) and computation (yellow) operations. The upper chart shows
-    the behavior per rank, while the lower chart shows the aggregate
-  over time across all ranks.}
-  \label{fig:gantt_load}
-  \includegraphics[width=\textwidth]{./assets/gantt_load.pdf}
-\end{figure}
-
-A possible path to resolve this situation would be to increase the
-block sizes so that computation takes longer. This is motivated by the
-fact that the block faces grow more slowly ($6(\sqrt[3]{P} - 1)L^2$)
-compared to the volume of the cube ($L^3$). Thus, while the processing
-capacity (volume) grows cubically, the communication requirement
-(boundary) grows only quadratically. This allows exploring different
+Finally, by observing figure~\ref{fig:real_cpu_gantt_512}, representing
+the first five seconds of a $512^3$ execution,
+one can notice much longer compute events than MPI events.
+In addition, figure~\ref{fig:real_cpu_load_512} ireveals an $\approx
+87\%$ load from compute alone,
+indicating that problem sizes grow, computation costs increase at a
+larger rate than communication ones. In fact, the reasoning is
+immediate: block faces grow more slowly ($6(\sqrt[3]{P} - 1)L^2$)
+compared to the volume of the cube ($L^3$). Thus, while the
+processing capacity grows cubically, the communication requirement (boundary)
+grows only quadratically. This allows exploring different
 Boundary/Volume ratios, as presented in
 Table~\ref{tab:frontier_volume} for a fixed number of processors
 $P = 64$.
@@ -1119,57 +1117,285 @@ relative terms. The system therefore gains computational efficiency
 because the communication/computation ratio tends to zero as the
 problem grows.
 
-However, this path of increasing block sizes (larger $L$) is
-impractical as it brings greater memory requirements both on the
-coordinator and on the GPUs (which have a limit of 12~GB per
-accelerator on this platform). Experiments conducted with different
-problem widths (256, 512, etc.) indicate that the maximum size
-executable on the five \textit{poti} machines is 1024, and at this
-size the communication cost is still too high for masking to occur.
-Alternatively, improving the interconnection network on the chosen
-computational platform is difficult as it would require a network
-capacity upgrade.
+\begin{figure}[ht]
+  \centering
+  \caption{Gantt and load charts of a $512^3$ problem size execution}
+  \begin{subfigure}{\textwidth}
+    \centering
+    \caption{Gantt chart of a $512^3$ execution}
+    \label{fig:real_cpu_gantt_512}
+    \includegraphics[width=\textwidth]{./assets/real_cpu/gantt_512.pdf}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+    \caption{Space-time load chart of a $512^3$ execution, split by
+    quantiles with the respective load of each operation}
+    \label{fig:real_cpu_load_512}
+    \includegraphics[width=\textwidth]{./assets/real_cpu/load_512.pdf}
+  \end{subfigure}
+\end{figure}
 
-\section{Simulation}
-\label{sec:simulation_results}
-To demonstrate the real masking capability of the implemented MPI
-program, simulations using SimGrid SMPI were conducted
-\cite{simgrid}. This tool allows controlling the platform
-configuration and executing the same developed code on a customized
-platform. This process is known as emulation, where the computation
-code is effectively executed while the MPI communication directives are
-simulated. This allows altering the network capacity and evaluating via
-emulation the impact on the program's behavior. Since the emulation
-effectively executes the code, a single \textit{poti} computational
-node was used to run the SMPI simulations so that the computation times
-match those obtained on that platform.
+\subsection{GPU}
 
-Figure~\ref{fig:gantt_simulation} compares the behavior of five MPI
-processes between a 1~Gbps network (above) and a 100~Gbps network
-(below), highlighting the \texttt{MPI\_Waitall} (blue) and
-\texttt{Compute} (yellow) states with synchronized time axes. As
-observed, the network that was previously limiting the execution (with
-a 1~Gbps network) generating an execution of approximately 80~seconds,
-now (with a 100~Gbps network) ceases to be the bottleneck, as an
-execution of approximately 20~seconds is observed with the majority of
-the time spent in computation.
+The experiments were conducted on the \textit{poti} cluster of the
+PCAD. The cluster consists of five computational nodes, each
+equipped with an Intel Core i7-14700KF processor at 3.4~GHz, offering
+a hybrid architecture of 20 cores and 28 threads. Each machine is
+equipped with 96~GB of DDR5 RAM, an NVIDIA GeForce RTX~4070 GPU with
+12~GB for hardware acceleration, and a mixed storage system combining
+the speed of a 119~GB NVMe with the capacity of a 1.7~TB SSD. The
+nodes are interconnected by a Gigabit network. The experiments
+described below use all five nodes and employ only the five RTX~4070
+accelerators. The same software toolchain described in the CPU
+experiments is used for tracing and analysis.
+
+In the figures that follow, each Gantt chart shows only a subset of
+the total execution time, chosen for visibility of the individual
+iterations; the load charts, on the other hand, always cover the full
+execution duration and therefore provide the most meaningful
+quantitative perspective.
+
+Figure~\ref{fig:real_gpu_128} presents the Gantt and load charts
+for a $128^3$ problem size. The Gantt chart shows the first second
+of execution, where \texttt{Waitall} dominates, with computation appearing
+as thin slivers between long waiting periods. The load chart confirms
+this across the full $\approx 17$~second run: the aggregate compute
+load sits at $\approx 20$--$25\%$, indicating that the RTX~4070
+finishes its local computation far faster than the Gigabit network can
+deliver the ghost cells, leaving each rank idle for the majority of
+each iteration.
+\texttt{Waitall} dominates the execution, with computation appearing
+as thin slivers between long waiting periods. The load chart confirms
+this: the aggregate compute load sits at $\approx 20$--$25\%$,
+indicating that the RTX~4070 finishes its local computation far
+faster than the Gigabit network can deliver the ghost cells, leaving
+each rank idle for the majority of each iteration.
 
 \begin{figure}[H]
   \centering
-  \caption{Aggregated behavior of the five MPI processes for the two
-    most frequent states (\texttt{MPI\_Waitall}, blue; and
-    \texttt{Compute}, yellow), for the previous case where the network
-    is limited to 1~Gbps (above) and in a hypothetical scenario with a
-    100~Gbps network (below)---the time axis (X) is synchronized
-  between the two charts.}
-  \label{fig:gantt_simulation}
-  \includegraphics[width=\textwidth]{./assets/gantt_simulation.pdf}
+  \caption{Gantt and load charts of a $128^3$ GPU execution}
+  \begin{subfigure}{\textwidth}
+    \centering
+    \caption{Gantt chart of a $128^3$ execution (first second)}
+    \label{fig:real_gpu_gantt_128}
+    \includegraphics[width=\textwidth]{./assets/real_gpu/gantt_128.pdf}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+    \caption{Space-time load chart of a $128^3$ execution, split by
+    quantiles with the respective load of each operation}
+    \label{fig:real_gpu_load_128}
+    \includegraphics[width=\textwidth]{./assets/real_gpu/load_128.pdf}
+  \end{subfigure}
+  \label{fig:real_gpu_128}
 \end{figure}
 
-These experiments point to the fact that the masking directives
-implemented in the program are effectively capable of masking
-communications when there is an adequate balance between the
-interconnection network capacity and the computational capacity.
+Figure~\ref{fig:real_gpu_256} shows the results for a $256^3$
+execution. The Gantt chart shows that the compute
+segments become more visible compared to $128^3$; however, the load
+chart still shows a similar $\approx
+20\%$ compute fraction, confirming that the network remains the
+bottleneck in these circumstances.
+
+\begin{figure}[H]
+  \centering
+  \caption{Gantt and load charts of a $256^3$ GPU execution}
+  \begin{subfigure}{\textwidth}
+    \centering
+    \caption{Gantt chart of a $256^3$ execution (first second)}
+    \label{fig:real_gpu_gantt_256}
+    \includegraphics[width=\textwidth]{./assets/real_gpu/gantt_256.pdf}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+    \caption{Space-time load chart of a $256^3$ execution, split by
+    quantiles with the respective load of each operation}
+    \label{fig:real_gpu_load_256}
+    \includegraphics[width=\textwidth]{./assets/real_gpu/load_256.pdf}
+  \end{subfigure}
+  \label{fig:real_gpu_256}
+\end{figure}
+
+Finally, figure~\ref{fig:real_gpu_512} presents the $512^3$ case.
+The Gantt chart shows wider compute blocks than the
+previous sizes, yet \texttt{Waitall} still prevails. Although
+Table~\ref{tab:frontier_volume} predicts a decreasing boundary/volume
+ratio with larger blocks, the load chart reveals that the compute
+fraction remains at $\approx 20\%$,
+virtually unchanged from $128^3$ and $256^3$. This indicates that,
+despite the volume growing cubically, the RTX~4070 processes even the
+larger domain so quickly that the Gigabit network remains the
+overwhelming bottleneck. Increasing the problem size alone is
+therefore insufficient to achieve masking on this platform.
+
+\begin{figure}[H]
+  \centering
+  \caption{Gantt and load charts of a $512^3$ GPU execution}
+  \begin{subfigure}{\textwidth}
+    \centering
+    \caption{Gantt chart of a $512^3$ execution (first 3 seconds)}
+    \label{fig:real_gpu_gantt_512}
+    \includegraphics[width=\textwidth]{./assets/real_gpu/gantt_512.pdf}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+    \caption{Space-time load chart of a $512^3$ execution, split by
+    quantiles with the respective load of each operation}
+    \label{fig:real_gpu_load_512}
+    \includegraphics[width=\textwidth]{./assets/real_gpu/load_512.pdf}
+  \end{subfigure}
+  \label{fig:real_gpu_512}
+\end{figure}
+
+Further increasing the block size is impractical: the RTX~4070's
+12~GB VRAM easily becomes a resource bottleneck, and
+experiments still show communication-dominated behavior
+on the Gigabit network. The path forward is therefore not to enlarge
+the problem, but to improve the interconnection network---a change
+that is infeasible on the physical \textit{poti} cluster but readily
+explorable through simulation.
+
+\section{Simulation}
+\label{sec:simulation_results}
+To demonstrate the masking capability of the implemented MPI
+program under faster networks, simulations using SimGrid SMPI were
+conducted \cite{simgrid}. SimGrid allows controlling the platform
+configuration and executing the same application code on a customized
+virtual platform: the computation code is effectively executed
+(emulation) while the MPI communication directives are simulated.
+A single \textit{poti} node was used to run the SMPI simulations so
+that the computation times match those obtained on the real platform.
+
+Before running the simulations, the \textit{poti} platform was
+calibrated following the methodology described by
+\cite{simgrid_calibration}, which details techniques for extracting
+and modeling the characteristics of the MPI runtime backend and the
+network, such as protocol thresholds, latency and bandwidth,
+into accurate SimGrid
+platform descriptions. This calibration step ensures that the
+simulated computation and communication timings faithfully
+reproduce those observed on the real cluster within an error margin
+of at most $15\%$ for messages measuring up to $1073741824$ bytes,
+the largest size used in the experiments to follow.
+
+Two simulated network configurations were evaluated: 10~Gbps and
+100~Gbps, representing a tenfold and hundredfold improvement over the
+real Gigabit interconnect, respectively.
+
+Figure~\ref{fig:sim_gpu_10g_256} presents the results for a $256^3$
+execution on the 10~Gbps simulated network. The Gantt chart  already
+shows a reversal compared to the real Gigabit
+results (figure~\ref{fig:real_gpu_256}): computation now dominates
+each iteration. The load chart confirms
+this, with the aggregate compute load rising to $\approx 65$--$70\%$.
+
+\begin{figure}[H]
+  \centering
+  \caption{Gantt and load charts of a simulated $256^3$ GPU execution
+  with a 10~Gbps network}
+  \begin{subfigure}{\textwidth}
+    \centering
+    \caption{Gantt chart of a $256^3$ execution (10~Gbps, first second)}
+    \label{fig:sim_gpu_10g_gantt_256}
+    \includegraphics[width=\textwidth]{./assets/sim_gpu_10Gbps/gantt_256.pdf}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+    \caption{Space-time load chart of a $256^3$ execution (10~Gbps),
+    split by quantiles with the respective load of each operation}
+    \label{fig:sim_gpu_10g_load_256}
+    \includegraphics[width=\textwidth]{./assets/sim_gpu_10Gbps/load_256.pdf}
+  \end{subfigure}
+  \label{fig:sim_gpu_10g_256}
+\end{figure}
+
+At $512^3$ on the same 10~Gbps network
+(figure~\ref{fig:sim_gpu_10g_512}), the Gantt chart
+shows even wider compute blocks. The load chart confirms the compute
+fraction rises further to
+$\approx 75$--$80\%$: the larger volume-to-boundary ratio combined
+with the faster network shifts the balance decisively towards
+computation, with \texttt{Waitall} reduced to a minor component.
+
+\begin{figure}[H]
+  \centering
+  \caption{Gantt and load charts of a simulated $512^3$ GPU execution
+  with a 10~Gbps network}
+  \begin{subfigure}{\textwidth}
+    \centering
+    \caption{Gantt chart of a $512^3$ execution (10~Gbps, first second)}
+    \label{fig:sim_gpu_10g_gantt_512}
+    \includegraphics[width=\textwidth]{./assets/sim_gpu_10Gbps/gantt_512.pdf}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+    \caption{Space-time load chart of a $512^3$ execution (10~Gbps),
+    split by quantiles with the respective load of each operation}
+    \label{fig:sim_gpu_10g_load_512}
+    \includegraphics[width=\textwidth]{./assets/sim_gpu_10Gbps/load_512.pdf}
+  \end{subfigure}
+  \label{fig:sim_gpu_10g_512}
+\end{figure}
+
+Figures~\ref{fig:sim_gpu_100g_256} and~\ref{fig:sim_gpu_100g_512}
+present the 100~Gbps simulated network results for $256^3$ and
+$512^3$, respectively. The Gantt charts show computation filling nearly every
+iteration, with \texttt{Waitall} barely perceptible. The load charts
+quantify this: the aggregate compute load reaches $\approx
+85$--$90\%$ for $256^3$ and exceeds $90\%$ for $512^3$, with
+\texttt{Waitall} reduced to a negligible fraction. The asynchronous
+ghost cell exchanges are effectively masked by the interior
+computation, confirming that the MPI overlap strategy implemented in
+this work achieves its goal when provided with an adequate
+interconnection network.
+
+\begin{figure}[H]
+  \centering
+  \caption{Gantt and load charts of a simulated $256^3$ GPU execution
+  with a 100~Gbps network}
+  \begin{subfigure}{\textwidth}
+    \centering
+    \caption{Gantt chart of a $256^3$ execution (100~Gbps, first second)}
+    \label{fig:sim_gpu_100g_gantt_256}
+    \includegraphics[width=\textwidth]{./assets/sim_gpu_100Gbps/gantt_256.pdf}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+    \caption{Space-time load chart of a $256^3$ execution (100~Gbps),
+    split by quantiles with the respective load of each operation}
+    \label{fig:sim_gpu_100g_load_256}
+    \includegraphics[width=\textwidth]{./assets/sim_gpu_100Gbps/load_256.pdf}
+  \end{subfigure}
+  \label{fig:sim_gpu_100g_256}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \caption{Gantt and load charts of a simulated $512^3$ GPU execution
+  with a 100~Gbps network}
+  \begin{subfigure}{\textwidth}
+    \centering
+    \caption{Gantt chart of a $512^3$ execution (100~Gbps, first 2 seconds)}
+    \label{fig:sim_gpu_100g_gantt_512}
+    \includegraphics[width=\textwidth]{./assets/sim_gpu_100Gbps/gantt_512.pdf}
+  \end{subfigure}
+  \begin{subfigure}{\textwidth}
+    \centering
+    \caption{Space-time load chart of a $512^3$ execution (100~Gbps),
+    split by quantiles with the respective load of each operation}
+    \label{fig:sim_gpu_100g_load_512}
+    \includegraphics[width=\textwidth]{./assets/sim_gpu_100Gbps/load_512.pdf}
+  \end{subfigure}
+  \label{fig:sim_gpu_100g_512}
+\end{figure}
+
+These experiments confirm that the masking directives implemented in
+the program are effective when there is an adequate balance between
+the interconnection network capacity and the computational capacity
+of the accelerators. The progression from 1~Gbps (real) through
+10~Gbps to 100~Gbps (simulated) demonstrates a clear and gradual
+shift from communication-bound to computation-bound behavior,
+validating both the application design and the simulation methodology.
 
 \chapter{Conclusion}
 The present research shows that scaling the Fletcher application

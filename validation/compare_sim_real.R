@@ -10,7 +10,9 @@ option_list <- list(
   make_option("--real-data-dir", type = "character", default = NULL),
   make_option("--simulation-data-dir", type = "character", default = NULL),
   make_option("--problem-sizes", type = "character", default = NULL),
-  make_option("--time-max", type = "integer", default = NULL)
+  make_option("--time-max", type = "integer", default = NULL),
+  make_option("--output-dir", type = "character", default = "plots"),
+  make_option("--chart-types", type = "character", default = "gantt,load")
 )
 opts <- parse_args(OptionParser(option_list = option_list))
 
@@ -27,6 +29,8 @@ problem_sizes <- as.numeric(str_split_1(opts$`problem-sizes`, ","))
 has_real <- !is.null(real_traces_path)
 has_sim <- !is.null(sim_traces_path)
 time_max <- opts$`time-max`
+output_dir <- opts$`output-dir`
+chart_types <- str_split_1(opts$`chart-types`, ",")
 
 read_dataset <- function(file_path) {
   dta <- read_csv(file_path, show_col_types = FALSE, col_names = c(
@@ -63,7 +67,7 @@ load_simulation <- function(traces_path) {
   df <- csv_files |>
     set_names() |>
     map_dfr(read_dataset, .id = "source_file") |>
-    mutate(problem_size = as.integer(str_extract(source_file, "\\d+"))) |>
+    mutate(problem_size = as.integer(str_extract(source_file, "(?<=/)\\d+(?=/[^/]*$)"))) |>
     select(-source_file)
   df
 }
@@ -125,6 +129,9 @@ generate_combined_gantt_chart <- function(real_df, sim_df) {
 }
 
 compute_load_data <- function(df, n_slices = 100) {
+  if (nrow(df) == 0) {
+    return(tibble(Rank = integer(), Slice = integer(), StartTS = numeric(), EndTS = numeric(), DurationTS = numeric(), Operation = character(), Time.Sum = numeric()))
+  }
   t_min <- min(df$Start)
   t_max <- max(df$End)
   slice_width <- (t_max - t_min) / n_slices
@@ -157,7 +164,7 @@ generate_load_chart <- function(df) {
   yconfm <- df |>
     distinct(Rank) |>
     arrange(Rank) |>
-    mutate(Position = 0:(n() - 1))
+    mutate(Position = seq_len(n()) - 1L)
   p_rank <- df |>
     filter(Time.Sum != 0) |>
     group_by(Rank, Slice, StartTS, EndTS, DurationTS, Operation) |>
@@ -219,7 +226,7 @@ generate_combined_load_chart <- function(real_df, sim_df) {
   yconfm <- combined |>
     distinct(Rank) |>
     arrange(Rank) |>
-    mutate(Position = 0:(n() - 1))
+    mutate(Position = seq_len(n()) - 1L)
   p_rank <- combined |>
     filter(Time.Sum != 0) |>
     group_by(src, Rank, Slice, StartTS, EndTS, DurationTS, Operation) |>
@@ -307,18 +314,17 @@ summarized_dataset <- function(df) {
 }
 
 filter_time_max <- function(df) {
-  if (is.null(time_max)) {
-    df
-  } else {
-    df |>
+  if (!is.null(time_max)) {
+    df <- df |>
       filter(Start < time_max) |>
       mutate(End = pmin(time_max, End))
   }
+  df
 }
 
 save_load_charts <- function(real_dataset = NULL, simulation_dataset = NULL) {
   walk(problem_sizes, \(size) {
-    base_dir <- "plots"
+    base_dir <- output_dir
     dir.create(base_dir, showWarnings = FALSE)
     plot <- if (!is.null(real_dataset) && !is.null(simulation_dataset)) {
       generate_combined_load_chart(
@@ -337,7 +343,7 @@ save_load_charts <- function(real_dataset = NULL, simulation_dataset = NULL) {
 
 save_gantt_charts <- function(real_dataset = NULL, simulation_dataset = NULL) {
   walk(problem_sizes, \(size) {
-    base_dir <- "plots"
+    base_dir <- output_dir
     dir.create(base_dir, showWarnings = FALSE)
     if (!is.null(real_dataset) && !is.null(simulation_dataset)) {
       plot <- generate_combined_gantt_chart(
@@ -370,8 +376,23 @@ simulation_dataset <- if (has_sim) {
   NULL
 }
 
-save_gantt_charts(real_dataset, simulation_dataset)
-save_load_charts(real_dataset, simulation_dataset)
+if ("gantt" %in% chart_types) {
+  save_gantt_charts(real_dataset, simulation_dataset)
+}
+
+if ("load" %in% chart_types) {
+  save_load_charts(real_dataset, simulation_dataset)
+}
+
+if(has_real) {
+  real_summary <- real_dataset |> summarized_dataset()
+  print(real_summary)
+}
+
+if(has_sim) {
+  simulation_summary <- simulation_dataset |> summarized_dataset()
+  print(simulation_summary)
+}
 
 if (has_real && has_sim) {
   real_summary <- real_dataset |> summarized_dataset()

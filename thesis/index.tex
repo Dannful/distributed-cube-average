@@ -217,9 +217,9 @@ simulation tool based on SimGrid \cite{simgrid} was conceived to
 explore the application's parameters and suitable High-Performance
 Computing (HPC) cluster characteristics, since higher problem sizes
 are required to achieve effective masking \cite{multi-gpu,
-okamoto2010}, ultimately leading to the application reaching its
-highest performance, defined by a weak scaling with an $O(n)$
-upper bound, where $n$ is the number of MPI workers used.
+okamoto2010}, ultimately demonstrating that the communication
+overhead can be effectively masked when the network bandwidth
+matches the computational throughput of the accelerators.
 
 The remainder of this document is organized as follows.
 Chapter~\ref{ch:theoretical_framework} presents the theoretical
@@ -417,7 +417,7 @@ a landscape, some well-established works ought to be explored, aiming at
 providing essential background and inspiration.
 
 \section{Multi-GPU Fletcher}
-\cite{multi-gpu} explores the distribution of the computation
+\citeonline{multi-gpu} explores the distribution of the computation
 workload of Fletcher
 throughout multiple GPUs, aiming at analyzing its performance through the lens
 of scalability and efficiency when compared to its single GPU
@@ -428,7 +428,7 @@ implying additional synchronization and communication efforts required.
 In this sense, the multi-GPU implementation is closely related to the
 present one:
 the grid is initially partitioned in the $z$ axis, in order to
-maximize the use of
+maximize the use
 of the device's L1 and L2 caches. Then, during the actual
 computation, ghost cells are used to synchronize the halo regions,
 employing device-to-device memory transfers for communication.
@@ -444,9 +444,9 @@ network bandwidth and latency are far more noteworthy bottlenecks
 than PCIe transfers, requiring more thorough efforts to mitigate them.
 
 \section{Stencil communication in heterogeneous supercomputers}
-\cite{stencil_supercomputers} discourses about the optimization of
+\citeonline{stencil_supercomputers} discusses the optimization of
 work distribution along a Cartesian grid, emphasizing its importance
-in communication-heavy applications, specially when executed on heterogeneous
+in communication-heavy applications, especially when executed on heterogeneous
 HPC clusters. The approach consists of a three-step process employing CUDA and
 MPI with the goal of distributing work in a node-aware manner whilst leveraging
 the most out of the GPUs present in each host.
@@ -481,7 +481,7 @@ host's GPUs, as shown in figure \ref{fig:node_decomposition}.
 Subsequently, after the topology has been properly projected on the input mesh,
 it is vital to assign the most proper nodes to certain chunks of data, based
 on optimization algorithms run on the underlying platform.
-In this sense, it is sensible to model the topology as as a bijector assignment
+In this sense, it is sensible to model the topology as a bijector assignment
 between $n$ facilities and $n$ locations, with the goal of placing
 the facilities
 with the highest flow between them close to one another
@@ -516,12 +516,14 @@ through PCIe buses). Such approach leverages the most out of each distinct
 circumstance, maximizing the use of the heterogeneity of the HPC cluster.
 
 \section{Accelerating simulation of seismic wave propagation}
-\cite{okamoto2010} discusses optimization strategies for seismic applications
+\citeonline{okamoto2010} discusses optimization strategies for
+seismic applications
 based on GPUs from the viewpoint that the numerical complexity of the arithmetic
 required is very low, posing little to no issue for the device's hardware. Such
 idea thereby leads to the prospect of optimizations on the memory
 management side,
-implying reduced bandwidth and latency costs. In this sense, \cite{okamoto2010}
+implying reduced bandwidth and latency costs. In this sense,
+\citeonline{okamoto2010}
 leverages the GPU's shared memories and registers by processing 2D blocks one
 at a time, leaving the $XY$-plane in the shared memory whilst having
 the rest reside
@@ -531,17 +533,17 @@ data are swapped, implying no accesses to the notoriously slower global memory.
 
 This approach, however, does not scale well with larger problem
 sizes, since the VRAM associated with a single GPU is quickly exhausted.
-\cite{okamoto2010} discourses, therefore, on employing a multi-GPU topology,
+\citeonline{okamoto2010} discusses, therefore, employing a multi-GPU topology,
 making use of MPI for device-to-device data transfers, leveraging halo regions
 (referred to as "ghost points" by the authors) and asynchronous
 communication for computation overlapping.
 
-Finally, \cite{okamoto2010} observes a scaling of $N^{\frac{2}{3}}$
+Finally, \citeonline{okamoto2010} observes a scaling of $N^{\frac{2}{3}}$
 for the problem,
 where $N$ is the number of GPUs. Notably, this is due to delays
 introduced by communication and computation of halo regions, which also
 damages the executions of smaller problem sizes, since latency prevails
-in these scenarios. Therefore, \cite{okamoto2010} highlights the need
+in these scenarios. Therefore, \citeonline{okamoto2010} highlights the need
 for further optimization on the memory mapping of ghost points, in order
 to attain greater results.
 
@@ -589,7 +591,7 @@ identified (from left to right) as Slices, Columns and Blocks.
 \begin{figure}[H]
   \centering
   \caption{Three partitioning strategies for a 3D domain: by slices
-  (left), by columns (center) and by blocks (right).}
+  (left), by columns (center) and by blocks (right). (source: the author)}
   \label{fig:partitioning_methods}
   \includegraphics[width=0.9\textwidth]{./assets/partitioning_methods.pdf}
 \end{figure}
@@ -615,7 +617,7 @@ are added.
   \caption{Comparing the communication cost (Y axis) generated by the
     three partitioning strategies from Figure
     \ref{fig:partitioning_methods} (color) as a function of the number
-  of processors (X axis).}
+  of processors (X axis). (source: the author)}
   \label{fig:comms_vs_partitioning}
   \includegraphics[width=0.9\textwidth]{./assets/chart_comms_vs_partitioning.pdf}
 \end{figure}
@@ -782,7 +784,8 @@ a specific order asynchronously.
     additional memory needed to store data coming from neighbors that
     enable the computation of the interior. On the right image,
     different colors (Orange for X, Green for Y, Blue for Z) illustrate
-  that, in MPI, the communications typically occur in separate stages.}
+    that, in MPI, the communications typically occur in separate
+  stages. (source: the author)}
   \label{fig:ghost_cells_cubes}
   \includegraphics[width=0.9\textwidth]{./assets/ghost_cells_cubes.pdf}
 \end{figure}
@@ -1337,7 +1340,7 @@ Two simulated network configurations were evaluated: 10~Gbps and
 real Gigabit interconnect, respectively.
 
 Figure~\ref{fig:sim_gpu_10g_256} presents the results for a $256^3$
-execution on the 10~Gbps simulated network. The Gantt chart  already
+execution on the 10~Gbps simulated network. The Gantt chart already
 shows a reversal compared to the real Gigabit
 results (figure~\ref{fig:real_gpu_256}): computation now dominates
 each iteration. The load chart confirms
@@ -1559,19 +1562,43 @@ bandwidth on the masking effectiveness.
 
 \chapter{Conclusion}
 \label{ch:conclusion}
-The present research shows that scaling the Fletcher application
-along several computational nodes represents a promising approach
-throughput-wise. The performance analyses, however, emphasize the
-need for significant problem domains, as well as high-speed network
-bandwidths to make up for the MPI operations introduced. The
-masking of communications, performed through the use of overlapping
-computation with asynchronous calls, is thereby shown to occur under
-the ideal aforementioned conditions by simulation via SimGrid, demonstrating the
-potential of the present multi-node implementation, as shown by the
-significant MSamples/s gains observed under strict calibrated simulation.
-Furthermore, the importance of proper domain segmentation is proven
-for this goal, as noted by the highlighted differences in the shapes
-caused by the number of workers.
+The present research conceived a multi-node MPI implementation of
+the Fletcher application with 3D block decomposition, asynchronous
+ghost cell communication and GPU acceleration via CUDA, complemented
+by a calibrated SimGrid simulation framework for exploring platform
+configurations beyond those physically available.
+
+The performance analyses emphasize the need for significant problem
+domains, as well as high-speed network bandwidths to make up for the
+MPI operations introduced. On the CPU backend (OpenMP) over the
+10~Gbps \textit{cei} cluster, the compute load reached $\approx
+75\%$ at $256^3$ and $\approx 87\%$ at $512^3$, demonstrating
+effective masking already with general-purpose processors. On the GPU
+backend (CUDA) over the 1~Gbps \textit{poti} cluster, however, the
+compute load stagnated at $\approx 20\%$ regardless of problem
+size, confirming that the Gigabit network is the predominant
+bottleneck when paired with RTX~4070 accelerators. Simulated
+scenarios revealed a clear progression: at 10~Gbps the compute load
+rose to $\approx 65$--$80\%$, and at 100~Gbps it exceeded $90\%$,
+confirming that the masking of communications, performed through
+the use of overlapping computation with asynchronous calls, is
+effective when the network bandwidth matches the computational
+throughput of the accelerators. Furthermore, the 8-worker
+$\{2,2,2\}$ block decomposition reached 9\,374~MSamples/s at
+$512^3$ on the 100~Gbps simulated network, while the 5-worker
+$\{5,1,1\}$ slices decomposition remained below the single-node
+baseline, demonstrating the significant MSamples/s gains observed
+under strict calibrated simulation.
+
+The importance of proper domain segmentation is thereby proven for
+this goal, as noted by the highlighted differences in the shapes
+caused by the number of workers: prime process counts force a slices
+partitioning that maximizes the boundary-to-volume ratio, nullifying
+the benefits of distribution regardless of network capacity.
+Combined with the inherent $O(n^2)$ boundary growth versus $O(n^3)$
+volume growth, these results establish that both the partitioning
+topology and the interconnection network are decisive factors for
+the scalability of the distributed Fletcher with Ghost Cells application.
 
 \section{Future work}
 The results presented in the MPI implementation with ghost cells open a
@@ -1605,6 +1632,7 @@ targeted at specific parallel accelerator architectures and the load
 balancing between MPI computational nodes, allowing an understanding of
 the extent to which kernel performance gains influence---or are limited
 by---the efficiency of distributed communication.
+
 \bibliographystyle{abntex2-alf}
 \bibliography{./references.bib}
 \printglossary

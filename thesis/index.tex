@@ -10,8 +10,7 @@
 \usepackage{hyperref}
 \usepackage{glossaries}
 
-\definecolor{darkblue}{rgb}{0,0,0.5}
-\renewcommand{\glstextformat}[1]{\textit{\color{darkblue}#1}}
+\renewcommand{\glstextformat}[1]{#1}
 \makeglossaries
 \newglossaryentry{dynamic partitioning}
 {
@@ -125,9 +124,7 @@ Fletcher Method with MPI and Ghost Cells}
   implying the need for vaster resources to accommodate such
   requirements. The masking of network operations by the interleaving
   of computation with asynchronous MPI calls is thereby observed through
-  the use of simulation in the environment of PCAD,
-  http://gppd-hpc.inf.ufrgs.br,
-  at INF/UFRGS.
+  the use of simulation in the environment of PCAD, at INF/UFRGS.
 \end{abstract}
 \newpage
 \tableofcontents
@@ -198,7 +195,7 @@ the calculation across multiple computational nodes through proper
 partitioning of the problem.
 This path, however, leads to synchronization issues, as the problem
 has neighborhood dependencies that must be considered during
-execution. In this sense, there are methods, such as "Ghost Cells,"
+execution. In this sense, there are methods, such as "Ghost Cells",
 that seek to mitigate such impasses through asynchronous communication between
 adjacent volumes, notably by exchanging boundary regions overlapping
 with computation at each iteration \cite{ghost_cells}. Thus, by
@@ -220,10 +217,28 @@ explore the application's parameters and suitable High-Performance
 Computing (HPC) cluster characteristics, since higher problem sizes
 are required to achieve effective masking \cite{multi-gpu,
 okamoto2010}, ultimately leading to the application reaching its
-highest performance, defined by strong $O(n)$ scaling, where $n$ is
-the number of MPI workers used.
+highest performance, defined by a weak scaling with an $O(n)$
+upper bound, where $n$ is the number of MPI workers used.
+
+The remainder of this document is organized as follows.
+Chapter~\ref{ch:theoretical_framework} presents the theoretical
+framework, covering the fundamentals of domain partitioning, ghost
+cells and the Fletcher modeling equations.
+Chapter~\ref{ch:related_work} reviews related work on multi-GPU
+seismic computation, stencil communication in heterogeneous
+supercomputers and GPU-based wave propagation acceleration.
+Chapter~\ref{ch:application_design} describes the parallel application
+design, detailing the MPI-based partitioning, the communication
+strategy with ghost cells, the GPU acceleration via CUDA, the
+numerical validation and the SimGrid simulation methodology.
+Chapter~\ref{ch:results} presents the experimental results obtained on
+real HPC clusters and through simulation, including throughput
+analyses.
+Finally, Chapter~\ref{ch:conclusion} concludes the work and outlines
+directions for future research.
 
 \chapter{Theoretical framework}
+\label{ch:theoretical_framework}
 As a distributed HPC application, the present program being discussed implies
 the need of some technical foundation in order to be conveyed in a clear and
 concise manner. It is imperative, therefore, that some concepts are clarified
@@ -256,7 +271,7 @@ with $size_x = 10$, $size_y = 10$ and $size_z = 10$:
 \begin{figure}[H]
   \centering
   \caption{Perfect cube partitioning (source: the author).}
-  \includegraphics[width=0.5\textwidth]{./assets/cube_perfect_partitioning.pdf}
+  \includegraphics[width=0.3\textwidth]{./assets/cube_perfect_partitioning.pdf}
 \end{figure}
 
 However, supposing $n_{processes} = 27$ for the same configuration, the perfect
@@ -299,14 +314,15 @@ required.
   \centering
   \caption{Halo exchange between neighboring processes \cite{ghost_cells}}
   \label{fig:halo_exchange}
-  \includegraphics[width=0.9\textwidth]{./assets/ghost_cells_exchange.pdf}
+  \includegraphics[width=0.6\textwidth]{./assets/ghost_cells_exchange.pdf}
 \end{figure}
 
 Such method is often combined with the use of asynchronous
 communication, in order to
 attain greater performance gains. By using non-blocking message passing,
 one can overlap the retrieval of their ghost cells with computation, effectively
-reducing potential network bottlenecks.
+reducing potential network bottlenecks, depending on the equilibrium between
+compute and network capacity.
 
 \section{Fletcher modeling}
 \label{sec:fletcher_modeling}
@@ -391,6 +407,7 @@ which represent, respectively, the anisotropy and the isotropy components
 used to solve the pseudo-acoustic equations.
 
 \chapter{Related work}
+\label{ch:related_work}
 The present work, which employs seismic computation through the lens of
 multi-GPU and MPI implementations with ghost cells, has already been
 explored by authors in some capacity from varying points of views.
@@ -457,7 +474,7 @@ host's GPUs, as shown in figure \ref{fig:node_decomposition}.
   \centering
   \caption{Decomposition of $24$ nodes \cite{stencil_supercomputers}}
   \label{fig:node_decomposition}
-  \includegraphics[width=0.9\textwidth]{./assets/supercomputers_domain_decomposition.pdf}
+  \includegraphics[width=0.75\textwidth]{./assets/supercomputers_domain_decomposition.pdf}
 \end{figure}
 
 Subsequently, after the topology has been properly projected on the input mesh,
@@ -527,7 +544,35 @@ in these scenarios. Therefore, \cite{okamoto2010} highlights the need
 for further optimization on the memory mapping of ghost points, in order
 to attain greater results.
 
+\section{Present work}
+
+This research conceives a multi-node MPI implementation of the
+Fletcher application \cite{fletcher_modeling} with 3D block
+decomposition \cite{stencil_supercomputers} and asynchronous ghost
+cell communication \cite{ghost_cells}, addressing the memory
+scalability concerns identified by \cite{multi-gpu, okamoto2010} and
+enabling the distribution of the computation across several machines
+whilst overlapping halo exchanges with the stencil kernel.
+
+In addition, a calibrated SimGrid simulation framework \cite{simgrid}
+is provided, allowing the exploration of platform configurations and
+network bandwidths beyond those physically available, making up for
+the sub-linear scaling limitations observed by \cite{okamoto2010}
+through capacity planning on larger interconnection networks.
+
 \chapter{Parallel application design with ghost cells}
+\label{ch:application_design}
+
+This chapter details the design and implementation of the distributed
+Fletcher application. It begins with the static partitioning strategy
+using MPI Cartesian topologies, followed by the initialization and
+finalization procedures of the coordinator-worker model. Next, the
+communication scheme based on asynchronous ghost cell exchanges is
+described, along with the main computation loop that overlaps halo
+transfers with stencil processing. The chapter then covers the GPU
+acceleration via CUDA, the numerical validation against the reference
+implementation, and concludes with the SimGrid-based simulation
+methodology.
 
 \section{Static partitioning with MPI}
 The application was built from using OpenMPI as the
@@ -640,8 +685,8 @@ domain is expanded to accommodate absorption zones at the borders and
 additional cells required by the eighth-order finite difference scheme.
 
 \subsection{Coordinator: partitioning and dispatch}
-The \gls{coordinator} is responsible for partitioning the cube,
-effectively deciding which \gls{worker} computes which part of the grid.
+The coordinator is responsible for partitioning the cube,
+effectively deciding which worker computes which part of the grid.
 The division is performed by subtracting the border cells from the
 total domain and distributing the remainder equally among the processes
 of each dimension. The integer remainders of this division are absorbed
@@ -668,7 +713,7 @@ anisotropy coefficients for its sub-volume, in the same manner as the
 workers.
 
 \subsection{Workers: awaiting data}
-The \glspl{worker} begin their execution by synchronously
+The workers begin their execution by synchronously
 awaiting the arrival of the partition metadata sent by the
 coordinator. Upon receiving this packet, each worker knows exactly the
 dimensions of its block, its position in the global domain and the
@@ -1026,6 +1071,7 @@ kernel iteratively until it stabilizes. Appendix
 how this is performed.
 
 \chapter{Results}
+\label{ch:results}
 
 The results obtained by the present research illustrate the use
 of the distributed MPI version of Fletcher in real HPC clusters
@@ -1511,6 +1557,7 @@ bandwidth on the masking effectiveness.
 \end{table}
 
 \chapter{Conclusion}
+\label{ch:conclusion}
 The present research shows that scaling the Fletcher application
 along several computational nodes represents a promising approach
 throughput-wise. The performance analyses, however, emphasize the

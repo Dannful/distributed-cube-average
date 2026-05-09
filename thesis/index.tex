@@ -18,7 +18,7 @@
   name=dynamic partitioning,
   description={A type of partitioning in which the segmentation of
     the domain varies throughout the application's lifetime, increasing or
-    decreasing the amount of computation handled by the works as the
+    decreasing the amount of computation handled by the workers as the
   execution moves forward}
 }
 \newglossaryentry{worker}
@@ -100,7 +100,34 @@ Fletcher Method with MPI and Ghost Cells}
 
 \begin{document}
 \maketitle
-\begin{abstract} ...
+\begin{abstract}
+  Petroleum exploration, in the current landscape, remains the main source of
+  power that fuels modern society. In such a context, the Fletcher application
+  represents significant value gain for inspecting subsurface layers,
+  culminating
+  in the need for optimizations and performance analyses. One such improvement
+  stems from the fact that current implementations rely on a single
+  computational
+  node, imposing immediate scalability issues in the scope of VRAM and workload
+  sharing. The present work therefore aims at leveraging MPI and CUDA to
+  attain a distributed version of the aforementioned application and eventually
+  execute a performance analysis on the result, employing a simulated
+  version with
+  SimGrid to make up for any lack of computational resources. As
+  widely recognized
+  in the HPC field, small problem sizes introduce overhead both to
+  the GPU and to
+  the network. Such factor, combined with the fact that the Fletcher program
+  is largely communication and memory-bound due to the mathematical operations
+  being solely simple additions and multiplications, create a
+  scenario in which real performance gains stem from the use of larger
+  domain volumes and the presence of a high-speed network,
+  implying the need for vaster resources to accommodate such
+  requirements. The masking of network operations by the interleaving
+  of computation with asynchronous MPI calls is thereby observed through
+  the use of simulation in the environment of PCAD,
+  http://gppd-hpc.inf.ufrgs.br,
+  at INF/UFRGS.
 \end{abstract}
 \newpage
 \tableofcontents
@@ -181,37 +208,20 @@ loss of integrity in the boundary values and, above all, demonstrate
 the method's ability to mask communications, resulting in better
 computational performance \cite{stencil_supercomputers}.
 
-The present research aimed, therefore, at leveraging MPI to properly partition
-and distribute the computation of the application, exploring the potential of
-Ghost Cells to mask the communication between the nodes as much as possible.
-In addition to the aforementioned implementation, a simulation
-application was conceived to fully explore the application's parameters and
-suitable High-Performance Computing (HPC)
-cluster characteristics, in order to discover the most suitable environment
-for the program's overall performance \cite{simgrid}.
-
-\chapter{Abstract}
-Petroleum exploration, in the current landscape, remains the main source of
-power that fuels modern society. In such a context, the Fletcher application
-represents significant value gain for inspecting subsurface layers, culminating
-in the need for optimizations and performance analyses. One such improvement
-stems from the fact that current implementations rely on a single computational
-node, imposing immediate scalability issues in the scope of VRAM and workload
-sharing. The present work therefore aims at leveraging MPI and CUDA to
-attain a distributed version of the aforementioned application and eventually
-execute a performance analysis on the result, employing a simulated version with
-SimGrid to make up for any lack of computational resources. As widely recognized
-in the HPC field, small problem sizes introduce overhead both to the GPU and to
-the network. Such factor, combined with the fact that the Fletcher program
-is largely I/O bound due to the mathematical operations
-being solely simple additions and multiplications, create a
-scenario in which real performance gains stem from the use of larger
-domain volumes and the presence of a high-speed network,
-implying the need for vaster resources to accomodate such
-requirements. The masking of network operations by the interleaving
-of computation with asynchronous MPI calls is thereby observed through
-the use of simulation in the environment of PCAD, http://gppd-hpc.inf.ufrgs.br,
-at INF/UFRGS.
+The present research aimed, therefore, at leveraging CUDA and MPI to
+properly partition and distribute the computation of the Fletcher
+application, exploring the potential of Ghost Cells to mask the
+communication between the nodes as much as possible. This approach
+addresses the memory scalability concerns identified in prior seismic
+GPU optimization work \cite{okamoto2010} whilst relishing the benefits
+of multi-GPU implementations \cite{multi-gpu}. In addition, a
+simulation tool based on SimGrid \cite{simgrid} was conceived to
+explore the application's parameters and suitable High-Performance
+Computing (HPC) cluster characteristics, since higher problem sizes
+are required to achieve effective masking \cite{multi-gpu,
+okamoto2010}, ultimately leading to the application reaching its
+highest performance, defined by strong $O(n)$ scaling, where $n$ is
+the number of MPI workers used.
 
 \chapter{Theoretical framework}
 As a distributed HPC application, the present program being discussed implies
@@ -224,7 +234,7 @@ Static partitioning in HPC problems is defined by the segmentation
 of the input domain happening once in the program's lifetime and
 remaining unchanged for the remainder of the execution \cite{grama2003}.
 This has been chosen over \gls{dynamic partitioning}, since the
-\glspl{worker}'s workload is homonogeous throughout their domains,
+\glspl{worker}'s workload is homogeneous throughout their domains,
 meaning there is no benefit to be gained from such segmentation,
 resulting in computational overhead.
 
@@ -280,7 +290,7 @@ This method consists in allocating additional space for
 extending the computational grid of a worker with the \gls{halo} of its
 neighbours, as shown in figure \ref{fig:halo_exchange}
 \cite{ghost_cells}. Although these
-extra cells are solely used by others without ever being updated, the
+extra cells are not modified by the local stencil computation, the
 memory tradeoff is justified, given that it mitigates
 the latency costs of retrieving the data only when it is immediately
 required.
@@ -325,9 +335,9 @@ acoustic equation:
 where $p(x, y, z, t)$ represents the pressure and $v(x, y, z)$ is the
 velocity at each point in the grid \cite{fletcher_modeling}.
 
-Nonetheless, when dealing with anisotropy, which defined by the parameters
+Nonetheless, when dealing with anisotropy, which is defined by the parameters
 $\epsilon(x, y, z)$ and $\delta(x, y, z)$ \cite{anisotropy}, the
-simmetry axis is tilted, being characterized by an azimuth ($\phi$)
+symmetry axis is tilted, being characterized by an azimuth ($\phi$)
 and dip ($\theta$) angle. When $\phi = \theta = 0$, \acrfull{vti}
 occurs, implying that the physical properties are equal along the $x$
 axis, but vary throughout the $y$. This happens due to the natural
@@ -336,7 +346,7 @@ of matter over time, creating solid, vertically stacked layers.
 
 Furthermore, due to natural geological events, such as tectonics,
 $\phi$ and $\theta$ may not be equal to $0$, leading to a tilted
-simmetry axis \cite{fletcher}. In this context of anisotropy, waveforms $P$ and
+symmetry axis \cite{fletcher}. In this context of anisotropy, waveforms $P$ and
 $S$ are defined: the former shifting in the same direction as
 propagation and the latter moving perpendicularly to it
 \cite{fletcher}. In this sense, two different velocities are
@@ -417,7 +427,7 @@ than PCIe transfers, requiring more thorough efforts to mitigate them.
 
 \section{Stencil communication in heterogeneous supercomputers}
 \cite{stencil_supercomputers} discourses about the optimization of
-work distribution along a carthesian grid, emphasizing its importance
+work distribution along a Cartesian grid, emphasizing its importance
 in communication-heavy applications, specially when executed on heterogeneous
 HPC clusters. The approach consists of a three-step process employing CUDA and
 MPI with the goal of distributing work in a node-aware manner whilst leveraging
@@ -517,26 +527,6 @@ in these scenarios. Therefore, \cite{okamoto2010} highlights the need
 for further optimization on the memory mapping of ghost points, in order
 to attain greater results.
 
-\section{Present work}
-It is thus immediate the significance of high-performance seismic applications
-and their potential optimizations, whether by GPU, MPI or other methods.
-The present work therefore aims at leveraging CUDA and MPI for a distributed
-execution of the Fletcher application, addressing the memory
-scalability concerns
-pointed out by \cite{okamoto2010} whilst relishing the benefits of multi-GPU
-implementations, as proven by \cite{multi-gpu}.
-
-Furthermore, a simulation tool for seeking out optimal running environments for
-the application will be explored, aiming at uncovering HPC cluster
-characteristics capable of masking network communications as much as possible.
-The need for such a tool resides in the fact that higher problem
-sizes are required
-to achieve such a goal, as demonstrated by \cite{multi-gpu} and
-\cite{okamoto2010}.
-This ultimately leads to the application reaching its highest
-performance, defined by
-strong $O(n)$ scaling, where $n$ is the number of MPI workers used.
-
 \chapter{Parallel application design with ghost cells}
 
 \section{Static partitioning with MPI}
@@ -620,7 +610,7 @@ a worker has the ability to receive messages from and send messages
 to its surrounding
 neighbors.
 
-Furthermore, the mapping from the neighboring index $i \in [0, 27]$ to a
+Furthermore, the mapping from the neighboring index $i \in [0, 27)$ to a
 displacement $d \in \{-1, 0, 1\}$ from the source is given by:
 \begin{equation}
   \begin{cases}
@@ -966,9 +956,32 @@ MPI and in the base version. Then, the SHA-256 checksum of both were
 compared against each other, in order to attain a reliable and reproducible
 validation process.
 
-In this context, in regrads to the OpenMP version of the program, the
-ground truth produces the exact same
-hash as the MPI implementation, which indicates flawless precision.
+In this context, Table~\ref{tab:openmp_validation} summarizes the
+OpenMP validation scenarios. For each combination, the SHA-256
+checksum of the MPI output was compared against the single-node
+reference. All checksums matched exactly, indicating flawless
+numerical precision for the OpenMP backend.
+
+\begin{table}[H]
+  \centering
+  \caption{OpenMP numerical validation scenarios executed on an AMD
+    Ryzen~5 7600 at 5.17~GHz, all with 10 iterations. Every scenario
+  produced an identical SHA-256 checksum to the single-node reference.}
+  \label{tab:openmp_validation}
+  \begin{tabular}{ll}
+    \hline
+    Parameter & Values \\
+    \hline
+    Workers       & 1, 2, 3, 4, 5, 6 \\
+    Problem sizes & $32^3$, $64^3$, $128^3$, $256^3$, $512^3$ \\
+    Iterations    & 10 \\
+    \hline
+    Total scenarios & $6 \times 5 = 30$ \\
+    Matching checksums & 30 / 30 \\
+    \hline
+  \end{tabular}
+\end{table}
+
 The CUDA version, however, required a delta-based approach, since tiny numerical
 differences are expected due to hardware differences in floating
 point arithmetic, such as \acrfull{fma},
@@ -1014,7 +1027,7 @@ how this is performed.
 
 \chapter{Results}
 
-The results obtained by the present researched illustrate the use
+The results obtained by the present research illustrate the use
 of the distributed MPI version of Fletcher in real HPC clusters
 as well as the application's simulated version, aiming at making
 up for the lack of computational resources for further experimenting.
@@ -1046,7 +1059,7 @@ illustrates a space-time chart of a $256 \times 256 \times 256$
 problem size execution, reflecting the behavior of each of the ranks
 (Y axis) over time (X
 axis), with the colors of the rectangles representing which operations
-were performed and their durations. Only the first second is shown, in
+were performed and their durations. Only the first three seconds are shown, in
 order to illustrate the overall behavior within the iterations. Although
 the chart contains three distinct MPI operations---\texttt{Irecv},
 \texttt{Isend}
@@ -1081,15 +1094,15 @@ a 10~Gbit network.
 Finally, by observing figure~\ref{fig:real_cpu_gantt_512}, representing
 the first five seconds of a $512^3$ execution,
 one can notice much longer compute events than MPI events.
-In addition, figure~\ref{fig:real_cpu_load_512} ireveals an $\approx
+In addition, figure~\ref{fig:real_cpu_load_512} reveals an $\approx
 87\%$ load from compute alone,
-indicating that problem sizes grow, computation costs increase at a
+indicating that as problem sizes grow, computation costs increase at a
 larger rate than communication ones. In fact, the reasoning is
 immediate: block faces grow more slowly ($6(\sqrt[3]{P} - 1)L^2$)
 compared to the volume of the cube ($L^3$). Thus, while the
 processing capacity grows cubically, the communication requirement (boundary)
 grows only quadratically. This allows exploring different
-Boundary/Volume ratios, as presented in
+boundary/volume ratios, as presented in
 Table~\ref{tab:frontier_volume} for a fixed number of processors
 $P = 64$.
 
@@ -1164,12 +1177,6 @@ load sits at $\approx 20$--$25\%$, indicating that the RTX~4070
 finishes its local computation far faster than the Gigabit network can
 deliver the ghost cells, leaving each rank idle for the majority of
 each iteration.
-\texttt{Waitall} dominates the execution, with computation appearing
-as thin slivers between long waiting periods. The load chart confirms
-this: the aggregate compute load sits at $\approx 20$--$25\%$,
-indicating that the RTX~4070 finishes its local computation far
-faster than the Gigabit network can deliver the ghost cells, leaving
-each rank idle for the majority of each iteration.
 
 \begin{figure}[H]
   \centering
@@ -1397,27 +1404,137 @@ of the accelerators. The progression from 1~Gbps (real) through
 shift from communication-bound to computation-bound behavior,
 validating both the application design and the simulation methodology.
 
+\section{Throughput}
+
+Figure~\ref{fig:msamples} presents the throughput in MSamples/s as a
+function of the problem size for the single-node baseline, the real
+five-node cluster execution and the simulated scenarios with 5 and 8
+workers at 10~Gbps and 100~Gbps.
+
+\begin{figure}[H]
+  \centering
+  \caption{Throughput (MSamples/s) as a function of problem size for
+  real and simulated executions, compared to the single-node baseline.}
+  \label{fig:msamples}
+  \includegraphics[width=\textwidth]{./assets/msamples.pdf}
+\end{figure}
+
+The most striking observation is the dramatic gap between 5-worker and
+8-worker configurations. At $512^3$, the 8-worker simulations reach
+8\,309~MSamples/s (10~Gbps) and 9\,374~MSamples/s (100~Gbps), while
+the corresponding 5-worker results plateau at 3\,030 and
+3\,215~MSamples/s---values that are below the
+single-node baseline of 3\,870~MSamples/s. In other words, with 5
+workers the communication overhead is so severe that distributing the
+computation yields \emph{negative} speedup.
+
+The root cause lies in the partitioning shape imposed by
+\lstinline{MPI_Dims_create}. Since 5 is prime, it is forced into a
+$\{5, 1, 1\}$ slices decomposition, whereas 8 factors into a
+$\{2, 2, 2\}$ blocks decomposition. As established in
+Section~\ref{sec:ghost_cells} and
+Figure~\ref{fig:comms_vs_partitioning}, the total communication
+boundary for slices grows as $2(P - 1)L^2$, while for blocks it grows
+as $6(\sqrt[3]{P} - 1)L^2$. Concretely, for a $512^3$ domain with a
+stencil thickness of 4 cells:
+
+\begin{itemize}
+  \item \textbf{5 workers $\{5,1,1\}$}: each slab measures
+    $\approx 108 \times 512 \times 512$ and
+    communicates with at most 2 neighbors, since the 1D partitioning
+    produces no diagonal adjacencies. Each face halo is $4 \times
+    512 \times 512 = 1\,048\,576$ doubles ($\approx 8$~MB). With two
+    fields ($P$ and $Q$) and up to two neighbors, the total
+    communication per iteration reaches $\approx 64$~MB.
+  \item \textbf{8 workers $\{2,2,2\}$}: each sub-cube measures
+    $260 \times 260 \times 260$ (including ghost cells) and
+    communicates with 7 neighbors---3 on the same level and 4 on the
+    adjacent level, including diagonal adjacencies. The face halos
+    are $4 \times 256 \times 256 = 262\,144$ doubles ($\approx 2$~MB)
+    each, while edge and corner halos are substantially smaller
+    ($4 \times 4 \times 256$ and $4 \times 4 \times 4$, respectively).
+    The total communication per iteration amounts to $\approx 25$~MB.
+\end{itemize}
+
+The block decomposition therefore reduces the per-worker communication
+volume by approximately $2.5\times$, from 64~MB to 25~MB, despite
+each worker communicating with more neighbors (7 vs.\ 2).
+
+As expected from a balanced partitioning, the computation time
+decreases proportionally when moving from 5 to 8 workers: at $512^3$
+on the 100~Gbps simulated network, total computation drops from
+$\approx 28$~s to $\approx 14$~s---consistent with the $8/5 = 1.6$
+factor in available parallelism. This scaling of the computational
+component is the expected behavior of a distributed implementation.
+
+The MPI overhead, however, exhibits a disproportionately large
+reduction that cannot be explained by the $2.5\times$ communication
+volume difference alone. Furthermore, increasing the network bandwidth
+tenfold (10~Gbps $\to$ 100~Gbps) barely improves the 5-worker
+throughput (3\,030 $\to$ 3\,215~MSamples/s, $+6\%$), indicating that
+the bottleneck in the $\{5,1,1\}$ configuration is not the network
+bandwidth itself. The precise cause of this behavior remains to be
+fully characterized through detailed profiling; however, it is
+hypothesized that the large face size of the $\{5,1,1\}$ slabs
+($512 \times 512$ per face, $\approx 8$~MB per halo) triggers
+higher-latency MPI protocol paths (such as the rendezvous protocol
+for large messages) and amplifies fixed per-transfer costs (PCIe
+host--device copies, synchronization handshakes) that are independent
+of network bandwidth and accumulate over the 1\,001 iterations of
+the simulation.
+
+Table~\ref{tab:results_summary} consolidates the approximate compute
+load observed across all experimental scenarios, allowing a direct
+comparison of the influence of backend, problem size and network
+bandwidth on the masking effectiveness.
+
+\begin{table}[H]
+  \centering
+  \caption{Summary of approximate compute load across all
+  experimental scenarios.}
+  \label{tab:results_summary}
+  \begin{tabular}{llll}
+    \hline
+    Backend & Problem size & Network & Compute load \\
+    \hline
+    CPU (OpenMP) & $256^3$ & 10~Gbps (real)        & $\approx 75\%$    \\
+    CPU (OpenMP) & $512^3$ & 10~Gbps (real)        & $\approx 87\%$    \\
+    GPU (CUDA)   & $128^3$ & 1~Gbps (real)         & $\approx 20$--$25\%$ \\
+    GPU (CUDA)   & $256^3$ & 1~Gbps (real)         & $\approx 20\%$    \\
+    GPU (CUDA)   & $512^3$ & 1~Gbps (real)         & $\approx 20\%$    \\
+    GPU (CUDA)   & $256^3$ & 10~Gbps (simulated)   & $\approx 65$--$70\%$ \\
+    GPU (CUDA)   & $512^3$ & 10~Gbps (simulated)   & $\approx 75$--$80\%$ \\
+    GPU (CUDA)   & $256^3$ & 100~Gbps (simulated)  & $\approx 85$--$90\%$ \\
+    GPU (CUDA)   & $512^3$ & 100~Gbps (simulated)  & $> 90\%$          \\
+    \hline
+  \end{tabular}
+\end{table}
+
 \chapter{Conclusion}
 The present research shows that scaling the Fletcher application
 along several computational nodes represents a promising approach
 throughput-wise. The performance analyses, however, emphasize the
 need for significant problem domains, as well as high-speed network
-bandwidths to make up for the I/O operations introduced. The
-masking of MPI communications, performed through the use of overlapping
+bandwidths to make up for the MPI operations introduced. The
+masking of communications, performed through the use of overlapping
 computation with asynchronous calls, is thereby shown to occur under
 the ideal aforementioned conditions by simulation via SimGrid, demonstrating the
-potential of the present multi-node implementation.
+potential of the present multi-node implementation, as shown by the
+significant MSamples/s gains observed under strict calibrated simulation.
+Furthermore, the importance of proper domain segmentation is proven
+for this goal, as noted by the highlighted differences in the shapes
+caused by the number of workers.
 
 \section{Future work}
 The results presented in the MPI implementation with ghost cells open a
 set of promising directions for future investigations.
 
-First, a thorough analysis of the MegaSamples/second obtained with the
+First, it is imperative to have
+a more thorough analysis of the MegaSamples/second obtained with the
 solution in scenarios where there is an adequate balance between the
 interconnection network capacity and the computational capacity of the
-accelerators is necessary, in order to precisely characterize the
-maximum achievable throughput and identify the most efficient operating
-regimes.
+accelerators, in order to precisely characterize the factors that are the
+most influential in obtaining adequate results.
 
 Second, experiments on the Santos Dumont supercomputer, especially on
 partitions that allow the use of multiple GPU accelerators per node
@@ -1444,9 +1561,9 @@ by---the efficiency of distributed communication.
 \bibliography{./references.bib}
 \printglossary
 \appendix
-\chapter{MPI carthesian topology creation}
+\chapter{MPI Cartesian topology creation}
 \label{ap:mpi_cart_create}
-The code below illustrates the creation of a carthesian topology in MPI
+The code below illustrates the creation of a Cartesian topology in MPI
 at a high level.
 
 \begin{lstlisting}[style=CStyle, caption={Domain initialization in MPI}]
@@ -1464,7 +1581,7 @@ int main(int argc, char** argv) {
     int dims[3] = {0, 0, 0};
     MPI_Dims_create(world_size, 3, dims);
 
-    // 2. Create the carthesian communicator
+    // 2. Create the Cartesian communicator
     int periods[3] = {0, 0, 0};
     MPI_Comm cart_comm;
     MPI_Cart_create(MPI_COMM_WORLD, 3, dims, periods, 0, &cart_comm);

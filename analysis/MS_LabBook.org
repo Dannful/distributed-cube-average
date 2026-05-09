@@ -6007,3 +6007,464 @@ dev.off()
 : ℹ Adding new coordinate system, which will replace the existing one.
 : null device 
 :           1
+** 2026-04-26 Códigos para relatório
+*** Custo de Comunicação vs. Estratégia de Particionamento
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+                                        # Carregar bibliotecas
+library(ggplot2)
+library(tidyr)
+
+                                        # Definir os dados
+P <- seq(1, 1000, by = 10) # Número de processadores
+L <- 1 # Comprimento do lado normalizado
+
+                                        # Fórmulas da Área de Superfície Interna
+area_1d <- 2 * (P - 1) * L^2
+area_2d <- 4 * (sqrt(P) - 1) * L^2
+area_3d <- 6 * (P^(1/3) - 1) * L^2
+
+                                        # Criar um data frame e converter para o formato longo (long format) para o ggplot
+df <- data.frame(Processadores = P, 
+                 `Fatias` = area_1d, 
+                 `Colunas` = area_2d, 
+                 `Blocos` = area_3d)
+
+df_long <- pivot_longer(df, cols = -Processadores, 
+                        names_to = "Tipo_de_Particionamento", 
+                        values_to = "Area_de_Fronteira")
+
+                                        # Gerar o gráfico
+ggplot(df_long, aes(x = Processadores, y = Area_de_Fronteira, color = Tipo_de_Particionamento)) +
+  geom_line(size = 1.2) +
+  labs(title = "Custo de Comunicação vs. Estratégia de Particionamento",
+       subtitle = "Comparando Decomposição 1D, 2D e 3D para um Cubo",
+       x = "Número de Processadores (P)",
+       y = "Área de Fronteira Interna\n(Volume de Comunicação\nem itens comunicados)",
+       color = "Estratégia") +
+  theme_minimal() +
+  coord_cartesian(ylim=c(0, 200)) +
+  scale_color_manual(values = c("red", "blue", "darkgreen")) +
+  theme(
+    plot.margin = unit(c(0, 0, 0, 0), "cm"),
+    legend.spacing = unit(1, "mm"),
+    legend.position = "top",
+    legend.justification = "left",
+    legend.box.spacing = unit(0, "pt"),
+    legend.box.margin = margin(0, 0, 0, 0)
+  )  
+#+end_src
+
+#+RESULTS:
+*** Visualização com Pyvista das estratégias de particionamento
+**** Inspirador (3D)
+#+begin_src python :eval no
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+import itertools
+
+
+def cube_faces(x, y, z, s):
+    """
+    Create the 6 faces of a cube located at (x,y,z)
+    with side length s.
+    """
+    vertices = [
+        (x, y, z),
+        (x + s, y, z),
+        (x + s, y + s, z),
+        (x, y + s, z),
+        (x, y, z + s),
+        (x + s, y, z + s),
+        (x + s, y + s, z + s),
+        (x, y + s, z + s),
+    ]
+
+    faces = [
+        [vertices[i] for i in [0, 1, 2, 3]],  # bottom
+        [vertices[i] for i in [4, 5, 6, 7]],  # top
+        [vertices[i] for i in [0, 1, 5, 4]],  # front
+        [vertices[i] for i in [2, 3, 7, 6]],  # back
+        [vertices[i] for i in [1, 2, 6, 5]],  # right
+        [vertices[i] for i in [0, 3, 7, 4]],  # left
+    ]
+
+    return faces
+
+
+# Create figure
+fig = plt.figure(figsize=(8, 8))
+ax = fig.add_subplot(111, projection="3d")
+
+# Parameters
+n = 3          # 3x3x3 grid
+size = 1.0     # cube size
+gap = 0.15     # spacing between cubes
+
+# Light blue-gray color
+face_color = "#cfd8dc"
+
+# Generate cubes
+for i, j, k in itertools.product(range(n), repeat=3):
+    x = i * (size + gap)
+    y = j * (size + gap)
+    z = k * (size + gap)
+
+    cube = Poly3DCollection(
+        cube_faces(x, y, z, size),
+        facecolors=face_color,
+        edgecolors="black",
+        linewidths=0.8,
+        alpha=1.0
+    )
+
+    ax.add_collection3d(cube)
+
+# Adjust plot limits
+extent = n * size + (n - 1) * gap
+ax.set_xlim(0, extent)
+ax.set_ylim(0, extent)
+ax.set_zlim(0, extent)
+
+# Keep proportions equal
+ax.set_box_aspect([1, 1, 1])
+
+# Clean schematic look
+ax.axis("off")
+
+# Camera angle
+ax.view_init(elev=22, azim=35)
+
+plt.tight_layout()
+plt.show()
+#+end_src
+**** Pyvista 1D
+
+#+begin_src python
+import pyvista as pv
+
+n = 64
+gap = 0.01
+size = 1.0
+
+pv.global_theme.transparent_background = True
+plotter = pv.Plotter(off_screen=True, border=False, window_size=[2000, 2000])
+plotter.hide_axes()
+plotter.remove_bounding_box()
+
+for i in range(n):
+    # Each slab is very thin (size/n)
+    x_start = i * (size/n + gap)
+    slab = pv.Box(bounds=(x_start, x_start + size/n, 0, size, 0, size))
+    plotter.add_mesh(slab, color="#f5f7f8", edge_color="black", show_edges=True)
+
+# Perfect Centering Logic
+xyz_max = (n - 1) * gap + size
+center = (xyz_max / 2, xyz_max / 2, xyz_max / 2)
+d = xyz_max * 2.5 # Adjust distance to ensure the whole cube fits
+plotter.camera_position = [(center[0] + d, center[1] + d, center[2] + d), center, (0, 0, 1)]
+
+# Export to PDF
+plotter.screenshot("partition_1d.png")
+
+from PIL import Image
+def crop_transparent_png(input_file, output_pdf):
+    # Open the image
+    img = Image.open(input_file)
+    
+    # getbbox() finds the bounding box of non-zero (non-transparent) data
+    bbox = img.getbbox()
+    
+    if bbox:
+        # Crop the image to the bounding box
+        cropped_img = img.crop(bbox)
+        
+        # Convert to RGB (PDF doesn't support transparency well) 
+        # and save as PDF
+        cropped_img.convert("RGB").save(output_pdf)
+        print(f"Cropped and saved: {output_pdf}")
+    else:
+        print("Image is completely transparent!")
+
+# Apply to your file
+crop_transparent_png("partition_1d.png", "partition_1d.png")
+#+end_src
+
+#+RESULTS:
+: None
+
+**** Pyvista 2D
+
+#+begin_src python
+import pyvista as pv
+import itertools
+import os
+from PIL import Image
+
+# Configurações (ex: 4x4 = 16 colunas)
+n = 8
+gap = 0.01
+size = 1.0
+
+pv.global_theme.transparent_background = True
+plotter = pv.Plotter(off_screen=True, border=False, window_size=[2000, 2000])
+plotter.hide_axes()
+plotter.remove_bounding_box()
+
+for i, j in itertools.product(range(n), range(n)):
+    x_start = i * (size/n + gap)
+    y_start = j * (size/n + gap)
+    
+    # Colunas longas no eixo Z
+    column = pv.Box(bounds=(x_start, x_start + size/n, 
+                            y_start, y_start + size/n, 
+                            0, size))
+    
+    plotter.add_mesh(column, color="#f5f7f8", edge_color="black", show_edges=True)
+
+# Perfect Centering Logic
+xyz_max = (n - 1) * gap + size
+center = (xyz_max / 2, xyz_max / 2, xyz_max / 2)
+d = xyz_max * 2.5 # Adjust distance to ensure the whole cube fits
+plotter.camera_position = [(center[0] + d, center[1] + d, center[2] + d), center, (0, 0, 1)]
+
+# Export to PDF
+plotter.screenshot("partition_2d.png")
+
+from PIL import Image
+def crop_transparent_png(input_file, output_pdf):
+    # Open the image
+    img = Image.open(input_file)
+    
+    # getbbox() finds the bounding box of non-zero (non-transparent) data
+    bbox = img.getbbox()
+    
+    if bbox:
+        # Crop the image to the bounding box
+        cropped_img = img.crop(bbox)
+        
+        # Convert to RGB (PDF doesn't support transparency well) 
+        # and save as PDF
+        cropped_img.convert("RGB").save(output_pdf)
+        print(f"Cropped and saved: {output_pdf}")
+    else:
+        print("Image is completely transparent!")
+
+# Apply to your file
+crop_transparent_png("partition_2d.png", "partition_2d.png")
+#+end_src
+
+#+RESULTS:
+: None
+**** Pyvista 3D
+
+#+begin_src python
+import pyvista as pv
+import itertools
+import os
+from PIL import Image
+
+# Configuration
+n = 4
+gap = 0.01
+size = 1.0
+pv.global_theme.transparent_background = True
+plotter = pv.Plotter(off_screen=True, border=False, window_size=[2000, 2000])
+plotter.hide_axes()
+plotter.remove_bounding_box()
+# Generate Blocks
+for i, j, k in itertools.product(range(n), repeat=3):
+    x_s = i * (size/n + gap)
+    y_s = j * (size/n + gap)
+    z_s = k * (size/n + gap)
+    block = pv.Box(bounds=(x_s, x_s + size/n, y_s, y_s + size/n, z_s, z_s + size/n))
+    plotter.add_mesh(block, color="#f5f7f8", edge_color="black", show_edges=True)
+
+# Perfect Centering Logic
+xyz_max = (n - 1) * gap + size
+center = (xyz_max / 2, xyz_max / 2, xyz_max / 2)
+d = xyz_max * 2.5 # Adjust distance to ensure the whole cube fits
+plotter.camera_position = [(center[0] + d, center[1] + d, center[2] + d), center, (0, 0, 1)]
+
+# Export to PDF
+plotter.screenshot("partition_3d.png")
+
+from PIL import Image
+def crop_transparent_png(input_file, output_pdf):
+    # Open the image
+    img = Image.open(input_file)
+    
+    # getbbox() finds the bounding box of non-zero (non-transparent) data
+    bbox = img.getbbox()
+    
+    if bbox:
+        # Crop the image to the bounding box
+        cropped_img = img.crop(bbox)
+        
+        # Convert to RGB (PDF doesn't support transparency well) 
+        # and save as PDF
+        cropped_img.convert("RGB").save(output_pdf)
+        print(f"Cropped and saved: {output_pdf}")
+    else:
+        print("Image is completely transparent!")
+
+# Apply to your file
+crop_transparent_png("partition_3d.png", "partition_3d.png")
+#+end_src
+
+#+RESULTS:
+: None
+*** Pyvista ghost-cells
+**** Apenas as ghost-cells
+
+#+begin_src python
+import pyvista as pv
+import itertools
+
+# Configuração
+n = 4          # 3x3x3 para não poluir visualmente
+size = 1.0     # tamanho do núcleo local
+ghost = 0.1   # espessura da camada de ghost cells
+gap = 0.12      # gap maior para ver os blocos isolados
+
+
+pv.global_theme.transparent_background = True
+plotter = pv.Plotter(off_screen=True, border=False, window_size=[2000, 2000])
+plotter.hide_axes()
+plotter.remove_bounding_box()
+# Generate Blocks
+for i, j, k in itertools.product(range(n), repeat=3):
+    # Posição base
+    x_s = i * (size + 2*ghost + gap)
+    y_s = j * (size + 2*ghost + gap)
+    z_s = k * (size + 2*ghost + gap)
+    
+    # 1. O NÚCLEO (Dados reais do processo)
+    core = pv.Box(bounds=(x_s + ghost, x_s + ghost + size, 
+                          y_s + ghost, y_s + ghost + size, 
+                          z_s + ghost, z_s + ghost + size))
+    
+    # 2. AS GHOST CELLS (A "casca" que envolve o núcleo)
+    # Criamos um cubo ligeiramente maior que engloba o núcleo
+    shell = pv.Box(bounds=(x_s, x_s + size + 2*ghost, 
+                           y_s, y_s + size + 2*ghost, 
+                           z_s, z_s + size + 2*ghost))
+    
+    # Adiciona a casca (transparente)
+    plotter.add_mesh(shell, color="orange", opacity=0.3, show_edges=True, edge_color="red")
+    
+    # Adiciona o núcleo (sólido)
+    plotter.add_mesh(core, color="#cfd8dc", opacity=1.0, show_edges=True, edge_color="black")
+
+# Ajuste de Câmera para ver a quina
+xyz_max = n * (size + 2*ghost + gap)
+center = (xyz_max/2, xyz_max/2, xyz_max/2)
+d = xyz_max * 1.8
+plotter.camera_position = [(center[0]+d, center[1]+d, center[2]+d), center, (0,0,1)]
+
+# Export to PDF
+plotter.screenshot("ghost_cells.png")
+
+from PIL import Image
+def crop_transparent_png(input_file, output_pdf):
+    # Open the image
+    img = Image.open(input_file)
+    
+    # getbbox() finds the bounding box of non-zero (non-transparent) data
+    bbox = img.getbbox()
+    
+    if bbox:
+        # Crop the image to the bounding box
+        cropped_img = img.crop(bbox)
+        
+        # Convert to RGB (PDF doesn't support transparency well) 
+        # and save as PDF
+        cropped_img.convert("RGB").save(output_pdf)
+        print(f"Cropped and saved: {output_pdf}")
+    else:
+        print("Image is completely transparent!")
+
+# Apply to your file
+crop_transparent_png("ghost_cells.png", "ghost_cells.png")
+#+end_src
+
+#+RESULTS:
+: None
+
+**** Bordas comunicantes
+#+begin_src python
+import pyvista as pv
+import itertools
+
+# Configuração
+n = 4          # 3x3x3 para não poluir visualmente
+s = 1.0     # tamanho do núcleo local
+g = 0.1   # espessura da camada de ghost cells
+gap = 0.12      # gap maior para ver os blocos isolados
+
+pv.global_theme.transparent_background = True
+plotter = pv.Plotter(off_screen=True, border=False, window_size=[2000, 2000])
+plotter.hide_axes()
+plotter.remove_bounding_box()
+# Generate Blocks
+for i, j, k in itertools.product(range(n), repeat=3):
+    # Posição central do bloco i,j,k
+    x = i * (s + gap)
+    y = j * (s + gap)
+    z = k * (s + gap)
+
+    # 1. O CORE (Dados Locais)
+    core = pv.Box(bounds=(x, x+s, y, y+s, z, z+s))
+    plotter.add_mesh(core, color="#cfd8dc", edge_color="black", show_edges=True)
+
+    # 2. ADICIONAR GHOST CELLS APENAS ONDE HÁ VIZINHOS
+    # Ghost Cell em X (Direita)
+    if i < n - 1:
+        ghost_x = pv.Box(bounds=(x+s, x+s+g, y, y+s, z, z+s))
+        plotter.add_mesh(ghost_x, color="orange", opacity=0.6, edge_color="red", show_edges=True)
+    
+    # Ghost Cell em Y (Fundo)
+    if j < n - 1:
+        ghost_y = pv.Box(bounds=(x, x+s, y+s, y+s+g, z, z+s))
+        plotter.add_mesh(ghost_y, color="green", opacity=0.6, edge_color="darkgreen", show_edges=True)
+
+    # Ghost Cell em Z (Topo)
+    if k < n - 1:
+        ghost_z = pv.Box(bounds=(x, x+s, y, y+s, z+s, z+s+g))
+        plotter.add_mesh(ghost_z, color="blue", opacity=0.6, edge_color="darkblue", show_edges=True)
+
+    
+# Ajuste de Câmera para ver a quina
+xyz_max = n * (s + 2*g + gap)
+center = (xyz_max/2, xyz_max/2, xyz_max/2)
+d = xyz_max * 1.8
+plotter.camera_position = [(center[0]+d, center[1]+d, center[2]+d), center, (0,0,1)]
+
+# Export to PDF
+plotter.screenshot("ghost_cells-comm.png")
+
+from PIL import Image
+def crop_transparent_png(input_file, output_pdf):
+    # Open the image
+    img = Image.open(input_file)
+    
+    # getbbox() finds the bounding box of non-zero (non-transparent) data
+    bbox = img.getbbox()
+    
+    if bbox:
+        # Crop the image to the bounding box
+        cropped_img = img.crop(bbox)
+        
+        # Convert to RGB (PDF doesn't support transparency well) 
+        # and save as PDF
+        cropped_img.convert("RGB").save(output_pdf)
+        print(f"Cropped and saved: {output_pdf}")
+    else:
+        print("Image is completely transparent!")
+
+# Apply to your file
+crop_transparent_png("ghost_cells-comm.png", "ghost_cells-comm.png")
+#+end_src
+
+#+RESULTS:
+: None
+

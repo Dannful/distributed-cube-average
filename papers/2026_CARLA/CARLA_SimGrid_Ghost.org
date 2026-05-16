@@ -1,0 +1,123 @@
+# -*- coding: utf-8 -*-
+# -*- mode: org -*-
+
+#+TITLE: SimGrid to Evaluate Ghost Cells Effectiveness in HPC Applications
+#+AUTHOR: Vinícius Daniel Spadotto
+
+#+STARTUP: overview indent
+#+LANGUAGE: en
+#+OPTIONS: H:3 creator:nil timestamp:nil skip:nil toc:nil num:t ^:nil ~:~
+#+OPTIONS: author:nil title:nil date:nil
+#+TAGS: noexport(n) deprecated(d) ignore(i)
+#+EXPORT_SELECT_TAGS: export
+#+EXPORT_EXCLUDE_TAGS: noexport
+
+#+LATEX_CLASS: LLNCS
+#+LATEX_CLASS_OPTIONS: [runningheads]
+#+LATEX_HEADER: \usepackage[T1]{fontenc}
+#+LATEX_HEADER: \usepackage{graphicx}
+#+LATEX_HEADER: \graphicspath{{img/}}
+#+LATEX_HEADER: \usepackage{hyperref}
+
+# You need at least Org 9 and Emacs 24 to make this work.
+# If you do, just type make (thanks Luka Stanisic for this).
+
+* LLNCS configuration for org export + ignore tag (Start Here)     :noexport:
+
+#+begin_src emacs-lisp :results output :session :exports both
+(add-to-list 'load-path ".")
+(require 'ox-extra)
+(ox-extras-activate '(ignore-headlines))
+(add-to-list 'org-latex-classes
+             '("LLNCS"
+               "\\documentclass[runningheads]{llncs}\n [NO-DEFAULT-PACKAGES]\n [EXTRA]\n"
+               ("\\section{%s}" . "\\section*{%s}")
+               ("\\subsection{%s}" . "\\subsection*{%s}")
+               ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
+               ("\\paragraph{%s}" . "\\paragraph*{%s}")
+               ("\\subparagraph{%s}" . "\\subparagraph*{%s}")))
+#+end_src
+
+#+RESULTS:
+
+* Frontpage                                                          :ignore:
+#+BEGIN_EXPORT latex
+\title{SimGrid to Evaluate Ghost Cells Effectiveness in HPC Applications}
+%
+%\titlerunning{}
+% If the paper title is too long for the running head, you can set
+% an abbreviated paper title here
+%
+\author{Vinícius Daniel Spadotto \and \\
+Lucas Mello Schnorr\orcidID{0000-0003-4828-9942}}
+%
+\authorrunning{V. D. Spadotto et al.}
+% First names are abbreviated in the running head.
+% If there are more than two authors, 'et al.' is used.
+%
+\institute{Institute of Informatics, Federal University of Rio Grande do Sul, Porto Alegre, Brazil \\
+\email{\{vdspadotto,schnorr\}@inf.ufrgs.br}}
+%
+\maketitle
+#+END_EXPORT
+
+* Abstract                                                          :ignore:
+
+#+LaTeX: \begin{abstract}
+
+#+latex: \keywords{SimGrid \and Ghost Cells \and HPC Applications \and Modeling.}
+
+#+LaTeX: \end{abstract}
+
+* The Paper                                                          :ignore:
+** Introduction
+*** TODO Paper Structure                                           :ignore:
+
+Section [[#sec.methods]] outlines the methods and materials used, which
+includes ...
+
+Section [[#sec.results]] includes our findings, detailing the
+experimental methodology in the simulations as well as the results and
+metrics ....
+
+Finally, Section [[#sec.conclusion]] addresses the limitations of our
+approach and concludes the document by offering some perspectives on
+our work.
+
+# The companion material of this work is publicly available at \COMPANION.
+
+** Methods and Materials
+:PROPERTIES:
+:CUSTOM_ID: sec.methods
+:END:
+
+** Results
+:PROPERTIES:
+:CUSTOM_ID: sec.results
+:END:
+
+** Conclusion
+:PROPERTIES:
+:CUSTOM_ID: sec.conclusion
+:END:
+
+** Acknowledgments                                                 :ignore:
+
+#+LATEX:\section*{Acknowledgements}
+
+All experiments in this work used the PCAD platform,
+http://pcad.inf.ufrgs.br, at INF/UFRGS.
+
+* References                                                        :ignore:
+
+#+LATEX: \bibliographystyle{splncs04}
+#+LATEX: \bibliography{biblio}
+
+* Emacs setup                                                      :noexport:
+
+# Local Variables:
+# eval: (add-to-list 'load-path ".")
+# eval: (require 'ox-extra)
+# eval: (ox-extras-activate '(ignore-headlines))
+# eval: (add-to-list 'org-latex-classes '("LLNCS" "\\documentclass[runningheads]{llncs}\n [NO-DEFAULT-PACKAGES]\n [EXTRA]\n" ("\\section{%s}" . "\\section*{%s}") ("\\subsection{%s}" . "\\subsection*{%s}") ("\\subsubsection{%s}" . "\\subsubsection*{%s}") ("\\paragraph{%s}" . "\\paragraph*{%s}") ("\\subparagraph{%s}" . "\\subparagraph*{%s}")))
+# End:

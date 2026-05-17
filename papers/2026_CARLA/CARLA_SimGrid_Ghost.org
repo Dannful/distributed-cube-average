@@ -175,7 +175,7 @@ systematic exploration of those parameters across hardware
 configurations, precisely the kind of exploration that is difficult to
 perform on shared, resource-constrained large-scale HPC clusters. The
 challenge has motivated dedicated benchmarks such as MiniGhost
-\cite{minighost}, a stencil miniapp from the Mantevo suite designed to
+\cite{minighost}, a stencil miniapp from the Mantevo suite \cite{heroux2009improving} designed to
 explore boundary exchange strategies across problem sizes and process
 counts. However, even miniapps require real hardware at scale to
 reach observations.

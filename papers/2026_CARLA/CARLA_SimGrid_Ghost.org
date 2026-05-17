@@ -18,6 +18,8 @@
 #+LATEX_HEADER: \usepackage{graphicx}
 #+LATEX_HEADER: \graphicspath{{img/}}
 #+LATEX_HEADER: \usepackage{hyperref}
+#+LATEX_HEADER: \usepackage{amsmath}
+#+LATEX_HEADER: \usepackage{booktabs}
 
 # You need at least Org 9 and Emacs 24 to make this work.
 # If you do, just type make (thanks Luka Stanisic for this).

@@ -68,7 +68,28 @@ Lucas Mello Schnorr\orcidID{0000-0003-4828-9942}}
 
 #+LaTeX: \begin{abstract}
 
-#+latex: \keywords{SimGrid \and Ghost Cells \and HPC Applications \and Modeling.}
+Ghost cell communication, the asynchronous exchange of halo regions
+between neighboring MPI processes, is the canonical technique for
+overlapping computation with communication in distributed stencil
+applications. Whether this overlap masks communication effectively
+depends on the relationship between problem size, partitioning
+topology, and interconnection bandwidth, a balance that is difficult
+to characterize without access to diverse large-scale hardware. This
+paper uses a distributed MPI implementation of the Fletcher RTM
+seismic application with 3D block decomposition and asynchronous ghost
+cell communication, together with a calibrated SimGrid/SMPI simulation
+framework that enables the exploration of network configurations
+beyond those physically available. TODO TODO
+
+# Experiments on two real HPC clusters show that GPU-accelerated
+# execution on a 1~Gbps network yields only $\approx$20\% compute load
+# regardless of problem size, while CPU execution on a 10~Gbps network
+# reaches $\approx$87\% at $512^3$. Simulated network upgrades
+# demonstrate a clear progression to $>$90\% compute load at 100~Gbps,
+# confirming that simulation is a practical tool for capacity planning
+# when real infrastructure is unavailable.
+
+#+latex: \keywords{SimGrid \and Ghost Cells \and HPC Applications \and MPI \and Stencil Computation}
 
 #+LaTeX: \end{abstract}
 

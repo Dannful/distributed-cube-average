@@ -46,7 +46,7 @@
 #+BEGIN_EXPORT latex
 \title{SimGrid to Evaluate Ghost Cells Effectiveness in High-Performance Computing Applications}
 %
-%\titlerunning{}
+\titlerunning{SimGrid to Evaluate Ghost Cells in MPI Applications}
 % If the paper title is too long for the running head, you can set
 % an abbreviated paper title here
 %

@@ -93,20 +93,118 @@ beyond those physically available. TODO TODO
 
 #+LaTeX: \end{abstract}
 
-* The Paper                                                          :ignore:
 ** Introduction
-*** TODO Paper Structure                                           :ignore:
 
-Section [[#sec.methods]] outlines the methods and materials used, which
-includes ...
+Halo exchange is a foundational technique for distributing iterative
+stencil computations across HPC nodes. Each MPI process maintains a
+\emph{ghost-cell} layer, a local copy of its neighbors' boundary data,
+and asynchronously overlaps these transfers with interior
+computation. Whether this overlap achieves genuine communication
+masking depends on the interplay of problem size, partitioning
+topology, and interconnection bandwidth: with small domains or slow
+networks, communication dominates; with large domains and fast
+networks, computation can fully hide the transfers
+\cite{stencil_supercomputers}. Quantifying this balance requires
+systematic exploration of those parameters across hardware
+configurations, precisely the kind of exploration that is difficult to
+perform on shared, resource-constrained large-scale HPC clusters. The
+challenge has motivated dedicated benchmarks such as MiniGhost
+\cite{minighost}, a stencil miniapp from the Mantevo suite designed to
+explore boundary exchange strategies across problem sizes and process
+counts. However, even miniapps require real hardware at scale to
+reach observations.
 
-Section [[#sec.results]] includes our findings, detailing the
-experimental methodology in the simulations as well as the results and
-metrics ....
+Real HPC infrastructure is expensive, access is time-limited, and it
+generally uses fixed hardware configurations. Exploring whether a
+100Gbps InfiniBand interconnect would change the masking behavior of
+a given application is infeasible when only a 1Gbps Gigabit cluster
+is available. The same constraint applies to topology studies:
+evaluating a 64-node partition when only five nodes are accessible
+requires either analytical modeling, which frequently cannot capture
+real memory hierarchy and OS noise, or simulation.
 
-Finally, Section [[#sec.conclusion]] addresses the limitations of our
-approach and concludes the document by offering some perspectives on
-our work.
+SimGrid/SMPI \cite{simgrid} \cite{simgrid_smpi} addresses this gap by
+intercepting MPI communication calls and simulating them on a
+configurable virtual platform. At the same time, the application's
+computation code executes natively on the host hardware. This strategy
+is a calibrated emulation, also known as online simulation, and
+therefore not the typical abstract modeling: computation timings are
+observed in situ and injected into the simulation, while network
+parameters originate from a systematic platform calibration procedure
+\cite{simgrid_calibration}. SimGrid's goal is to enable the study of
+existing MPI applications within the comfort of the simulator
+\cite{simgrid_lower_barriers}. SimGrid's performance prediction
+capabilities already exist on communication-intensive benchmarks, most
+prominently HPL \cite{hpl_emulation} \cite{hpl_prediction}.
+
+Despite this breadth, published SimGrid use cases tend to focus on
+collective operations \cite{degomme2017simulating},
+scheduling \cite{dutot2015batsim}, and load
+balancing \cite{keller2017using}. Ghost cell and halo exchange studies
+exist, but they consistently rely on real hardware or alternative
+frameworks. Using SST/macro, one line of work simulates halo exchange
+patterns in atmospheric models and notes that SST/macro's packet-level
+model and SimGrid produce near-identical communication timing results,
+yet the study targets scalability of collective patterns rather than
+computation-communication overlap in stencil
+kernels \cite{gmd_halo}. SimGrid's SimDag framework has been applied
+to evaluate process placement for MPI applications with halo-exchange
+communication patterns, focusing on topology-aware optimization of
+process affinity rather than masking
+effectiveness \cite{simdag_affinity}. SimGrid SMPI has also been used
+to predict the performance of stencil computations on heterogeneous
+platforms, again centering on placement and mapping strategies rather
+than the computation-communication overlap
+question \cite{topology_aware}. On real hardware, blocking versus
+non-blocking MPI halo exchange has been benchmarked on national
+supercomputers, confirming that overlap is achievable but inherently
+hardware-specific \cite{blocking_nonblocking_halo}. To the best of our
+knowledge, SimGrid/SMPI has not been used to evaluate the
+effectiveness of ghost cell masking in MPI stencil applications. Since
+SMPI emulates computations between MPI calls on real hardware and
+simulates the communication layer with configurable parameters, it is
+well-suited for this purpose, and this is the gap the present paper
+addresses.
+
+We selected the Fletcher RTM application as the vehicle to make the
+evaluation concrete and non-trivial. Fletcher solves pseudo-acoustic
+wave equations for seismic imaging in anisotropic media
+\cite{fletcher} \cite{fletcher_modeling}, applying an eighth-order
+finite-difference stencil over a discretized 3D grid at each time
+step. The application is computationally intensive and memory-bound
+per iteration, and benefits strongly from GPU acceleration
+\cite{multi-gpu} \cite{okamoto2010}. When paired with a slow interconnect,
+it creates precisely the bandwidth asymmetry that makes ghost cell
+masking most challenging to achieve. Using a real, numerically
+validated application rather than a synthetic benchmark ensures that
+the communication patterns and memory access behaviors observed are
+representative of production workloads.
+
+The contributions of this paper are threefold: (i) we briefly present
+the design and implementation of a distributed MPI implementation of
+Fletcher with 3D block decomposition and asynchronous ghost cell
+communication, numerically validated against a single-node reference
+results; (ii) a calibrated SimGrid/SMPI simulation framework for that
+application, validated against real cluster executions within a 15%
+error margin; and (iii) an evaluation that employs SimGrid to verify
+ghost cells effectiveness for masking communications with case studies
+showing how interconnection bandwidth and partitioning topology
+jointly determine masking effectiveness. TODO TODO
+# , with results ranging from $\approx$20\% compute load on a GPU
+# cluster with 1~Gbps to $>$90\% under 100~Gbps simulation. TODO TODO
+
+*** Paper structure                                                :ignore:
+
+Section [[#sec.methods]] outlines the methods and materials used, which
+include the theoretical background on partitioning, ghost cells, and
+the Fletcher equations, along with the MPI application design and the
+SimGrid simulation methodology. Section [[#sec.results]] includes our
+findings, detailing the experimental methodology in the simulations as
+well as the results and metrics in the form of the case studies to
+evaluate the effectiveness of the ghost cells implementation for
+masking communication. Finally, Section [[#sec.conclusion]] addresses the
+limitations of our approach and concludes the document by offering
+some perspectives on our work.
 
 # The companion material of this work is publicly available at \COMPANION.
 
@@ -114,6 +212,175 @@ our work.
 :PROPERTIES:
 :CUSTOM_ID: sec.methods
 :END:
+
+This section describes the methods and materials used to build and
+evaluate the distributed Fletcher RTM application with ghost cells
+using the SimGrid simulation framework. We first establish the
+theoretical foundations, static domain partitioning, ghost cell
+communication, and the Fletcher pseudo-acoustic stencil, before
+detailing the MPI application design that realizes these concepts and
+the SimGrid simulation framework used to evaluate performance beyond
+the constraints of available hardware.
+
+*** Theoretical Background
+**** Partitioning
+
+Static partitioning divides the problem domain once at the start of
+execution and keeps the subdivision fixed throughout
+\cite{grama2003}. Since the Fletcher stencil kernel applies the same
+operation uniformly across the grid, each worker's workload is
+homogeneous within its sub-volume, and dynamic rebalancing offers no
+benefit. Among the possible 3D decomposition strategies -- Slices
+($\{P, 1, 1\}$), Columns ($\{\lfloor P^{1/2}\rfloor, \lfloor P^{1/2}\rfloor, 1\}$), and Blocks ($\{\lfloor
+P^{1/3}\rfloor, \ldots\}$) -- the 3D Block decomposition minimizes the total
+surface-to-volume ratio of the sub-domains. The total communication
+boundary for slices grows as $2(P-1)L^2$, while for blocks it grows as
+$6(\sqrt[3]{P}-1)L^2$ \cite{stencil_supercomputers}. Because the
+stencil volume grows as $O(n^3)$ while the halo surface grows as
+$O(n^2)$, the communication-to-computation ratio decreases as problem
+size grows, provided the decomposition remains cubic. The
+~MPI_Dims_create~ and ~MPI_Cart_create~ functions create a 3D partitioning
+that automatically distributes the process count across the three axes
+and establishes a Cartesian communicator. A known pitfall arises with
+prime process counts: since one cannot use primes to factor into a
+balanced cube. We need to pay attention to avoid using prime numbers
+for rank counts, as ~MPI_Dims_create~ degenerates to a $\{P,1,1\}$
+slices decomposition, negating the surface-area advantage of block
+partitioning.
+
+**** Ghost Cells
+
+Ghost cells extend each process's local grid with a thin shell of
+boundary data received from neighboring processes
+\cite{ghost_cells}. Although the local stencil does not update these
+extra cells, the memory overhead justifies the latency savings. By
+prefetching boundary data before it is immediately required, processes
+can initiate communication at the start of each iteration and overlap
+it with interior computation. The overlap strategy proceeds as follows
+within each time step: (1) post non-blocking receives for incoming
+halos; (2) compute boundary strips, the cells whose values will be
+sent to neighbors, using the previous iteration's complete data; (3)
+send boundary strips asynchronously; (4) compute the interior while
+halos are in transit; (5) wait for incoming halos, insert them, and
+swap wavefield vectors. The critical requirement for effective masking
+is that the interior computation time exceeds the halo transfer time;
+when the network becomes the bottleneck, step (5) stalls, and
+communication dominates the iteration.
+
+**** Fletcher Modeling
+
+Reverse Time Migration (RTM) reconstructs subsurface reflectivity by
+propagating seismic wavefields forward and backward in time and
+cross-correlating them \cite{rtm}. In isotropic media the wave
+equation reduces to $\frac{\partial^2 p}{\partial t^2} = v^2 \nabla^2 p$; anisotropic
+media introduce spatially-varying parameters $\epsilon(x,y,z)$ and $\delta(x,y,z)$
+that vary the wave speed with propagation direction
+\cite{anisotropy}. Fletcher's pseudo-acoustic formulation
+\cite{fletcher} couples the pressure field $p$ with an auxiliary field
+$q$ through:
+
+#+BEGIN_EXPORT latex
+\begin{gather}
+  \frac{\partial^{2}p}{\partial t^{2}} = v_{px}^{2}H_{2}p + \alpha v_{px}^{2}H_{1}q + v_{sx}^{2}H_{1}(p - \alpha q) \label{eq:fletcher_p} \\
+  \frac{\partial^{2}q}{\partial t^{2}} = \frac{v_{pn}^{2}}{\alpha}H_{2}p + v_{px}^{2}H_{1}q - v_{sx}^{2}H_{2}\!\left(\frac{1}{\alpha}p - q\right) \label{eq:fletcher_q}
+\end{gather}
+#+END_EXPORT
+
+where $v_{pz}$, $v_{pn}$, $v_{px}$ are derived P-wave velocities, $v_{sx}$ is the
+shear velocity, and $H_1$, $H_2$ are differential operators encoding,
+respectively, the anisotropic and isotropic components of the stencil
+\cite{fletcher_modeling}. The parameter $\alpha$ is set to 1 following
+Fletcher's recommendation. The stencil applies this update at every
+grid point using an eighth-order finite-difference scheme, advancing
+both $p$ and $q$ by one time step $\Delta t$.
+
+*** HPC Application Design with Ghost Cells
+
+The distributed application follows a coordinator-worker model over
+MPI. The coordinator, typically in rank 0, partitions the global $N_x
+\times N_y \times N_z$ domain using ~MPI_Dims_create~ and dispatches compact
+metadata packets, local dimensions, global offsets, absorption zone
+parameters, and seismic source position, to all workers via
+point-to-point sends. Each worker independently allocates and
+initializes its sub-volume, including the four wavefield arrays
+($p_{\text{past}}$, $p_{\text{curr}}$, $q_{\text{past}}$, $q_{\text{curr}}$) and
+the precomputed anisotropy coefficients; no wavefield data is
+distributed, eliminating a potential memory bottleneck on rank 0
+during the initialization phase as this application uses synthetic
+data only.
+
+The main computation loop implements the five-step ghost cell overlap
+strategy described above. Each worker posts non-blocking MPI receives
+(~MPI_Irecv~) at the start of each iteration for all 26 neighbors in the
+3D Cartesian grid; boundary strips are computed and dispatched via
+~MPI_Isend~; interior computation proceeds concurrently; and a final
+~MPI_Waitall~ synchronizes all transfers. Because the coordinator
+participates in the same Cartesian topology as the workers, it
+executes the same computation loop with no special treatment during
+the time-stepping phase.  If the ghost-cell strategy for masking
+communication is effective, the accumulated time in the ~MPI_Waitall~
+operation for any rank should be nearly zero for all ranks.
+
+A CUDA backend replaces the OpenMP propagation kernel when GPU nodes
+are available. Wavefield vectors reside permanently in device memory;
+only the halo buffers travel between device and host via 3D strided
+copies during send/receive operations. The system maps boundary and
+interior sub-regions to separate parameterized CUDA kernel launches,
+preserving the same overlap logic as the CPU backend. Numerical
+validation was performed by comparing SHA-256 checksums (OpenMP
+backend, 30 configurations of 1–6 workers across five problem sizes
+from $32^3$ to $512^3$) and per-element delta checks within $10^{-15}$
+tolerance (CUDA backend), confirming bitwise and near-bitwise
+reproducibility against the single-node reference implementation.
+
+*** Simulation with SimGrid
+
+The simulation framework is built on SimGrid/SMPI \cite{simgrid}. The
+=poti= cluster (see Table \ref{tab:poti-hardware}) was chosen as the
+simulation host so that the computation timings recorded during SMPI's
+emulation phase match those observed on the real GPU
+platform. Platform calibration followed the methodology of
+\cite{simgrid_calibration}, extracting MPI runtime parameters,
+protocol thresholds, bandwidth, and latency, from a systematic suite
+of micro-benchmarks. The resulting platform description reproduces the
+real cluster's behavior within a 15% error margin for message sizes up
+to \approx1GB which we conclude acceptable since application behavior (both
+compute and communication) is very homogeneous throughout the
+execution, indicating that tendencies remains sufficiently faithfull
+to evaluate communication masking.
+#+latex: %
+Rather than replacing compute kernels with analytical FLOP counts
+(which proved an oversimplification that ignored cache behavior, PCIe
+transfers, and memory copies), SimGrid's native computation sampling
+is leveraged: the main propagation kernel executes in full for a
+variable number of warm-up iterations, after which the code injects
+stable timing samples into the simulation.
+
+#+begin_export latex
+\begin{table}[ht]
+  \centering
+  \caption{Hardware description of the \textit{poti} cluster nodes.}
+  \label{tab:poti-hardware}
+  \begin{tabular}{ll}
+    \toprule
+    \textbf{Property} & \textbf{Value} \\
+    \midrule
+    Nodes        & poti[1,2,3,4,5] \\
+    CPU          & Intel Core i7-14700KF, 3.4\,GHz, 20 cores, 28 threads \\
+    Memory       & 96\,GB DDR5 \\
+    GPU          & NVIDIA GeForce RTX 4070, 12\,GB \\
+    Storage      & 119.2\,GB NVMe, 1.7\,TB SSD \\
+    Motherboard  & Gigabyte Z790 UD AX \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+#+end_export
+
+
+
+# Two simulated network configurations are evaluated: 10Gbps and
+# 100Gbps, representing a 10\times and 100\times improvement over the
+# real 1Gbps interconnect of the =poti= cluster.
 
 ** Results
 :PROPERTIES:

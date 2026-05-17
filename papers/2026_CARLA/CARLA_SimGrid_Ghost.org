@@ -63,7 +63,8 @@ Lucas Mello Schnorr\orcidID{0000-0003-4828-9942}}
 \maketitle
 #+END_EXPORT
 
-* Abstract                                                          :ignore:
+* The Paper                                                          :ignore:
+** Abstract                                                         :ignore:
 
 #+LaTeX: \begin{abstract}
 

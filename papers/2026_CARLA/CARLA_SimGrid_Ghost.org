@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # -*- mode: org -*-
 
-#+TITLE: SimGrid to Evaluate Ghost Cells Effectiveness in HPC Applications
+#+TITLE: SimGrid to Evaluate Ghost Cells Effectiveness in High-Performance Computing Applications
 #+AUTHOR: Vinícius Daniel Spadotto
 
 #+STARTUP: overview indent
@@ -42,7 +42,7 @@
 
 * Frontpage                                                          :ignore:
 #+BEGIN_EXPORT latex
-\title{SimGrid to Evaluate Ghost Cells Effectiveness in HPC Applications}
+\title{SimGrid to Evaluate Ghost Cells Effectiveness in High-Performance Computing Applications}
 %
 %\titlerunning{}
 % If the paper title is too long for the running head, you can set

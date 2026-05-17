@@ -79,7 +79,7 @@ paper uses a distributed MPI implementation of the Fletcher RTM
 seismic application with 3D block decomposition and asynchronous ghost
 cell communication, together with a calibrated SimGrid/SMPI simulation
 framework that enables the exploration of network configurations
-beyond those physically available. TODO TODO
+beyond those physically available. Our results indicate that ... TODO TODO
 
 # Experiments on two real HPC clusters show that GPU-accelerated
 # execution on a 1~Gbps network yields only $\approx$20\% compute load

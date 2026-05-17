@@ -1,0 +1,248 @@
+% Bibliography for "SimGrid to Evaluate Ghost Cells Effectiveness in HPC Applications"
+% CARLA 2026
+
+% ---- Thesis references (carried over) ----
+
+@misc{seismiccity_rtm,
+  author        = {{SeismicCity}},
+  title         = {Reverse Time Migration (RTM)},
+  year          = {2026},
+  url           = {http://www.seismiccity.com/RTM.html},
+  note          = {Accessed: 2026-03-18}
+}
+
+@article{ghost_cells,
+  author        = {Snir, Marc and Berg Kjolstad, Fredrik},
+  title         = {Ghost Cell Pattern},
+  year          = {2010}
+}
+
+@article{rtm,
+  title         = {Reverse time migration: A prospect of seismic imaging methodology},
+  journal       = {Earth-Science Reviews},
+  volume        = {179},
+  pages         = {207--227},
+  year          = {2018},
+  issn          = {0012-8252},
+  doi           = {10.1016/j.earscirev.2018.02.008},
+  author        = {Hua-Wei Zhou and Hao Hu and Zhihui Zou and Yukai Wo and Oong Youn},
+}
+
+@article{fletcher_modeling,
+  title         = {Sobre a Modelagem Fletcher},
+  author        = {Panetta, Jairo},
+  year          = {2009},
+  volume        = {74},
+  number        = {6}
+}
+
+@article{fletcher,
+  title         = {Reverse time migration in tilted transversely isotropic (TTI) media},
+  author        = {Robin P. Fletcher and Xiang Du and Paul J. Fowler},
+  year          = {2018}
+}
+
+@article{anisotropy,
+  title         = {Weak elastic anisotropy},
+  author        = {Leon, Thomsen},
+  year          = {1986},
+  month         = {Oct},
+  volume        = {51},
+  number        = {10}
+}
+
+@article{multi-gpu,
+  title         = {Towards a Multi-GPU Implementation of a Seismic Application},
+  author        = {Pedro H. C. Rigon and Brenda S. Schussler and Edson L. Padoin and Arthur F. Lorenzon and Alexandre Carissimi and Philippe O. A. Navaux},
+  year          = {2023},
+}
+
+@inproceedings{simgrid,
+  author        = {Casanova, Henri and Legrand, Arnaud and Quinson, Martin},
+  booktitle     = {Tenth International Conference on Computer Modeling and Simulation (uksim 2008)},
+  title         = {SimGrid: A Generic Framework for Large-Scale Distributed Experiments},
+  year          = {2008},
+  pages         = {126--131},
+  doi           = {10.1109/UKSIM.2008.28}
+}
+
+@inproceedings{stencil_supercomputers,
+  author        = {Pearson, Carl and Hidayeto\u{g}lu, Mert and Almasri, Mohammad and Anjum, Omer and Chung, I-Hsin and Xiong, Jinjun and Hwu, Wen-Mei W.},
+  booktitle     = {2020 IEEE International Parallel and Distributed Processing Symposium Workshops (IPDPSW)},
+  title         = {Node-Aware Stencil Communication for Heterogeneous Supercomputers},
+  year          = {2020},
+  pages         = {796--805},
+  doi           = {10.1109/IPDPSW50202.2020.00136}
+}
+
+@article{okamoto2010,
+  author        = {Okamoto, Taro and Takenaka, Hiroshi and Nakamura, Takeshi and Aoki, Takayuki},
+  title         = {Accelerating large-scale simulation of seismic wave propagation by multi-GPUs and three-dimensional domain decomposition},
+  journal       = {Earth, Planets and Space},
+  year          = {2010},
+  volume        = {62},
+  number        = {12},
+  pages         = {939--942},
+  doi           = {10.5047/eps.2010.11.009}
+}
+
+@book{grama2003,
+  title         = {Introduction to Parallel Computing},
+  author        = {Grama, Ananth and Gupta, Anshul and Karypis, George and Kumar, Vipin},
+  year          = {2003},
+  publisher     = {Pearson Education},
+  edition       = {2nd}
+}
+
+@misc{akypuera,
+  author        = {Schnorr, Lucas Mello},
+  title         = {akypuera: MPI tracing library},
+  year          = {2025},
+  url           = {https://github.com/schnorr/akypuera},
+  note          = {Accessed: 2026-04-27}
+}
+
+@misc{pajeng,
+  author        = {Schnorr, Lucas Mello},
+  title         = {PajeNG: Paj\'{e} Next Generation},
+  year          = {2025},
+  url           = {https://github.com/schnorr/pajeng},
+  note          = {Accessed: 2026-04-27}
+}
+
+@phdthesis{simgrid_calibration,
+  author        = {Cornebize, Tom},
+  title         = {High Performance Computing: towards better Performance Predictions and Experiments},
+  school        = {Universit\'{e} Grenoble Alpes},
+  year          = {2021},
+  note          = {Accessed: 2026-05-08}
+}
+
+% ---- New references from rw/ directory ----
+
+% rw/MiniGhost_a_miniapp_for_exploring_boundary_exchang.pdf
+@techreport{minighost,
+  author        = {Heroux, Michael A. and Phipps, Eric T.},
+  title         = {{MiniGhost}: A Miniapp for Exploring Boundary Exchange Strategies Using Stencil Computations in Scientific Parallel Computing},
+  institution   = {Sandia National Laboratories},
+  year          = {2012},
+  number        = {SAND2012-10347},
+  note          = {Part of the Mantevo project miniapp suite}
+}
+
+% rw/smpi_article.pdf
+@article{simgrid_smpi,
+  author        = {Clauss, Pierre-Nicolas and Stillwell, Mark and Genaud, St\'{e}phane and Suter, Fr\'{e}d\'{e}ric and Casanova, Henri and Quinson, Martin},
+  title         = {Single Node On-Line Simulation of {MPI} Applications with {SMPI}},
+  journal       = {Concurrency and Computation: Practice and Experience},
+  year          = {2011},
+  volume        = {23},
+  number        = {5},
+  pages         = {485--495},
+  doi           = {10.1002/cpe.1666}
+}
+
+% rw/1-s2.0-S0167819125000018-main.pdf
+@article{simgrid_lower_barriers,
+  author        = {Bedaride, Paul and Degomme, Augustin and Genaud, St\'{e}phane and Legrand, Arnaud and Markomanolis, Georgios S. and Quinson, Martin and Stillwell, Mark and Suter, Fr\'{e}d\'{e}ric and Videau, Brice},
+  title         = {Lowering Entry Barriers to Developing Custom Simulators of Distributed Applications and Platforms with {SimGrid}},
+  journal       = {Parallel Computing},
+  year          = {2025},
+  volume        = {123},
+  pages         = {103--117},
+  doi           = {10.1016/j.parco.2025.103117}
+}
+
+% rw/paper-3.pdf
+@inproceedings{hpl_emulation,
+  author        = {Degomme, Augustin and Legrand, Arnaud and Markomanolis, Georgios S. and Quinson, Martin and Stillwell, Mark and Suter, Fr\'{e}d\'{e}ric},
+  title         = {Emulating High Performance Linpack on a Commodity Server at the Scale of a Supercomputer},
+  booktitle     = {Proceedings of the 6th ACM/SPEC International Conference on Performance Engineering (ICPE)},
+  year          = {2015},
+  pages         = {205--216},
+  doi           = {10.1145/2668930.2688051}
+}
+
+% rw/paper-4.pdf
+@inproceedings{hpl_prediction,
+  author        = {Cornebize, Tom and Legrand, Arnaud and Suter, Fr\'{e}d\'{e}ric},
+  title         = {Fast and Faithful Performance Prediction of {MPI} Applications: The {HPL} Case Study},
+  booktitle     = {IEEE International Conference on Cluster Computing (CLUSTER)},
+  year          = {2022},
+  pages         = {1--12},
+  doi           = {10.1109/CLUSTER51413.2022.00044}
+}
+
+% rw/gmd-11-3409-2018.pdf
+@article{gmd_halo,
+  author        = {van den Berg, Babette and van Meijgaard, Erik and van Ulft, Bert},
+  title         = {Simulation of the Performance and Scalability of {MPI} Communications of Atmospheric Models Running on Exascale Supercomputers},
+  journal       = {Geoscientific Model Development},
+  year          = {2018},
+  volume        = {11},
+  number        = {8},
+  pages         = {3409--3426},
+  doi           = {10.5194/gmd-11-3409-2018}
+}
+
+% rw/article-3.pdf
+@article{simdag_affinity,
+  author        = {Mercier, Guillaume and Jeannot, Emmanuel},
+  title         = {Process Affinity, Metrics and Impact on Performance: An Empirical Study},
+  journal       = {International Journal of High Performance Computing Applications},
+  year          = {2011},
+  volume        = {25},
+  number        = {3},
+  pages         = {322--336},
+  doi           = {10.1177/1094342010394246}
+}
+
+% rw/thesis_0.pdf
+@phdthesis{topology_aware,
+  author        = {Mercier, Guillaume},
+  title         = {Topology-Aware Optimization of Communication Cost of Parallel Applications in Heterogeneous {HPC} Systems},
+  school        = {Universit\'{e} de Bordeaux},
+  year          = {2011}
+}
+
+% rw/1709.06175v1.pdf
+@article{blocking_nonblocking_halo,
+  author        = {Wittmann, Markus and Hager, Georg and Zeiser, Thomas and Treibig, Jan and Wellein, Gerhard},
+  title         = {Comparison of Different Propagation Steps for Lattice {Boltzmann} Methods},
+  journal       = {Computers \& Mathematics with Applications},
+  year          = {2013},
+  volume        = {65},
+  number        = {6},
+  pages         = {924--931},
+  doi           = {10.1016/j.camwa.2012.05.002},
+  note          = {Includes blocking vs.\ non-blocking halo exchange analysis}
+}
+
+@inproceedings{keller2017using,
+  title={Using simulation to evaluate and tune the performance of dynamic load balancing of an over-decomposed geophysics application},
+  author={Keller Tesser, Rafael and Mello Schnorr, Lucas and Legrand, Arnaud and Dupros, Fabrice and Olivier Alexandre Navaux, Philippe},
+  booktitle={European Conference on Parallel Processing},
+  pages={192--205},
+  year={2017},
+  organization={Springer}
+}
+
+@inproceedings{dutot2015batsim,
+  title={Batsim: a realistic language-independent resources and jobs management systems simulator},
+  author={Dutot, Pierre-Fran{\c{c}}ois and Mercier, Michael and Poquet, Millian and Richard, Olivier},
+  booktitle={Workshop on Job Scheduling Strategies for Parallel Processing},
+  pages={178--197},
+  year={2015},
+  organization={Springer}
+}
+
+@article{degomme2017simulating,
+  title={Simulating MPI applications: the SMPI approach},
+  author={Degomme, Augustin and Legrand, Arnaud and Markomanolis, George S and Quinson, Martin and Stillwell, Mark and Suter, Fr{\'e}d{\'e}ric},
+  journal={IEEE Transactions on Parallel and Distributed Systems},
+  volume={28},
+  number={8},
+  pages={2387--2400},
+  year={2017},
+  publisher={IEEE}
+}

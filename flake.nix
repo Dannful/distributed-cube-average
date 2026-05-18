@@ -71,7 +71,11 @@
         };
         simgrid = {
           type = "app";
-          program = "${scripts.run-simgrid}/bin/run-simgrid";
+          program = "${scripts.run-simgrid-platform}/bin/run-simgrid-platform";
+        };
+        simgrid-cuda = {
+          type = "app";
+          program = "${scripts.run-simgrid-platform-cuda}/bin/run-simgrid-platform-cuda";
         };
         poti = {
           type = "app";

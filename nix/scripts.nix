@@ -128,7 +128,6 @@
     # Generate Stats
     if [ -f "dc.trace" ]; then
         pj_dump_csv --prefix dc -l 9 dc.trace
-        mv -v dc.state.csv dc.csv
         ${rEnv}/bin/Rscript ./get_metrics.R
     fi
   '';
@@ -222,7 +221,6 @@
     # Generate Stats
     if [ -f "dc.trace" ]; then
         pj_dump_csv --prefix dc -l 9 dc.trace
-	mv -v dc.state.csv dc.csv
         ${rEnv}/bin/Rscript ./get_metrics.R
     fi
   '';

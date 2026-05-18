@@ -156,7 +156,8 @@
 
     # Generate Stats
     if [ -f "dc.trace" ]; then
-        pj_dump -l 9 dc.trace | grep ^State > dc.csv
+        pj_dump_csv --prefix dc -l 9 dc.trace
+	mv -v dc.state.csv dc.csv
         ${rEnv}/bin/Rscript ./get_metrics.R
     fi
   '';

@@ -7,8 +7,8 @@ pkgs.stdenv.mkDerivation rec {
   src = pkgs.fetchFromGitHub {
     owner = "schnorr";
     repo = "pajeng";
-    rev = "87d2d263020339defddeeaf6586723d0f840f5a4";
-    sha256 = "sha256-g3aT5SNwrhk7d/f5ElJfSqXQ6MFnsuVQ0fSpbiH94Y0=";
+    rev = "e8d14fcc7a5fbec28d7458e8b856a45c545cb9be";
+    sha256 = "sha256-s3us1DbONxWhSYuSe6Jay23q0ZgI2ZegE3SKgoAIEWA=";
   };
 
   nativeBuildInputs = [
@@ -29,6 +29,7 @@ pkgs.stdenv.mkDerivation rec {
     mkdir -p $out/lib
 
     cp pj_dump $out/bin/
+    cp pj_dump_csv $out/bin/
     cp pj_equals $out/bin/
     cp src/libpaje/libpaje.so.2 $out/lib
 
@@ -39,6 +40,7 @@ pkgs.stdenv.mkDerivation rec {
 
     # Set the RPATH on the binaries
     patchelf --set-rpath "$RPATH" $out/bin/pj_dump
+    patchelf --set-rpath "$RPATH" $out/bin/pj_dump_csv
     patchelf --set-rpath "$RPATH" $out/bin/pj_equals
 
     runHook postInstall

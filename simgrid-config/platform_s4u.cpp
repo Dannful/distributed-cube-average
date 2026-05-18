@@ -27,6 +27,11 @@ struct PlatformConfig {
     cfg.net_bw = require_env_var("PLATFORM_NET_BW");
     cfg.net_lat = require_env_var("PLATFORM_NET_LAT");
     cfg.hostfile_path = require_env_var("PLATFORM_HOSTFILE");
+    std::cout << "Platform configuration exposed:" << std::endl;
+    std::cout << "cfg.num_hosts: " << cfg.num_hosts << std::endl;
+    std::cout << "cfg.net_bw: " << cfg.net_bw << std::endl;
+    std::cout << "cfg.net_lat: " << cfg.net_lat << std::endl;
+    std::cout << "cfg.hostfile_path: " << cfg.hostfile_path << std::endl;
     return cfg;
   }
 };

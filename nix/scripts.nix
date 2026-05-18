@@ -98,7 +98,8 @@
     generate_artifacts > /dev/null
 
     # Run Simulation
-    export OMP_NUM_THREADS=1
+    # Let the code run with OpenMP freely
+    # export OMP_NUM_THREADS=1
     rm -f dc.trace dc.csv smpi.html smpi.png
 
     PLATFORM_LIB=${packages.dc-simgrid-platform}/lib/libplatform.so

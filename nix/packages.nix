@@ -69,7 +69,7 @@ in {
     version = "0.1.0";
     src = ../.;
     nativeBuildInputs = with pkgs; [gnumake simgrid];
-    buildInputs = with pkgs; [openmpi];
+    buildInputs = with pkgs; [openmpi llvmPackages.openmp];
     buildPhase = "make all BACKEND=simgrid";
     installPhase = ''
       mkdir -p $out/bin

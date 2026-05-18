@@ -32,7 +32,8 @@ ifeq ($(BACKEND), openmp)
 
 else ifeq ($(BACKEND), simgrid)
     CC           := smpicc
-    CFLAGS       += -DSIMGRID
+    CFLAGS       += -DSIMGRID -fopenmp
+    LDFLAGS      += -fopenmp
     SOURCES_C    := $(SOURCES_C_COMMON) $(SRCDIR)/openmp_propagate.c $(SRCDIR)/device_data.c
     SOURCES_CUDA :=
 

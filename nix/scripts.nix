@@ -68,6 +68,71 @@
     fi
   '';
 
+  runSimgridPlatform = pkgs.writeShellScriptBin "run-simgrid-platform" ''
+    export PATH=${pkgs.lib.makeBinPath [
+      pkgs.coreutils
+      pkgs.gnugrep
+      pkgs.simgrid
+      packages.dc-simgrid-platform
+      pajeng
+      rEnv
+    ]}:$PATH
+
+    if [ "$#" -lt 3 ]; then
+      echo "Usage: run-simgrid-platform NUM_HOSTS NET_BW NET_LAT [PROGRAM_ARGS...]"
+      exit 1
+    fi
+
+    NUM_HOSTS=$1
+    NET_BW=$2
+    NET_LAT=$3
+    shift 3
+    ARGS="$@"
+
+    export PLATFORM_NUM_HOSTS=$NUM_HOSTS
+    export PLATFORM_NET_BW=$NET_BW
+    export PLATFORM_NET_LAT=$NET_LAT
+    export PLATFORM_HOSTFILE=simgrid-config/hostfile.txt
+
+    # Generate Hostfile
+    generate_artifacts > /dev/null
+
+    # Run Simulation
+    export OMP_NUM_THREADS=1
+    rm -f dc.trace dc.csv smpi.html smpi.png
+
+    PLATFORM_LIB=${packages.dc-simgrid-platform}/lib/libplatform.so
+    DC_BIN=${packages.dc-simgrid}/bin/dc
+
+    ${pkgs.simgrid}/bin/smpirun \
+      -platform $PLATFORM_LIB \
+      -hostfile simgrid-config/hostfile.txt \
+      -np $NUM_HOSTS \
+      --cfg=smpi/display-timing:yes \
+      --cfg=precision/timing:1e-9 \
+      --cfg=tracing/precision:9 \
+      --cfg=smpi/shared-malloc:global \
+      --cfg=smpi/host-speed:1 \
+      --cfg=smpi/os:"0:4.17e-07:9.3e-08;2:1.2688358242159313e-06:5.509165162627468e-11;846:1.2427927374751976e-06:7.629724927795766e-11;1182:1.01878039474522e-06:2.2976714190789488e-10;6687:7.212526152845653e-07:2.3548673558712826e-10;65480:0.0:0.0" \
+      --cfg=smpi/or:"0:1.074e-06:6.000000000000027e-09;2:1.0473771622457872e-06:1.5567156532620197e-10;846:1.2421788110402576e-06:7.174648137343064e-43;1182:1.6995035871937564e-06:1.348689114201127e-10;6687:1.758151339164401e-06:1.1446056239417835e-10;65480:0.0:0.0" \
+      --cfg=smpi/ois:"0:4.99e-07:6.2e-08;2:5.71513825856767e-07:3.681266485442063e-11;846:1.3753277297356838e-07:3.538717583470924e-10;1182:2.0886700989740583e-07:1.9666759173075344e-10;6687:2.938735877055719e-39:1.105170449896893e-10;65480:5.548287028763466e-07:1.5407086056396026e-13" \
+      --cfg=smpi/bw-factor:"0:1.0;2:0.4510053758462671;846:0.5091684623185814;1182:0.948984644166369;6687:0.9193943188688236;65480:0.9412414252627215" \
+      --cfg=smpi/lat-factor:"0:0.837740263193759;2:0.790246085987436;846:1.0647374762712742;1182:1.4653793019194907;6687:1.394904217619273;65480:4.25253968678777" \
+      --cfg=smpi/iprobe:"1.6269591164444444e-07" \
+      --cfg=smpi/test:"1.4119688221333333e-07" \
+      --cfg=smpi/async-small-thresh:"65480" \
+      --cfg=smpi/send-is-detached-thresh:"65480" \
+      -trace --cfg=tracing/filename:dc.trace \
+      $DC_BIN $ARGS 2>&1 | tee sim.log
+
+    # Generate Stats
+    if [ -f "dc.trace" ]; then
+        pj_dump_csv --prefix dc -l 9 dc.trace
+        mv -v dc.state.csv dc.csv
+        ${rEnv}/bin/Rscript ./get_metrics.R
+    fi
+  '';
+
   runSimgridPlatformCuda = pkgs.writeShellScriptBin "run-simgrid-platform-cuda" ''
     export PATH=${pkgs.lib.makeBinPath [
       pkgs.coreutils
@@ -247,6 +312,7 @@ in {
     exec $APP_DIR/bin/dc "$@"
   '';
 
+  run-simgrid-platform = runSimgridPlatform;
   run-simgrid-platform-cuda = runSimgridPlatformCuda;
   run-poti-experiments = runPotiExperiments;
 }

@@ -6652,12 +6652,13 @@ Contrast the 8-worker {2,2,2} block decomposition against a 5-worker
 baseline). This makes the prime-process-count pitfall concrete and
 ties back to the theoretical boundary formula.
 *** The Masking Effectiveness Analysis
-**** 1. Script to calculate Masking Effectiveness for every run
+**** Steps
+***** 1. Script to calculate Masking Effectiveness for every run
 :PROPERTIES:
 :header-args: :tangle "me.R" :tangle-mode (identity #o755) :shebang "#!/usr/bin/Rscript"
 :END:
-***** Functions
-****** Read
+****** Functions
+******* Read
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 our_read_function <- function(f) {
@@ -6691,7 +6692,7 @@ our_read_function <- function(f) {
 
 #+RESULTS:
 
-****** Compute
+******* Compute
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 add_compute_state <- function(df) {
@@ -6716,7 +6717,7 @@ add_compute_state <- function(df) {
 
 #+RESULTS:
 
-***** Read and compute
+****** Read and compute
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 options(crayon.enabled=FALSE)
@@ -6754,8 +6755,8 @@ df |>
   write_csv("me.csv")
 #+end_src
 
-**** 2. Run the script for all cases
-***** Sequential
+***** 2. Run the script for all cases
+****** Sequential
 #+begin_src shell :results output :exports both :tangle no
 for i in $(find swr-poti | grep order- | grep dc.state.csv)
 do
@@ -6764,7 +6765,7 @@ do
     popd
 done
 #+end_src
-***** Parallel
+****** Parallel
 #+begin_src shell :results output :exports both
 find swr-poti -type f -path '*order-*dc.state.csv' | \
 parallel --will-cite -j 4 '
@@ -6772,7 +6773,7 @@ parallel --will-cite -j 4 '
     ../../../../../me.R < /dev/null
 '
 #+end_src
-**** 3. Get the data and analyze
+***** 3. Get the data and analyze
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 options(crayon.enabled=FALSE)
@@ -6839,17 +6840,168 @@ ggsave("../papers/2026_CARLA/img/tupi-masking.png", width = 4, height = 1.3, uni
 #+end_src
 
 #+RESULTS:
+**** Read everything
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+library(tidyverse)
+
+# Your tibble
+runs <- tribble(
+  ~DIR,                                    ~TYPE,
+  "swr-all-after-arch-check-2/run-784330/", "poti",
+  "swr-poti/run-784314/",                   "poti",
+  "swr-tupi/run-784327/",                   "tupi",
+  "swr-cei/run-784319/",                    "cei",
+  "swr-tsubasa/run-784320/",                "tsubasa"
+)
+
+read_me_files <- function(dir, type) {
+  # Determine the doe subdirectory name based on type
+  doe_dir <- str_glue("{dir}distributed-cube-average/{type}-doe")
+
+  # Find all me.csv files and extract their order
+  me_files <- fs::dir_ls(doe_dir, regexp = "order-[0-9]+/me\\.csv$", recurse = TRUE)
+
+  # Read all me.csv files, tagging each with its order number
+  me_data <- me_files |>
+    map(read_csv, show_col_types = FALSE, progress=FALSE) |>
+    list_rbind(names_to = "path") |>
+    mutate(
+      order = as.integer(str_extract(path, "(?<=order-)\\d+")),
+      DIR   = dir,
+      TYPE  = type
+    ) |>
+    select(-path)
+
+  # Read the DoE file
+  doe_file <- str_glue("{doe_dir}/{type}-doe.csv")
+  doe_data <- read_csv(doe_file, show_col_types = FALSE, progress=FALSE)
+
+  # Left-join me data with DoE on order
+  left_join(me_data, doe_data, by = c("order" = "Order"))
+}
+
+# Apply across all runs and bind results
+runs |>
+  rowwise() |>
+  slice(1) |>
+  reframe(read_me_files(DIR, TYPE)) |>
+  mutate(TYPE = factor(TYPE, levels=c("cei", "tsubasa", "poti", "tupi"))) |>
+  select(-DIR) |>
+  select(TYPE, order, size, hosts, speed, Masking.Effectiveness) |>
+  write_csv("all-final.csv")
+#+end_src
+
+#+RESULTS:
+: wrote 755.00B in  0s, 39.58MB/s                                                                              wrote 1.00TB in  0s, 19.33TB/s
+
+
+#+name: me.base
+| DIR                                    | TYPE    |
+|----------------------------------------+---------|
+| swr-all-after-arch-check-2/run-784330/ | poti    |
+| swr-all-after-arch-check-2/run-784332/ | tupi    |
+| swr-poti/run-784314/                   | poti    |
+| swr-tupi/run-784327/                   | tupi    |
+| swr-cei/run-784319/                    | cei     |
+| swr-tsubasa/run-784320/                | tsubasa |
+
+#+header: :var df.me.base=me.base
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df.me.base |>
+  mutate(ME = dir_ls(DIR, recurse=TRUE, regexp="order-"))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+# A tibble: 6 × 2
+# Rowwise: 
+  DIR                                    TYPE   
+  <chr>                                  <chr>  
+1 swr-all-after-arch-check-2/run-784330/ poti   
+2 swr-all-after-arch-check-2/run-784332/ tupi   
+3 swr-poti/run-784314/                   poti   
+4 swr-tupi/run-784327/                   tupi   
+5 swr-cei/run-784319/                    cei    
+6 swr-tsubasa/run-784320/                tsubasa
+#+end_example
+**** Heatmap figure
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+# ============================================================
+# Masking Effectiveness — GPU heatmap (poti + tupi), article style
+# ============================================================
+
+options(crayon.enabled = FALSE)
+library(tidyverse)
+library(ggplot2)
+
+# ── 0. Configuration ─────────────────────────────────────────
+DATA_FILE <- "all-final.csv"
+
+# ── 1. Load data ─────────────────────────────────────────────
+df <- read_csv(DATA_FILE, show_col_types = FALSE) |>
+  filter(TYPE %in% c("poti", "tupi")) |>
+  mutate(
+    TYPE  = factor(TYPE, levels = c("poti", "tupi")),
+    size  = factor(size),
+    hosts = factor(hosts),
+    speed = factor(speed)
+  )
+
+# ── 2. Plot ───────────────────────────────────────────────────
+p <- df |>
+  ggplot(aes(x = speed, y = hosts, fill = Masking.Effectiveness)) +
+  geom_tile(color = "white", linewidth = 0.2) +
+  scale_fill_viridis_c(
+    name   = "Masking Effectiveness",
+    limits = c(0, 1),
+    breaks = seq(0, 1, by = 0.2),
+    guide  = guide_colorbar(
+      title.position = "top",
+      barwidth       = unit(3, "cm"),
+      barheight      = unit(0.2, "cm")
+    )
+  ) +
+  facet_grid(size ~ TYPE, labeller = label_both) +
+  labs(
+    x = "Network Speed (Gbps)",
+    y = "Number of MPI Ranks"
+  ) +
+  theme_bw(base_size = 6) +
+  theme(
+    plot.margin          = unit(c(0, 0.2, 0, 0), "cm"),
+    legend.spacing       = unit(0.1, "mm"),
+    panel.grid           = element_blank(),
+    legend.position      = "top",
+    legend.direction     = "horizontal",
+    legend.justification = "left",
+    legend.key.size      = unit(0.2, "cm"),
+    legend.box.spacing   = unit(0, "pt"),
+    legend.box.margin    = margin(0, 0, 0, 0),
+    strip.text           = element_text(size = 6),
+    axis.text.x          = element_text(angle = 45, hjust = 1),
+    panel.spacing        = unit(0.2, "cm")
+  )
+
+# One-column article width: 8.5cm wide, compact height
+ggsave("masking_heatmap_gpu.pdf", plot = p, width = 8.5, height = 9, units = "cm")
+ggsave("masking_heatmap_gpu.png", plot = p, width = 8.5, height = 9, units = "cm", dpi = 300)
+cat("Plot saved to masking_heatmap_gpu.pdf and .png\n")
+
+#+end_src
+
 *** DONE The Tupi anomaly behavior (256 vs 516 for four nodes)
 *** Gantt-chart aggregated
-**** The aggregation framework (starvz-inspired)
-***** integrateStepFunc
+****** The aggregation framework (starvz-inspired)
+******* integrateStepFunc
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 source("integrateStepFunc.R")
 #+end_src
 
 #+RESULTS:
 
-***** StarVZ functions copied "as is"
+******* StarVZ functions copied "as is"
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 integrate.stepfunc.Rcpp <- function(inter, b, f) integrateStepFunc(inter, c(-Inf, b, Inf), c(0, f, 0))
 
@@ -6908,7 +7060,7 @@ remyTimeIntegrationPrep <- function(dfv = NULL, myStep = 100) {
 
 #+RESULTS:
 
-***** NEW StarVZ adapted functions so they can be faster
+******* NEW StarVZ adapted functions so they can be faster
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 do_the_aggregation <- function(df, step_width) {
@@ -6940,7 +7092,7 @@ do_the_aggregation <- function(df, step_width) {
 
 #+RESULTS:
 
-***** The reference aggregation
+******* The reference aggregation
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 do_the_reference_aggregation <- function(df, nb_intervals) {
@@ -6963,7 +7115,7 @@ do_the_reference_aggregation <- function(df, nb_intervals) {
 
 #+RESULTS:
 
-***** Plot function (do-the-viz)
+******* Plot function (do-the-viz)
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 library(patchwork)
@@ -7054,7 +7206,7 @@ do_the_viz <- function(df, has.summary = "Both")
 
 #+RESULTS:
 
-***** My style
+******* My style
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 my_style <- function() {
@@ -7084,8 +7236,8 @@ my_style <- function() {
 #+end_src
 
 #+RESULTS:
-**** Functions
-***** Read
+****** Functions
+******* Read
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 our_read_function <- function(f) {
@@ -7119,7 +7271,7 @@ our_read_function <- function(f) {
 
 #+RESULTS:
 
-***** Compute
+******* Compute
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 add_compute_state <- function(df) {
@@ -7143,7 +7295,7 @@ add_compute_state <- function(df) {
 #+end_src
 
 #+RESULTS:
-***** Plot ST
+******* Plot ST
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 our_st_plot <- function(data) {
@@ -7183,7 +7335,7 @@ our_st_plot <- function(data) {
 #+end_src
 
 #+RESULTS:
-***** Summary per operation
+******* Summary per operation
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 summary_per_operation <- function(dfa) {
@@ -7206,7 +7358,7 @@ summary_per_operation <- function(dfa) {
 #+end_src
 
 #+RESULTS:
-***** Plot the summary per task
+******* Plot the summary per task
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 plot_summary_per_operation <- function(df) {
 
@@ -7243,7 +7395,7 @@ plot_summary_per_operation <- function(df) {
 #+end_src
 
 #+RESULTS:
-***** Plot total time per operation
+******* Plot total time per operation
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 plot_total_time_per_operation <- function(df) {
 
@@ -7270,7 +7422,7 @@ plot_total_time_per_operation <- function(df) {
 
 #+RESULTS:
 
-**** Read
+****** Read
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 options(crayon.enabled=FALSE)
@@ -7325,3 +7477,4 @@ ggsave("../papers/2026_CARLA/img/masking-example.png", width = 4, height = 1.6, 
 1 swr-tupi/run-784327/distributed-cube-average/tupi-doe…   103   512    16     1
 2 swr-tupi/run-784327/distributed-cube-average/tupi-doe…   108   512    16   100
 #+end_example
+

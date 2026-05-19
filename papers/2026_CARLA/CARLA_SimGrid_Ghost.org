@@ -715,45 +715,42 @@ entirely.
 \end{figure}
 #+end_export
 
-*** TODO Partitioning Topology: Blocks vs. Slices                :noexport:
+*** Masking Effectiveness Heatmap: Find Optimal Configurations
 
-Throughput results (MSamples/s) expose a striking consequence of
-partitioning shape. At $512^3$ on the 100~Gbps simulated network, an
-8-worker $\{2,2,2\}$ block decomposition reaches $\approx$9\,374~MSamples/s,
-while a 5-worker $\{5,1,1\}$ slices decomposition yields only
-$\approx$3\,215~MSamples/s — below the single-node baseline of
-3\,870~MSamples/s. The negative speedup of the 5-worker configuration is
-caused by ~MPI_Dims_create~'s forced 1D partitioning for the prime count 5:
-each slab communicates $\approx$64~MB per iteration compared to
-$\approx$25~MB for the block sub-domains, and the $512\times512$ face halos
-trigger higher-latency MPI protocol paths (rendezvous handshaking, amplified
-PCIe transfer costs) that accumulate over 1\,001 iterations and are not
-relieved by increasing bandwidth. The result illustrates that process count
-selection — specifically, avoiding prime counts — is as decisive as network
-bandwidth for achieving masking scalability.
+Figure \ref{fig:gpu-masking-heatmap} presents a joint visualization of
+the Masking Effectiveness across all experimental conditions for the
+two GPU-equipped hosts, =poti= and =tupi=, as a function of network
+bandwidth (X-axis), number of hosts (Y-axis), and problem size
+(facets). The heatmap format allows one to immediately pinpoint, for
+any given configuration explored in our DoE, whether communication is
+effectively hidden by computation or whether the application stalls
+waiting for ghost cells. The viridis color scale, from dark purple
+(poor masking) to bright yellow (near-perfect masking), reveals a
+consistent transition pattern: the lower-left region of each panel,
+corresponding to low bandwidth and many hosts, is uniformly dark,
+confirming network-bound stalls regardless of problem
+size. Conversely, the lower-right region, large domains, few hosts,
+and high bandwidth, concentrates the bright cells where masking
+effectiveness exceeds 0.90.  The precise identification of this
+transition boundary is one of the key contributions of the
+SimGrid/SMPI simulation approach: rather than requiring exhaustive
+real-cluster experiments across dozens of network configurations, the
+calibrated simulator allows us to navigate the full factorial space
+and pinpoint exactly which (size, hosts, bandwidth) triplets deliver
+effective communication hiding, information that would be
+prohibitively expensive to obtain on real infrastructure alone.
 
-# #+BEGIN_EXPORT latex
-# \begin{table}[ht]
-# \centering
-# \caption{Summary of approximate compute load across all experimental scenarios.}
-# \label{tab:results_summary}
-# \begin{tabular}{llll}
-# \hline
-# Backend & Problem size & Network & Compute load \\
-# \hline
-# CPU (OpenMP) & $256^3$ & 10~Gbps (real)       & $\approx 75\%$       \\
-# CPU (OpenMP) & $512^3$ & 10~Gbps (real)       & $\approx 87\%$       \\
-# GPU (CUDA)   & $128^3$ & 1~Gbps (real)        & $\approx 20$--$25\%$ \\
-# GPU (CUDA)   & $256^3$ & 1~Gbps (real)        & $\approx 20\%$       \\
-# GPU (CUDA)   & $512^3$ & 1~Gbps (real)        & $\approx 20\%$       \\
-# GPU (CUDA)   & $256^3$ & 10~Gbps (simulated)  & $\approx 65$--$70\%$ \\
-# GPU (CUDA)   & $512^3$ & 10~Gbps (simulated)  & $\approx 75$--$80\%$ \\
-# GPU (CUDA)   & $256^3$ & 100~Gbps (simulated) & $\approx 85$--$90\%$ \\
-# GPU (CUDA)   & $512^3$ & 100~Gbps (simulated) & $>90\%$              \\
-# \hline
-# \end{tabular}
-# \end{table}
-# #+END_EXPORT
+#+begin_export latex
+\begin{figure}[!htb]
+\includegraphics[width=\linewidth]{./img/masking_heatmap_gpu.pdf}
+\caption{Masking Effectiveness for \texttt{poti} (RTX4070) and \texttt{tupi} (RTX4090) across
+all (problem size, hosts, bandwidth) configurations. Color encodes ME from 0
+(communication-bound, dark) to 1 (computation-bound, bright). The sharp
+transition from dark lower-left to bright lower-right delineates the
+network-bottleneck boundary.}
+\label{fig:gpu-masking-heatmap}
+\end{figure}
+#+end_export
 
 ** Conclusion
 :PROPERTIES:

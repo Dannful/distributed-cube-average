@@ -434,14 +434,12 @@ simulations in a single node of each of the clusters, and considering
 that the compute code is actually executed either using OpenMP or
 CUDA, the speed parameter of all the hosts of the virtual platform is
 set to the one of the host running the simulation.
-#+latex: %
 Rather than replacing compute kernels with analytical FLOP counts
 (which proved an oversimplification that ignored cache behavior, PCIe
 transfers, and memory copies), SimGrid's native computation sampling
 is leveraged: the main propagation kernel executes in full for a
 variable number of warm-up iterations, after which the code injects
 stable timing samples into the simulation.
-#+latex: %
 We change the network bandwidth parameter to reflect our intention
 when evaluating the masking effectiveness. As the virtual platform can
 receive customized values after a calibration procedure, we employ a

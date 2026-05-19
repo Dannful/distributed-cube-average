@@ -534,14 +534,17 @@ compute configurations: =tupi= (GPU RTX4090), =poti= (GPU RTX4070), =cei=
 (CPU 2\times Xeon Silver 4116), and =tsubasa= (2\times Xeon Gold 6226). When
 running the simulations in GPU-equipped, we run the optimized CUDA
 code. When in CPU-equipped, we run the OpenMP kernel that exploits all
-CPU cores (both logical and physical). As usual in SimGrid/SMPI,
-simulation occurs for MPI network communications using calibrated
-values of the real =poti= cluster network and per-DoE network bandwidth
-configurations.  The *Masking Effectiveness* metric derives from MPI
-communication traces obtained from SimGrid by first isolating the core
-execution window, defined as the interval between the earliest
-=MPI_Irecv= start and the last =MPI_Waitall= end across all ranks, and
-then clipping all events to that window. A Compute state is
+CPU cores (both logical and physical). We carry out all simulation
+using calibrated values for MPI communications based on the real =poti=
+cluster network and per-DoE network bandwidth configurations.
+
+The *Masking Effectiveness* metric derives from MPI communication
+traces. Figure \ref{fig:masking-example} depicts two examples of
+simulation runs to depict the metric rationale. SimGrid generates
+these traces with built-in features that can easily be used. We first
+isolate the core execution window, defined as the interval between the
+earliest =MPI_Irecv= start and the last =MPI_Waitall= end across all
+ranks, and then clipping all events to that window. A Compute state is
 synthetically inferred for each container by identifying gaps between
 consecutive MPI communication events. For each rank, the total
 communication duration and the overall makespan (from the first to the
@@ -554,10 +557,32 @@ with or hidden by computation: the closer to one, the more effectively
 the application masks its communication overhead. We employ this
 metric in our results interpretation as it clearly reflects how much
 communicating hiding a particular configuration (problem size, number
-of workers, and network capacity) delivers as behavior.  From a
-practical perpective, all MPI traces are handle using modern data
-science tools based on the R programming language and the
-tidyverse/ggplot2 stack.
+of workers, and network capacity) delivers as behavior. Figure
+\ref{fig:masking-example} shows exactly this perception: in the left,
+a very communication-bound run with masking of only 0.0819; in the
+right, a very good example where masking is of 0.792.
+
+#+begin_export latex
+\begin{figure}[!htb]
+\includegraphics[width=\linewidth]{./img/masking-example.png}
+\caption{The Masking Effectiveness rationale from a space/time view
+of the MPI Application behavior, where the behavior of every MPI
+Rank (Y-axis) appears along time (X-axis). Colors represent the MPI
+state (blue) and time spent doing calculation (yellow). In the left,
+a communication-bound \texttt{tupi} case with 16 nodes with a 1 Gbps
+network bandwidth depicting a very poor Masking Effectiveness of 0.0819.
+In the right, a compute-bound case with a 100 Gbps network bandwidth,
+with a much better Masking Effectiveness of 0.792.}
+\label{fig:masking-example}
+\end{figure}
+#+end_export
+
+From a practical perspective, all MPI traces obtained from
+SimGrid/SMPI pass through modern data science tools based on the R
+ecosystem, primarily leveraging the tidyverse and ggplot2 stack. Raw
+trace files generated during execution are first converted into
+structured tabular representations, enabling scalable manipulation of
+the events and the computation of our metric.
 
 *** CPU Cluster: Communication Masking Progression
 

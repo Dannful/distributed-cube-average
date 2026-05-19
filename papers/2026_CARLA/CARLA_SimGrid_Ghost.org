@@ -480,10 +480,6 @@ communication masking effectiveness.
 # 100Gbps, representing a 10\times and 100\times improvement over the
 # real 1Gbps interconnect of the =poti= cluster.
 
-** Results                                                        :noexport:
-:PROPERTIES:
-:CUSTOM_ID: sec.results
-:END:
 ** Results
 :PROPERTIES:
 :CUSTOM_ID: sec.results
@@ -734,10 +730,6 @@ bandwidth for achieving masking scalability.
 # \end{table}
 # #+END_EXPORT
 
-** Conclusion                                                     :noexport:
-:PROPERTIES:
-:CUSTOM_ID: sec.conclusion
-:END:
 ** Conclusion
 :PROPERTIES:
 :CUSTOM_ID: sec.conclusion

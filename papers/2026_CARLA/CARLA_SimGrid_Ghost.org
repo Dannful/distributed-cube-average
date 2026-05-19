@@ -145,15 +145,22 @@ paper uses a distributed MPI implementation of the Fletcher RTM
 seismic application with 3D block decomposition and asynchronous ghost
 cell communication, together with a calibrated SimGrid/SMPI simulation
 framework that enables the exploration of network configurations
-beyond those physically available. Our results indicate that ... TODO TODO
-
-# Experiments on two real HPC clusters show that GPU-accelerated
-# execution on a 1~Gbps network yields only $\approx$20\% compute load
-# regardless of problem size, while CPU execution on a 10~Gbps network
-# reaches $\approx$87\% at $512^3$. Simulated network upgrades
-# demonstrate a clear progression to $>$90\% compute load at 100~Gbps,
-# confirming that simulation is a practical tool for capacity planning
-# when real infrastructure is unavailable.
+beyond those physically available.
+#+latex: %
+Experiments across four host configurations reveal two contrasting
+regimes: CPU-only machines naturally achieve near-perfect
+communication hiding due to modest floating-point throughput, while
+GPU-equipped clusters invert the bottleneck entirely, with accelerator
+throughput outpacing the network and stalling compute load near 20% on
+1 Gbps interconnects regardless of problem size: a deficit only
+recovered at 100 Gbps. Partitioning topology experiments further show
+that prime process counts are as detrimental as slow networks, with
+slice decompositions falling below single-node throughput baselines
+irrespective of bandwidth. Together, these results establish
+interconnection bandwidth and partitioning topology as co-determining
+factors for ghost cell masking effectiveness, and confirm SimGrid/SMPI
+as a practical capacity-planning tool when diverse real infrastructure
+is unavailable.
 
 #+latex: \keywords{SimGrid \and Ghost Cells \and HPC Applications \and MPI \and Stencil Computation}
 

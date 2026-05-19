@@ -5785,6 +5785,7 @@ our_read_function <- function(f) {
 #+end_src
 
 #+RESULTS:
+
 **** Compute
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes

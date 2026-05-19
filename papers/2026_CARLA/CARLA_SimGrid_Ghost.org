@@ -425,19 +425,15 @@ reproducibility against the single-node reference implementation.
 
 *** Simulation with SimGrid
 
-The simulation framework is built on SimGrid/SMPI \cite{simgrid}. The
-=poti= cluster (see Table \ref{tab:poti-hardware}) was chosen as the
-simulation host so that the computation timings recorded during SMPI's
-emulation phase match those observed on the real GPU
-platform. Platform calibration followed the methodology of
-\cite{simgrid_calibration}, extracting MPI runtime parameters,
-protocol thresholds, bandwidth, and latency, from a systematic suite
-of micro-benchmarks. The resulting platform description reproduces the
-real cluster's behavior within a 15% error margin for message sizes up
-to \approx1GB which we conclude acceptable since application behavior (both
-compute and communication) is very homogeneous throughout the
-execution, indicating that tendencies remains sufficiently faithfull
-to evaluate communication masking.
+The simulation framework is built on SimGrid/SMPI \cite{simgrid}. We
+implement a virtual platform for SimGrid that contains parameters
+enabling us to adapt it to different in-premise cluster
+configurations. The main parameters include the speed of the hosts (in
+GFlops) and the network bandwidth (in Gpbs). As we decide to run all
+simulations in a single node of each of the clusters, and considering
+that the compute code is actually executed either using OpenMP or
+CUDA, the speed parameter of all the hosts of the virtual plataform is
+set to the one of the host running the simulation.
 #+latex: %
 Rather than replacing compute kernels with analytical FLOP counts
 (which proved an oversimplification that ignored cache behavior, PCIe

@@ -451,30 +451,6 @@ since application behavior, both compute and communication, remains
 very homogeneous throughout execution, indicating that trends stay
 sufficiently faithful to evaluate communication masking effectiveness.
 
-# #+begin_export latex
-# \begin{table}[ht]
-#   \centering
-#   \caption{Hardware description of the \textit{poti} cluster nodes.}
-#   \label{tab:poti-hardware}
-#   \begin{tabular}{ll}
-#     \toprule
-#     \textbf{Property} & \textbf{Value} \\
-#     \midrule
-#     Nodes        & poti[1,2,3,4,5] \\
-#     CPU          & Intel Core i7-14700KF, 3.4\,GHz, 20 cores, 28 threads \\
-#     Memory       & 96\,GB DDR5 \\
-#     GPU          & NVIDIA GeForce RTX 4070, 12\,GB \\
-#     Storage      & 119.2\,GB NVMe, 1.7\,TB SSD \\
-#     Motherboard  & Gigabyte Z790 UD AX \\
-#     \bottomrule
-#   \end{tabular}
-# \end{table}
-# #+end_export
-
-# Two simulated network configurations are evaluated: 10Gbps and
-# 100Gbps, representing a 10\times and 100\times improvement over the
-# real 1Gbps interconnect of the =poti= cluster.
-
 ** Results
 :PROPERTIES:
 :CUSTOM_ID: sec.results

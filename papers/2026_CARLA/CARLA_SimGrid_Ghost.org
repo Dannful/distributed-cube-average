@@ -753,17 +753,22 @@ accelerators makes network bandwidth the governing bottleneck, with
 both poti and tupi stalling near 20% compute load on a 1 Gbps
 interconnect regardless of problem size.
 
-Simulated network upgrades demonstrated a clear progression toward
-computation-bound behavior, with values exceeding 90% achieved at 100
-Gbps, confirming that SimGrid/SMPI is a practical capacity-planning
-tool when real infrastructure is unavailable.
+Our design of experiments increasing the network bandwidth
+demonstrated a clear progression toward computation-bound behavior,
+with values exceeding 90% achieved at 100 Gbps. Since SimGrid/SMPI
+emulates computations between MPI calls on real hardware and simulates
+the communication layer with configurable parameters, it is
+well-suited for this kind of capacity-planning analysis, and, to the
+best of our knowledge, it has not previously been used to evaluate the
+effectiveness of ghost cell masking in MPI stencil applications, a gap
+the present work addresses.
 
-The partitioning topology experiment further revealed that prime
-process counts are as detrimental as slow networks: a 5-worker {5,1,1}
-slices decomposition fell below the single-node throughput baseline
-regardless of simulated bandwidth, establishing process count
-selection as a co-determining factor alongside interconnection
-bandwidth for ghost cell masking effectiveness.
+# The partitioning topology experiment further revealed that prime
+# process counts are as detrimental as slow networks: a 5-worker {5,1,1}
+# slices decomposition fell below the single-node throughput baseline
+# regardless of simulated bandwidth, establishing process count
+# selection as a co-determining factor alongside interconnection
+# bandwidth for ghost cell masking effectiveness.
 
 Future work includes experiments on the Santos Dumont supercomputer to
 evaluate the application on a production platform with a high-speed

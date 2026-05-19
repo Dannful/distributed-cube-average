@@ -425,34 +425,31 @@ reproducibility against the single-node reference implementation.
 
 *** Simulation with SimGrid
 
-The simulation framework is built on SimGrid/SMPI \cite{simgrid}. We
-implement a virtual platform for SimGrid that contains parameters
-enabling us to adapt it to different in-premise cluster
-configurations. The main parameters include the speed of the hosts (in
-GFlops) and the network bandwidth (in Gpbs). As we decide to run all
-simulations in a single node of each of the clusters, and considering
-that the compute code is actually executed either using OpenMP or
-CUDA, the speed parameter of all the hosts of the virtual platform is
-set to the one of the host running the simulation.
-Rather than replacing compute kernels with analytical FLOP counts
-(which proved an oversimplification that ignored cache behavior, PCIe
-transfers, and memory copies), SimGrid's native computation sampling
-is leveraged: the main propagation kernel executes in full for a
-variable number of warm-up iterations, after which the code injects
-stable timing samples into the simulation.
-We change the network bandwidth parameter to reflect our intention
-when evaluating the masking effectiveness. As the virtual platform can
-receive customized values after a calibration procedure, we employ a
-methodology \cite{simgrid_calibration} to extract MPI runtime
-parameters, protocol thresholds, bandwidth, and latency, from a
-systematic suite of micro-benchmarks. We adopt the calibrated values
-and employ them throughout the simulations. Our validation after
-calibration concluded that our platform description reproduces the
-real cluster's behavior within a 15% error margin for message sizes up
-to \approx1GB, which we conclude acceptable since application behavior (both
-compute and communication) is very homogeneous along the execution,
-indicating that trends remain sufficiently faithful to evaluate
-communication masking effectiveness.
+The simulation framework builds on SimGrid/SMPI \cite{simgrid}. We
+implement a virtual platform for SimGrid with parameters that adapt it
+to different in-premise cluster configurations. The main parameters
+are the host speed (in GFlops) and the network bandwidth (in
+Gbps). Since we run all simulations on a single node per cluster and
+the compute code runs either with OpenMP or CUDA, the speed parameter
+for all hosts in the virtual platform matches that of the host running
+the simulation. Rather than replacing compute kernels with analytical
+FLOP counts, which proved an oversimplification that ignored cache
+behavior, PCIe transfers, and memory copies, we leverage SimGrid's
+native computation sampling: the main propagation kernel executes in
+full for a variable number of warm-up iterations, after which the code
+injects stable timing samples into the simulation. We vary the network
+bandwidth parameter to reflect our intentions when evaluating masking
+effectiveness. Since the virtual platform accepts customized values
+after a calibration procedure, we follow a methodology
+\cite{simgrid_calibration} to extract MPI runtime parameters, protocol
+thresholds, bandwidth, and latency from a systematic suite of
+microbenchmarks. We adopt these calibrated values throughout the
+simulations. Our post-calibration validation shows that the platform
+description reproduces the real cluster's behavior within a 15% error
+margin for message sizes up to $\approx$1,GB, which we consider acceptable
+since application behavior, both compute and communication, remains
+very homogeneous throughout execution, indicating that trends stay
+sufficiently faithful to evaluate communication masking effectiveness.
 
 # #+begin_export latex
 # \begin{table}[ht]

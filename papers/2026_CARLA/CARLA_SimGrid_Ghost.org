@@ -552,28 +552,27 @@ manipulation of the events and the computation of our metric.
 
 Figure \ref{fig:cei-masking} illustrates the results for the =cei=
 machine (a CPU-only host equipped with dual Xeon Silver 4116
-processors) revealing a striking pattern: communication masking is
-nearly trivially achieved whenever the network bandwidth is
-sufficiently low relative to the available compute throughput. Across
-all problem sizes (64³ to 512³) and host counts (8 to 64), Masking
+processors), revealing a striking pattern: whenever the network
+bandwidth is sufficiently low relative to the available compute
+throughput, we obtain communication masking trivially. Across all
+problem sizes (64³ to 512³) and host counts (8 to 64), Masking
 Effectiveness remains below 0.30 for bandwidths at or below 100 Mbps,
 reflecting configurations in which communication dominates and there
 is little computation to hide it behind. However, as soon as bandwidth
-crosses the 1 Gbps threshold, the picture changes dramatically: for
-the largest problem size (512³) with only 8 hosts, Masking
-Effectiveness leaps to approximately 0.94, and even moderately sized
-problems (256³, 8 hosts) reach values above 0.89 at 1 Gbps. This sharp
-transition reveals that the CPU-only cei cluster sits in a
-compute-bound regime for most realistic HPC network configurations:
-once the network is fast enough to deliver data quickly, the
-relatively modest per-core floating-point throughput of the Xeon
-Silver 4116 ensures that computation fills the gaps between
-communication events almost entirely, yielding near-perfect
-masking. Put differently, on a slow CPU-only cluster, communication
-masking is essentially free: the application's arithmetic intensity
-naturally outpaces the network, so overlap emerges naturally, making
-this class of hardware surprisingly forgiving from an MPI
-communication-hiding perspective.
+exceeds 1 Gbps threshold, the picture changes dramatically: for the
+largest problem size (512³) with only 8 hosts, Masking Effectiveness
+leaps to approximately 0.94, and even moderately sized problems (256³,
+8 hosts) reach values above 0.89 at 1 Gbps. This sharp transition
+reveals that the CPU-only cei cluster sits in a compute-bound regime
+for most realistic HPC network configurations. Once the network is
+fast enough to deliver data quickly, the relatively modest per-core
+floating-point throughput of the Xeon Silver 4116 ensures that
+computation fills the gaps between communication events almost
+entirely, yielding near-perfect masking. Put differently, on a slow
+CPU-only cluster, communication masking is essentially free: the
+application's arithmetic intensity naturally outpaces the network,
+enabling overlap to emerge naturally, making this class of hardware
+surprisingly forgiving from an MPI communication-hiding perspective.
 
 #+begin_export latex
 \begin{figure}[!htb]
@@ -600,13 +599,12 @@ compute-bound nature of the application on CPU-only hardware ensures
 that, as soon as the network delivers data at a reasonable pace,
 computation effortlessly absorbs the communication latency.
 
-Both =cei= and =tsubasa= have a coherent story: on CPU-only clusters,
-near-perfect communication masking (closer to one in our plots) is
-easily achievable as a consequence of arithmetic intensity exceeding
-network throughput, requiring no special software
-tuning. Interestingly, the =cei= cluster has a 10 Gbps network so one
-might already expect good ghost cell capability for communication
-hiding in this cluster.
+Both =cei= and =tsubasa= have a coherent story. On CPU-only clusters,
+near-perfect communication masking (closer to 1 in our plots) is
+easily achievable because arithmetic intensity exceeds network
+throughput, requiring no special software tuning. Interestingly, the
+=cei= cluster has a 10 Gbps network, so one might already expect good
+ghost-cell capability for communication hiding in this cluster.
 
 *** GPU Cluster: The Network Bottleneck
 

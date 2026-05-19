@@ -312,7 +312,7 @@ P^{1/3}\rfloor, \ldots\}$) -- the 3D Block decomposition minimizes the total
 surface-to-volume ratio of the sub-domains. The total communication
 boundary for slices grows as $2(P-1)L^2$, while for blocks it grows as
 $6(\sqrt[3]{P}-1)L^2$ \cite{stencil_supercomputers}. Figure
-\ref{fig:comm_cost}) depicts the communication cost (Y-axis) as a
+\ref{fig:comm_cost} depicts the communication cost (Y-axis) as a
 function of the number of processing elements (PEs, in the X-axis) for
 the three strategies (color), where we can see how the 3D approach
 scales much better and its advantages appear for small number of
@@ -432,7 +432,7 @@ configurations. The main parameters include the speed of the hosts (in
 GFlops) and the network bandwidth (in Gpbs). As we decide to run all
 simulations in a single node of each of the clusters, and considering
 that the compute code is actually executed either using OpenMP or
-CUDA, the speed parameter of all the hosts of the virtual plataform is
+CUDA, the speed parameter of all the hosts of the virtual platform is
 set to the one of the host running the simulation.
 #+latex: %
 Rather than replacing compute kernels with analytical FLOP counts
@@ -444,7 +444,7 @@ stable timing samples into the simulation.
 #+latex: %
 We change the network bandwidth parameter to reflect our intention
 when evaluating the masking effectiveness. As the virtual platform can
-receive customized values after a calibrartion procedure, we employ a
+receive customized values after a calibration procedure, we employ a
 methodology \cite{simgrid_calibration} to extract MPI runtime
 parameters, protocol thresholds, bandwidth, and latency, from a
 systematic suite of micro-benchmarks. We adopt the calibrated values
@@ -453,7 +453,7 @@ calibration concluded that our platform description reproduces the
 real cluster's behavior within a 15% error margin for message sizes up
 to \approx1GB, which we conclude acceptable since application behavior (both
 compute and communication) is very homogeneous along the execution,
-indicating that tendencies remains sufficiently faithfull to evaluate
+indicating that trends remain sufficiently faithful to evaluate
 communication masking effectiveness.
 
 # #+begin_export latex
@@ -488,10 +488,10 @@ communication masking effectiveness.
 We first describe the evaluation methodology and introduce the Masking
 Effectiveness metric used throughout the analysis. We then present the
 results for the two CPU-only hosts, =cei= and =tsubasa=, followed by the
-two GPU-equipped clusters, =poti= and =tupi=. Finally, we examine the
-impact of partitioning topology on performance, contrasting block and
-slice decompositions and their consequences for communication
-scalability.
+two GPU-equipped clusters, =poti= and =tupi=. Finally, we present a joint
+heatmap visualization of Masking Effectiveness across all GPU
+experimental conditions, enabling the direct identification of optimal
+(problem size, host count, bandwidth) configurations.
 
 *** Evaluation Methodology and Masking Effectiveness Metric
 
@@ -501,11 +501,11 @@ machine used for simulation contains a GPU, the GPU DoE consists of a
 full factorial structure, crossing three independent factors to
 produce 120 unique experimental conditions. The first factor, *(1)
 problem size*, varies across four levels (64, 128, 256, and 512), where
-each number represens the order of the cubic problem domain. The
+each number represents the order of the cubic problem domain. The
 second factor, *(2) number of hosts*, spans five levels (4, 8, 16, 27,
 and 64), covering a small cluster (4 nodes) up to a larger deployment
 (64 nodes). The choice for these levels is aligned with the 3D
-partionining. The third factor, *(3) network bandwidth*, takes six
+partitioning. The third factor, *(3) network bandwidth*, takes six
 levels (1, 2.5, 10, 25, 50, and 100 Gbps), spanning three orders of
 magnitude from low-speed to high-speed interconnects.  If the host
 machine used for simulation contains only CPU cores, the CPU DoE is
@@ -519,7 +519,7 @@ and 100 Gbps), covering an exceptionally wide range spanning four
 orders of magnitude, from slow interconnects typical of commodity or
 congested networks up to high-speed links found in modern HPC
 environments. In both DoE projects, the application executes 1000
-iterations, the network latency remains fixe at 22\micro seconds (taken
+iterations, the network latency remains fixed at 22\micro seconds (taken
 from our real network measurements), and each of the combinations
 appears exactly once, with no replication, and is assigned a
 sequential run order.  The design aims to jointly characterize how
@@ -625,7 +625,7 @@ communication-hiding perspective.
 
 The =tsubasa= machine (a CPU-only host with dual Xeon Gold 6226
 processors, representing a somewhat more powerful CPU platform than
-=cei=) fully corroborates the same trend. We observe the masking
+=cei=) fully corroborates the same trend. We observe that Masking
 Effectiveness stays near zero for sub-100 Mbps bandwidths across all
 problem sizes and host counts, but surges past 0.90 at 1 Gbps for the
 largest problem size (512³) with 8 hosts, and remains consistently
@@ -640,7 +640,7 @@ Both =cei= and =tsubasa= have a coherent story: on CPU-only clusters,
 near-perfect communication masking (closer to one in our plots) is
 easily achievable as a consequence of arithmetic intensity exceeding
 network throughput, requiring no special software
-tuning. Interestingly, the =cei= cluster has a 10Gpbs network so one
+tuning. Interestingly, the =cei= cluster has a 10 Gbps network so one
 might already expect good ghost cell capability for communication
 hiding in this cluster.
 

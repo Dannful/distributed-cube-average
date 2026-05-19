@@ -775,15 +775,26 @@ accelerators makes network bandwidth the governing bottleneck, with
 both poti and tupi stalling near 20% compute load on a 1 Gbps
 interconnect regardless of problem size.
 
-Our design of experiments increasing the network bandwidth
-demonstrated a clear progression toward computation-bound behavior,
-with values exceeding 90% achieved at 100 Gbps. Since SimGrid/SMPI
-emulates computations between MPI calls on real hardware and simulates
-the communication layer with configurable parameters, it is
-well-suited for this kind of capacity-planning analysis, and, to the
-best of our knowledge, it has not previously been used to evaluate the
-effectiveness of ghost cell masking in MPI stencil applications, a gap
-the present work addresses.
+Our design of experiments, sweeping network bandwidth across six levels
+from 1 Gbps to 100 Gbps, demonstrated a clear and systematic
+progression toward computation-bound behavior, with Masking
+Effectiveness values exceeding 90% achieved at 100 Gbps on the GPU
+clusters. The joint heatmap of Masking Effectiveness across all
+(problem size, host count, bandwidth) triplets provides a single,
+immediately readable map of the transition boundary between
+network-bound and compute-bound regimes, a kind of capacity-planning
+chart for practitioners deciding whether a network upgrade is
+worthwhile for a given workload. This is precisely where
+SimGrid/SMPI's value is most visible: by emulating computations
+between MPI calls on real hardware while simulating the communication
+layer with freely configurable parameters, it navigates the full
+factorial experimental space at a fraction of the cost of real-cluster
+deployments. To the best of our knowledge, SimGrid/SMPI has not
+previously been used to evaluate the effectiveness of ghost cell
+masking in MPI stencil applications; the present work demonstrates
+that it is not only applicable but highly informative for this
+purpose, and that calibrated simulation is a practical and credible
+alternative to exhaustive real-hardware experimentation.
 
 # The partitioning topology experiment further revealed that prime
 # process counts are as detrimental as slow networks: a 5-worker {5,1,1}

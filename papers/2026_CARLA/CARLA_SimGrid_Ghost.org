@@ -253,18 +253,21 @@ validated application rather than a synthetic benchmark ensures that
 the communication patterns and memory access behaviors observed are
 representative of production workloads.
 
-The contributions of this paper are threefold: (i) we briefly present
+The contributions of this paper are threefold: *(i)* we briefly present
 the design and implementation of a distributed MPI implementation of
 Fletcher with 3D block decomposition and asynchronous ghost cell
-communication, numerically validated against a single-node reference
-results; (ii) a calibrated SimGrid/SMPI simulation framework for that
+communication, numerically validated against single-node reference
+results; *(ii)* a calibrated SimGrid/SMPI simulation framework for that
 application, validated against real cluster executions within a 15%
-error margin; and (iii) an evaluation that employs SimGrid to verify
-ghost cells effectiveness for masking communications with case studies
-showing how interconnection bandwidth and partitioning topology
-jointly determine masking effectiveness. TODO TODO
-# , with results ranging from $\approx$20\% compute load on a GPU
-# cluster with 1~Gbps to $>$90\% under 100~Gbps simulation. TODO TODO
+error margin; and *(iii)* an evaluation that employs SimGrid to
+characterize ghost cell masking effectiveness across four host
+configurations spanning CPU-only and GPU-equipped clusters, revealing
+that CPU-only machines achieve near-perfect communication hiding as a
+natural consequence of arithmetic intensity, while GPU-accelerated
+clusters demand at least 10--25 Gbps interconnects to escape a
+network-bound regime, and that partitioning topology, specifically the
+avoidance of prime process counts, is as decisive as bandwidth for
+achieving scalable overlap.
 
 *** Paper structure                                                :ignore:
 

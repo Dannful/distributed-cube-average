@@ -6468,3 +6468,375 @@ crop_transparent_png("ghost_cells-comm.png", "ghost_cells-comm.png")
 #+RESULTS:
 : None
 
+** 2026-05-17 CARLA Article
+*** How to run a simulation
+#+begin_src shell :results output :exports both :tangle ../script.sh :tangle-mode (identity #o755) :shebang "#!/usr/bin/bash"
+#./simgrid-config/compile_platform.sh
+export PLATFORM_NUM_HOSTS=6
+seq 0 $((PLATFORM_NUM_HOSTS - 1)) | sed 's/^/host-/' > simgrid-config/hostfile.txt
+export PLATFORM_NET_LAT="22.7us"
+export PLATFORM_NET_BW="10Gbps"
+export PROBLEM_SIZE=128
+nix run .#run-simgrid-platform-cuda -- $PLATFORM_NUM_HOSTS $PLATFORM_NET_BW $PLATFORM_NET_LAT \
+      --size-x=${PROBLEM_SIZE} \
+      --size-y=${PROBLEM_SIZE} \
+      --size-z=${PROBLEM_SIZE} \
+      --absorption=2 \
+      --dx=1e-1 \
+      --dy=1e-1 \
+      --dz=1e-1 \
+      --dt=1e-6 \
+      --time-max=1e-3 \
+      --output-file=./validation/predicted.dc 2>&1 | tee sim.log
+#+end_src
+
+#+RESULTS:
+: /home/schnorr/svn/spadotto/distributed-cube-average
+*** DoE Case studies
+**** *1. CPU Cluster: Communication Masking Progression (cei, 10 Gbps)*
+
+Compare the 256^3 (~75% compute load) and 512^3 (~87% compute load)
+executions on the *cei* cluster. This directly demonstrates the
+O(n3)O(n^3) O(n3) volume vs. O(n2)O(n^2) O(n2) boundary growth argument
+in action, using the Gantt and load charts as evidence.
+
+*cei* (cpu-only, openmp)
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+options(crayon.enabled=FALSE)
+library(tidyverse)
+crossing(
+  size = c(64, 128, 256, 512), # PROBLEM_SIZE
+  hosts = c(8, 16, 32, 64),    # PLATFORM_NUM_HOSTS
+  speed = c(0.010, 0.025, 0.04, 0.05, 0.1, 1, 2.5, 10) # in Gbps, #PLATFORM_NET_BW
+)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+# A tibble: 128 × 3
+    size hosts  speed
+   <dbl> <dbl>  <dbl>
+ 1    64     8  0.01 
+ 2    64     8  0.025
+ 3    64     8  0.04 
+ 4    64     8  0.05 
+ 5    64     8  0.1  
+ 6    64     8  1    
+ 7    64     8  2.5  
+ 8    64     8 10    
+ 9    64    16  0.01 
+10    64    16  0.025
+# ℹ 118 more rows
+# ℹ Use `print(n = ...)` to see more rows
+#+end_example
+
+1Gbps
+
+[1] "Total time: 29.226542465"
+[1] "MPI time: 16.570692265"
+[1] "Computation time: 12.6558502"
+
+10Gpbs
+
+[1] "Total time: 29.202229386"
+[1] "MPI time: 16.56436099"
+[1] "Computation time: 12.637868396"
+
+----------------------
+
+fg.num_hosts: 6
+cfg.net_bw: 10Gbps
+cfg.net_lat: 22.7us
+
+[1] "Total time: 128.664684926"
+[1] "MPI time: 6.611279184"
+[1] "Computation time: 122.053405742"
+
+cfg.num_hosts: 6
+cfg.net_bw: 1Gbps
+cfg.net_lat: 22.7us
+
+[1] "Total time: 128.67098721"
+[1] "MPI time: 6.290761194"
+[1] "Computation time: 122.380226016"
+
+cfg.num_hosts: 6
+cfg.net_bw: 100Mbps
+cfg.net_lat: 22.7us
+
+[1] "Total time: 128.564967168"
+[1] "MPI time: 6.340839463"
+[1] "Computation time: 122.224127705"
+
+cfg.num_hosts: 6
+cfg.net_bw: 50Mbps
+cfg.net_lat: 22.7us
+
+[1] "Total time: 128.787321843"
+[1] "MPI time: 6.729122389"
+[1] "Computation time: 122.058199454"
+
+cfg.num_hosts: 6
+cfg.net_bw: 40Mbps
+cfg.net_lat: 22.7us
+
+[1] "Total time: 140.980413656"
+[1] "MPI time: 18.87695752"
+[1] "Computation time: 122.103456136"
+
+cfg.num_hosts: 6
+cfg.net_bw: 25Mbps
+cfg.net_lat: 22.7us
+
+[1] "Total time: 199.02814483"
+[1] "MPI time: 76.965149206"
+[1] "Computation time: 122.062995624"
+
+cfg.num_hosts: 6
+cfg.net_bw: 10Mbps
+cfg.net_lat: 22.7us
+
+[1] "Total time: 432.610046964"
+[1] "MPI time: 310.582326615"
+[1] "Computation time: 122.027720349"
+
+
+***** Metric: "Masking Effectiveness"
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+read_csv("../../dc.csv", progress=FALSE, show_col_types=FALSE)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+# A tibble: 1,319,478 × 8
+   State Container Type         Start     End Duration Imbrication Value        
+   <chr> <chr>     <chr>        <dbl>   <dbl>    <dbl>       <dbl> <chr>        
+ 1 State rank-8    MPI_STATE 0        0       0                  0 PMPI_Init    
+ 2 State rank-8    MPI_STATE 0.000935 0.00143 0.000497           0 PMPI_Allgath…
+ 3 State rank-8    MPI_STATE 0.00144  0.00155 0.000112           0 PMPI_Recv    
+ 4 State rank-8    MPI_STATE 0.00408  0.00408 0                  0 PMPI_Irecv   
+ 5 State rank-8    MPI_STATE 0.00408  0.00408 0                  0 PMPI_Irecv   
+ 6 State rank-8    MPI_STATE 0.00408  0.00408 0                  0 PMPI_Irecv   
+ 7 State rank-8    MPI_STATE 0.00408  0.00408 0                  0 PMPI_Irecv   
+ 8 State rank-8    MPI_STATE 0.00408  0.00408 0                  0 PMPI_Irecv   
+ 9 State rank-8    MPI_STATE 0.00408  0.00408 0                  0 PMPI_Irecv   
+10 State rank-8    MPI_STATE 0.00408  0.00408 0                  0 PMPI_Irecv   
+# ℹ 1,319,468 more rows
+# ℹ Use `print(n = ...)` to see more rows
+#+end_example
+
+
+
+**** *2. GPU Cluster: The Network Bottleneck (poti, 1 Gbps)*
+
+Show how compute load stays stuck at ~20% regardless of problem size
+(128^3, 256^3, 512^3) when the RTX 4070 is paired with a Gigabit
+network. This is a compelling negative result — it motivates
+simulation and illustrates that GPU throughput can *outrun* the
+interconnect.
+
+**** *3. Simulated Network Upgrade: 1 Gbps → 10 Gbps → 100 Gbps*
+
+Using the *poti* calibration, trace the progression of compute
+load from ~20% (real) to ~65–80% (10 Gbps simulated) to >90% (100 Gbps
+simulated) at 512^3. This is arguably the strongest story in the paper:
+simulation as a practical tool for capacity planning.
+
+**** *4. Partitioning Topology: Block vs. Slices*
+
+Contrast the 8-worker {2,2,2} block decomposition against a 5-worker
+{5,1,1} slices decomposition (which fell below the single-node
+baseline). This makes the prime-process-count pitfall concrete and
+ties back to the theoretical boundary formula.
+*** The Masking Effectiveness Analysis
+**** 1. Script to calculate Masking Effectiveness for every run
+:PROPERTIES:
+:header-args: :tangle "me.R" :tangle-mode (identity #o755) :shebang "#!/usr/bin/Rscript"
+:END:
+***** Functions
+****** Read
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+our_read_function <- function(f) {
+  read_csv(f,
+           show_col_types=FALSE,
+           progress=FALSE) |>
+    mutate(Container = as.integer(gsub("rank-?", "", Container))) |>
+    mutate(Value = str_trim(gsub("^\\s*PMPI_", "MPI_", str_trim(Value)))) |>    
+    mutate(Value = as.factor(Value)) |>
+    filter(Value %in% c("MPI_Irecv", "MPI_Isend", "MPI_Waitall")) |>
+    mutate(Value = factor(Value, levels=c("MPI_Irecv", "MPI_Isend", "MPI_Waitall"))) -> df
+# Keep only the part that interest us
+# Highly dependent on parallel design
+  core_start <- df |>    
+    filter(Value == "MPI_Irecv") |>    
+    pull(Start) |>    
+    min()    
+  core_end <- df |>    
+    filter(Value == "MPI_Waitall") |>    
+    pull(End) |>    
+    max()    
+  df <- df |>    
+    filter(Start < core_end) |>    
+    filter(End > core_start) |>    
+    mutate(Start = pmax(Start, core_start), End = pmin(End, core_end), Duration = End - Start) |>
+    select(Container, Value, Start, End)
+# Return the data frame
+  return(df)
+}
+#+end_src
+
+#+RESULTS:
+
+****** Compute
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+add_compute_state <- function(df) {
+
+  compute <- df |>
+    arrange(Container, Start) |>
+    group_by(Container) |>
+    mutate(next_start = lead(Start)) |>
+    filter(!is.na(next_start), next_start > End) |>
+    transmute(
+      Container,
+      Start = End,
+      End = next_start,
+      Value = factor("Compute", levels = c(levels(df$Value), "Compute"))
+    )
+
+  bind_rows(df, compute) |>
+    arrange(Container, Start) |>
+    ungroup()
+}
+#+end_src
+
+#+RESULTS:
+
+***** Read and compute
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+options(crayon.enabled=FALSE)
+suppressMessages(library(tidyverse))
+suppressMessages(library(fs))
+
+tibble(
+  FILE="dc.state.csv"
+) |>
+#  mutate(Order = str_extract(FILE, "(?<=order-)\\d+") |> as.integer()) |>
+#  left_join(read_csv(paste0(BASE_DIR, "poti-doe.csv"), progress=FALSE, show_col_types=FALSE), by="Order") |>
+  mutate(DATA = map(FILE, our_read_function)) |>
+  mutate(DATA = map(DATA, add_compute_state)) -> df
+#+end_src
+
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df |>
+  select(-FILE) |>
+  unnest(DATA) |>
+  mutate(Type = ifelse(Value == "Compute", "Compute", "Communication")) |>
+  filter(Type == "Communication") |>
+#  group_by(Order, size, hosts, speed, Container) |>
+  group_by(Container) |>  
+  summarize(
+    Makespan = max(End) - min(Start),
+    Duration = sum(End-Start),
+    .groups="drop_last") |>
+  print() |>
+  summarize(
+    Communication = sum(Duration) / sum(Makespan),
+    Masking.Effectiveness = 1 - Communication,
+    .groups="drop_last") |>
+  print() |>
+  write_csv("me.csv")
+#+end_src
+
+**** 2. Run the script for all cases
+***** Sequential
+#+begin_src shell :results output :exports both :tangle no
+for i in $(find swr-poti | grep order- | grep dc.state.csv)
+do
+    pushd $(dirname $i)
+    ../../../../../me.R
+    popd
+done
+#+end_src
+***** Parallel
+#+begin_src shell :results output :exports both
+find swr-poti -type f -path '*order-*dc.state.csv' | \
+parallel --will-cite -j 4 '
+    cd "$(dirname {})" &&
+    ../../../../../me.R < /dev/null
+'
+#+end_src
+**** 3. Get the data and analyze
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+options(crayon.enabled=FALSE)
+suppressMessages(library(tidyverse))
+suppressMessages(library(fs))
+
+#poti
+BASE.DIR <- "swr-all-after-arch-check-2/run-784330/"
+BASE.DIR <- "swr-poti/run-784314/"
+tupi
+BASE.DIR <- "swr-tupi/run-784327/"
+#cei
+#BASE.DIR <- "swr-cei/run-784319/"
+#tsubasa
+#BASE.DIR <- "swr-tsubasa/run-784320/"
+
+DOE.BASE.DIR <- paste0(BASE.DIR, "distributed-cube-average/tupi-doe/")
+
+tibble(
+  FILE=dir_ls(BASE.DIR,
+              recurse=TRUE,
+              regexp="me.csv")
+) |>
+  mutate(Order = str_extract(FILE, "(?<=order-)\\d+") |> as.integer()) |>
+  left_join(read_csv(paste0(DOE.BASE.DIR, "tupi-doe.csv"), progress=FALSE, show_col_types=FALSE), by="Order") |>
+  mutate(ME = map(FILE, function(f) {
+    read_csv(f, progress=FALSE, show_col_types=FALSE)
+  })) |>
+  unnest(ME)  |>
+  select(-FILE) |>
+  select(-Communication) |>
+  mutate(speed = as.factor(speed)) |>
+  mutate(hosts = as.factor(hosts)) |>
+  mutate(size = as.factor(size)) |>
+  write_csv("masking.csv", progress=FALSE) |>
+  ggplot(aes(
+    color = hosts, group= hosts,
+    x = speed,
+    y = Masking.Effectiveness)) +
+  geom_line(alpha=.5) +
+  geom_point() +
+  ylim(0, 1) +
+  facet_wrap(~size, nrow=1) +
+  theme_bw(base_size=6) +
+  scale_color_brewer(palette = "Set1", name = "Number of MPI ranks") +
+ # scale_x_continuous(expand = c(0.01, 0)) +
+#  scale_y_continuous(expand = c(0, 0)) +
+  ylab("Masking Effectiness [%]") +
+  xlab("Speed [Gpbs]") +
+  
+  theme(
+    plot.margin = unit(c(0, 0.2, 0, 0), "cm"),
+    legend.spacing = unit(0.1, "mm"),
+    #panel.grid = element_blank(),
+    legend.position = "top",
+    legend.direction = "horizontal",    
+    legend.justification = "left",
+    legend.key.size   = unit(0.2, "cm"),
+    legend.box.spacing = unit(0, "pt"),
+    legend.box.margin = margin(0, 0, 0, 0),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) -> p
+ggsave("../papers/2026_CARLA/img/tupi-masking.png", width = 4, height = 1.3, units = "in", dpi = 300)
+#+end_src
+
+#+RESULTS:
+*** DONE The Tupi anomaly behavior (256 vs 516 for four nodes)
+

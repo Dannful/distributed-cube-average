@@ -618,19 +618,18 @@ barely reaches 0.16, and the metric deteriorates further with more
 hosts, confirming that the RTX4070 already outpaces the Gigabit link
 regardless of domain size: the RTX4070 finishes the local stencil
 computation so rapidly that the Gigabit network cannot deliver ghost
-cells in time.  Each of the 1K iterations is therefore dominated by
-=MPI_Waitall= stalls. This behavior is precisely the saturation
-described in the theoretical background: the volume/boundary ratio
-offers no relief because the GPU's throughput overwhelms any benefit
-from larger domains. Our simulations indicate that the recovery begins
-at 10 Gbps, where 512³ with 4 hosts climbs to 0.97 and stays there
-through 100 Gbps. However, smaller problems and larger host counts
-demand even higher bandwidth to recover meaningful overlap due to
-their less favorable communication-to-computation ratio. The poti data
-thus reveal the observation that to escape the network-bottleneck
-regime on our =poti= GPU cluster requires at minimum a 10 Gbps or 25
-Gbps interconnect, and even then only under favorable problem-size and
-node-count conditions.
+cells in time. =MPI_Waitall= stalls therefore dominate each of the 1K
+iterations. This behavior precisely matches the saturation described
+in the theoretical background: the volume-to-boundary ratio offers no
+relief because the GPU's throughput overwhelms any benefit from larger
+domains. Our simulations indicate that recovery begins at 10 Gbps,
+where 512³ with 4 hosts reaches 0.97 and stays there through 100
+Gbps. However, smaller problems and larger host counts demand even
+higher bandwidth to recover meaningful overlap due to their less
+favorable communication-to-computation ratio. The poti data thus
+reveal that to escape the network-bottleneck regime on our =poti= GPU
+cluster requires at least a 10 Gbps or 25 Gbps interconnect, and even
+then only under favorable problem-size and node-count conditions.a
 
 #+begin_export latex
 \begin{figure}[!htb]
@@ -653,15 +652,15 @@ below 0.08 for 27 or more, reflecting an accelerator so fast that the
 Gigabit link is perpetually the gating factor. Meaningful overlap
 resurfaces only at 10 Gbps and above, where small host counts and
 large domains recover values above 0.96. These are consistent with the
-poti pattern, only shifted toward demanding even higher bandwidth due
-to the RTX4090's greater raw throughput. However, tupi exposes a
-striking anomaly absent from poti: Masking Effectiveness keeps
+poti pattern, but shifted toward demanding even higher bandwidth due
+to the RTX 4090's greater raw throughput. However, =tupi= exposes a
+striking anomaly absent from =poti=: Masking Effectiveness keeps
 improving from 256³ to 512³ only with larger host counts (27 and 64)
-for network speed 25 Gbps and larger. Lower hosts counts (4, 8,
-and 16) have a poorer metric in 512³.  This reversal of the expected
-scaling behavior is likely governed by the same volume-to-surface
-ratio dynamics that drive communication efficiency in domain
-decomposition: as the problem size grows from 256³ to 512³, the
+for network speed 25 Gbps and larger. Lower host counts (4, 8, and 16)
+have a poorer metric in 512³. This reversal of the expected scaling
+behavior is likely governed by the same volume-to-surface ratio
+dynamics that drive communication efficiency in domain
+decomposition. As the problem size grows from 256³ to 512³, the
 interior compute volume scales as the cube of the domain edge, while
 the ghost-cell communication surface grows only as its square. With
 few hosts, each rank owns a large subdomain and already benefits from
@@ -699,8 +698,8 @@ consistent transition pattern: the lower-left region of each panel,
 corresponding to low bandwidth and many hosts, is uniformly dark,
 confirming network-bound stalls regardless of problem
 size. Conversely, the lower-right region, large domains, few hosts,
-and high bandwidth, concentrates the bright cells where masking
-effectiveness exceeds 0.90.  The precise identification of this
+and high bandwidth concentrates the bright cells, where masking
+effectiveness exceeds 0.90. The precise identification of this
 transition boundary is one of the key contributions of the
 SimGrid/SMPI simulation approach: rather than requiring exhaustive
 real-cluster experiments across dozens of network configurations, the
@@ -713,10 +712,10 @@ prohibitively expensive to obtain on real infrastructure alone.
 \begin{figure}[!htb]
 \includegraphics[width=\linewidth]{./img/masking_heatmap_gpu.pdf}
 \caption{Masking Effectiveness for \texttt{poti} (RTX4070) and \texttt{tupi} (RTX4090) across
-all (problem size, hosts, bandwidth) configurations. Color encodes ME from 0
-(communication-bound, dark) to 1 (computation-bound, bright). The sharp
-transition from dark lower-left to bright lower-right delineates the
-network-bottleneck boundary.}
+all (problem size, hosts, bandwidth) configurations. Color encodes Masking Effectiveness from 0
+(communication-bound, dark) to 1 (computation-bound, bright).
+The sharp transition from dark in the lower-left to bright in the
+lower-right delineates the network bottleneck boundary.}
 \label{fig:gpu-masking-heatmap}
 \end{figure}
 #+end_export

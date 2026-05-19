@@ -743,8 +743,8 @@ accelerators makes network bandwidth the governing bottleneck, with
 both poti and tupi stalling near 20% compute load on a 1 Gbps
 interconnect regardless of problem size.
 
-Our design of experiments, sweeping network bandwidth across six levels
-from 1 Gbps to 100 Gbps, demonstrated a clear and systematic
+Our design of experiments, sweeping network bandwidth across six
+levels from 1 Gbps to 100 Gbps, demonstrated a clear and systematic
 progression toward computation-bound behavior, with Masking
 Effectiveness values exceeding 90% achieved at 100 Gbps on the GPU
 clusters. The joint heatmap of Masking Effectiveness across all
@@ -752,7 +752,7 @@ clusters. The joint heatmap of Masking Effectiveness across all
 immediately readable map of the transition boundary between
 network-bound and compute-bound regimes, a kind of capacity-planning
 chart for practitioners deciding whether a network upgrade is
-worthwhile for a given workload. This is precisely where
+worthwhile for a given workload. This action is precisely where
 SimGrid/SMPI's value is most visible: by emulating computations
 between MPI calls on real hardware while simulating the communication
 layer with freely configurable parameters, it navigates the full

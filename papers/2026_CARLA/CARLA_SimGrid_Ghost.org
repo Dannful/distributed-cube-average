@@ -697,11 +697,18 @@ striking anomaly absent from poti: Masking Effectiveness keeps
 improving from 256³ to 512³ only with larger host counts (27 and 64)
 for network speed 25 Gbps and larger. Lower hosts counts (4, 8,
 and 16) have a poorer metric in 512³.  This reversal of the expected
-volume/boundary scaling is counterintuitive and warrants scrutiny. A
-plausible hypothesis indicates that the larger ghost-cell halos at
-512³ may saturate the PCIe bus during host-device transfers,
-introducing a new bottleneck that the smaller 256³ problem avoids
-entirely.
+scaling behavior is likely governed by the same volume-to-surface
+ratio dynamics that drive communication efficiency in domain
+decomposition: as the problem size grows from 256³ to 512³, the
+interior compute volume scales as the cube of the domain edge, while
+the ghost-cell communication surface grows only as its square. With
+few hosts, each rank owns a large subdomain and already benefits from
+a favorable ratio, so doubling the edge length adds proportionally
+more communication surface than it does useful compute to overlap,
+degrading masking. With many hosts, each rank's subdomain is small and
+surface-dominated at 256³, and the jump to 512³ finally brings enough
+interior work to amortize the communication cost, pushing Masking
+Effectiveness upward.
 
 #+begin_export latex
 \begin{figure}[!htb]

@@ -441,49 +441,352 @@ transfers, and memory copies), SimGrid's native computation sampling
 is leveraged: the main propagation kernel executes in full for a
 variable number of warm-up iterations, after which the code injects
 stable timing samples into the simulation.
+#+latex: %
+We change the network bandwidth parameter to reflect our intention
+when evaluating the masking effectiveness. As the virtual platform can
+receive customized values after a calibrartion procedure, we employ a
+methodology \cite{simgrid_calibration} to extract MPI runtime
+parameters, protocol thresholds, bandwidth, and latency, from a
+systematic suite of micro-benchmarks. We adopt the calibrated values
+and employ them throughout the simulations. Our validation after
+calibration concluded that our platform description reproduces the
+real cluster's behavior within a 15% error margin for message sizes up
+to \approx1GB, which we conclude acceptable since application behavior (both
+compute and communication) is very homogeneous along the execution,
+indicating that tendencies remains sufficiently faithfull to evaluate
+communication masking effectiveness.
 
-#+begin_export latex
-\begin{table}[ht]
-  \centering
-  \caption{Hardware description of the \textit{poti} cluster nodes.}
-  \label{tab:poti-hardware}
-  \begin{tabular}{ll}
-    \toprule
-    \textbf{Property} & \textbf{Value} \\
-    \midrule
-    Nodes        & poti[1,2,3,4,5] \\
-    CPU          & Intel Core i7-14700KF, 3.4\,GHz, 20 cores, 28 threads \\
-    Memory       & 96\,GB DDR5 \\
-    GPU          & NVIDIA GeForce RTX 4070, 12\,GB \\
-    Storage      & 119.2\,GB NVMe, 1.7\,TB SSD \\
-    Motherboard  & Gigabyte Z790 UD AX \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-#+end_export
-
-
+# #+begin_export latex
+# \begin{table}[ht]
+#   \centering
+#   \caption{Hardware description of the \textit{poti} cluster nodes.}
+#   \label{tab:poti-hardware}
+#   \begin{tabular}{ll}
+#     \toprule
+#     \textbf{Property} & \textbf{Value} \\
+#     \midrule
+#     Nodes        & poti[1,2,3,4,5] \\
+#     CPU          & Intel Core i7-14700KF, 3.4\,GHz, 20 cores, 28 threads \\
+#     Memory       & 96\,GB DDR5 \\
+#     GPU          & NVIDIA GeForce RTX 4070, 12\,GB \\
+#     Storage      & 119.2\,GB NVMe, 1.7\,TB SSD \\
+#     Motherboard  & Gigabyte Z790 UD AX \\
+#     \bottomrule
+#   \end{tabular}
+# \end{table}
+# #+end_export
 
 # Two simulated network configurations are evaluated: 10Gbps and
 # 100Gbps, representing a 10\times and 100\times improvement over the
 # real 1Gbps interconnect of the =poti= cluster.
 
+** Results                                                        :noexport:
+:PROPERTIES:
+:CUSTOM_ID: sec.results
+:END:
 ** Results
 :PROPERTIES:
 :CUSTOM_ID: sec.results
 :END:
 
+We first describe the evaluation methodology and introduce the Masking
+Effectiveness metric used throughout the analysis. We then present the
+results for the two CPU-only hosts, =cei= and =tsubasa=, followed by the
+two GPU-equipped clusters, =poti= and =tupi=. Finally, we examine the
+impact of partitioning topology on performance, contrasting block and
+slice decompositions and their consequences for communication
+scalability.
+
+*** Evaluation Methodology and Masking Effectiveness Metric
+
+We define two Design of Experiment (DoE) depending whether the host
+machines has a GPU or is solely based on CPU cores. If the host
+machine used for simulation contains a GPU, the GPU DoE consists of a
+full factorial structure, crossing three independent factors to
+produce 120 unique experimental conditions. The first factor, *(1)
+problem size*, varies across four levels (64, 128, 256, and 512), where
+each number represens the order of the cubic problem domain. The
+second factor, *(2) number of hosts*, spans five levels (4, 8, 16, 27,
+and 64), covering a small cluster (4 nodes) up to a larger deployment
+(64 nodes). The choice for these levels is aligned with the 3D
+partionining. The third factor, *(3) network bandwidth*, takes six
+levels (1, 2.5, 10, 25, 50, and 100 Gbps), spanning three orders of
+magnitude from low-speed to high-speed interconnects.  If the host
+machine used for simulation contains only CPU cores, the CPU DoE is
+different because of the smaller compute power and consists also of a
+full factorial structure, crossing the same three factors to produce
+128 unique experimental conditions. The problem size factor contains
+four levels (64, 128, 256, and 512). The number of hosts factor spans
+four levels (8, 16, 32, and 64). Finally, the network bandwidth factor
+takes eight levels (10, 25, 40, and 50 Mbps, followed by 1, 2.5, 10,
+and 100 Gbps), covering an exceptionally wide range spanning four
+orders of magnitude, from slow interconnects typical of commodity or
+congested networks up to high-speed links found in modern HPC
+environments. In both DoE projects, the application executes 1000
+iterations, the network latency remains fixe at 22\micro seconds (taken
+from our real network measurements), and each of the combinations
+appears exactly once, with no replication, and is assigned a
+sequential run order.  The design aims to jointly characterize how
+performance scales with workload size, platform scale, and network
+capacity in a distributed computing or HPC context, with particular
+emphasis on understanding the impact of network bandwidth across a
+broad and heterogeneous range of speeds with high compute capacity
+(large number of GPUs) and CPU-only clusters.
+
+We consider these hosts to run the simulations with their respective
+compute configurations: =tupi= (GPU RTX4090), =poti= (GPU RTX4070), =cei=
+(CPU 2\times Xeon Silver 4116), and =tsubasa= (2\times Xeon Gold 6226). When
+running the simulations in GPU-equipped, we run the optimized CUDA
+code. When in CPU-equipped, we run the OpenMP kernel that exploits all
+CPU cores (both logical and physical). As usual in SimGrid/SMPI,
+simulation occurs for MPI network communications using calibrated
+values of the real =poti= cluster network and per-DoE network bandwidth
+configurations.  The *Masking Effectiveness* metric derives from MPI
+communication traces obtained from SimGrid by first isolating the core
+execution window, defined as the interval between the earliest
+=MPI_Irecv= start and the last =MPI_Waitall= end across all ranks, and
+then clipping all events to that window. A Compute state is
+synthetically inferred for each container by identifying gaps between
+consecutive MPI communication events. For each rank, the total
+communication duration and the overall makespan (from the first to the
+last event) are summed across all ranks, and the Communication ratio
+is obtained by dividing the aggregate communication duration by the
+aggregate makespan. Finally, Masking Effectiveness is defined as one
+minus that Communication ratio, representing the fraction of the
+execution time during which communication was successfully overlapped
+with or hidden by computation: the closer to one, the more effectively
+the application masks its communication overhead. We employ this
+metric in our results interpretation as it clearly reflects how much
+communicating hiding a particular configuration (problem size, number
+of workers, and network capacity) delivers as behavior.  From a
+practical perpective, all MPI traces are handle using modern data
+science tools based on the R programming language and the
+tidyverse/ggplot2 stack.
+
+*** CPU Cluster: Communication Masking Progression
+
+Figure \ref{fig:cei-masking} illustrates the results for the =cei=
+machine (a CPU-only host equipped with dual Xeon Silver 4116
+processors) revealing a striking pattern: communication masking is
+nearly trivially achieved whenever the network bandwidth is
+sufficiently low relative to the available compute throughput. Across
+all problem sizes (64³ to 512³) and host counts (8 to 64), Masking
+Effectiveness remains below 0.30 for bandwidths at or below 100 Mbps,
+reflecting configurations in which communication dominates and there
+is little computation to hide it behind. However, as soon as bandwidth
+crosses the 1 Gbps threshold, the picture changes dramatically: for
+the largest problem size (512³) with only 8 hosts, Masking
+Effectiveness leaps to approximately 0.94, and even moderately sized
+problems (256³, 8 hosts) reach values above 0.89 at 1 Gbps. This sharp
+transition reveals that the CPU-only cei cluster sits in a
+compute-bound regime for most realistic HPC network configurations:
+once the network is fast enough to deliver data quickly, the
+relatively modest per-core floating-point throughput of the Xeon
+Silver 4116 ensures that computation fills the gaps between
+communication events almost entirely, yielding near-perfect
+masking. Put differently, on a slow CPU-only cluster, communication
+masking is essentially free: the application's arithmetic intensity
+naturally outpaces the network, so overlap emerges naturally, making
+this class of hardware surprisingly forgiving from an MPI
+communication-hiding perspective.
+
+#+begin_export latex
+\begin{figure}[!htb]
+\includegraphics[width=\linewidth]{./img/cei-masking.png}
+\caption{The Masking Effectiveness (in the Y-axis) as a
+   function of the network bandwidth capacity (X-axis),
+   the number of MPI ranks (colors), and problem
+   size (facets). Case for the \texttt{cei}
+   host configuration.}
+\label{fig:cei-masking}
+\end{figure}
+#+end_export
+
+The =tsubasa= machine (a CPU-only host with dual Xeon Gold 6226
+processors, representing a somewhat more powerful CPU platform than
+=cei=) fully corroborates the same trend. We observe the masking
+Effectiveness stays near zero for sub-100 Mbps bandwidths across all
+problem sizes and host counts, but surges past 0.90 at 1 Gbps for the
+largest problem size (512³) with 8 hosts, and remains consistently
+high (above 0.80) for large problems at faster interconnects. The
+slightly higher core count and clock speed of the Gold 6226 relative
+to the Silver 4116 do not fundamentally alter the picture: the
+compute-bound nature of the application on CPU-only hardware ensures
+that, as soon as the network delivers data at a reasonable pace,
+computation effortlessly absorbs the communication latency.
+
+Both =cei= and =tsubasa= have a coherent story: on CPU-only clusters,
+near-perfect communication masking (closer to one in our plots) is
+easily achievable as a consequence of arithmetic intensity exceeding
+network throughput, requiring no special software
+tuning. Interestingly, the =cei= cluster has a 10Gpbs network so one
+might already expect good ghost cell capability for communication
+hiding in this cluster.
+
+*** GPU Cluster: The Network Bottleneck
+
+Figure \ref{fig:poti-masking} illustrates the results for the =poti= GPU
+cluster, revealing the opposite regime. With RTX4070 accelerators
+paired with a 1Gbps Gigabit network (first X-axis coordinate), the
+masking effectiveness stalls at a very low regime, at around 0.25,
+regardless of problem size: $128^3$, $256^3$, and $512^3$ all yield
+the same result. Even the largest problem (512³) with only 4 hosts
+barely reaches 0.16, and the metric deteriorates further with more
+hosts, confirming that the RTX4070 already outpaces the Gigabit link
+regardless of domain size: the RTX4070 finishes the local stencil
+computation so rapidly that the Gigabit network cannot deliver ghost
+cells in time.  Each of the 1K iterations is therefore dominated by
+=MPI_Waitall= stalls. This behavior is precisely the saturation
+described in the theoretical background: the volume/boundary ratio
+offers no relief because the GPU's throughput overwhelms any benefit
+from larger domains. Our simulations indicate that the recovery begins
+at 10 Gbps, where 512³ with 4 hosts climbs to 0.97 and stays there
+through 100 Gbps. However, smaller problems and larger host counts
+demand even higher bandwidth to recover meaningful overlap due to
+their less favorable communication-to-computation ratio. The poti data
+thus reveal the observation that to escape the network-bottleneck
+regime on our =poti= GPU cluster requires at minimum a 10 Gbps or 25
+Gbps interconnect, and even then only under favorable problem-size and
+node-count conditions.
+
+#+begin_export latex
+\begin{figure}[!htb]
+\includegraphics[width=\linewidth]{./img/poti-masking.png}
+\caption{The Masking Effectiveness (in the Y-axis) as a
+   function of the network bandwidth capacity (X-axis),
+   the number of MPI ranks (colors), and problem
+   size (facets). Case for the \texttt{poti}
+   host configuration.}
+\label{fig:poti-masking}
+\end{figure}
+#+end_export
+
+Figure \ref{fig:tupi-masking} illustrates the results for the =tupi=
+cluster, powered by RTX4090 GPUs. The results broadly mirror the
+network-bottleneck regime observed on the =poti= cluster: at 1 Gbps,
+Masking Effectiveness collapses across all configurations, with even
+the largest problems barely exceeding 0.16 for 4 hosts and falling
+below 0.08 for 27 or more, reflecting an accelerator so fast that the
+Gigabit link is perpetually the gating factor. Meaningful overlap
+resurfaces only at 10 Gbps and above, where small host counts and
+large domains recover values above 0.96. These are consistent with the
+poti pattern, only shifted toward demanding even higher bandwidth due
+to the RTX4090's greater raw throughput. However, tupi exposes a
+striking anomaly absent from poti: Masking Effectiveness keeps
+improving from 256³ to 512³ only with larger host counts (27 and 64)
+for network speed 25 Gbps and larger. Lower hosts counts (4, 8,
+and 16) have a poorer metric in 512³.  This reversal of the expected
+volume/boundary scaling is counterintuitive and warrants scrutiny. A
+plausible hypothesis indicates that the larger ghost-cell halos at
+512³ may saturate the PCIe bus during host-device transfers,
+introducing a new bottleneck that the smaller 256³ problem avoids
+entirely.
+
+#+begin_export latex
+\begin{figure}[!htb]
+\includegraphics[width=\linewidth]{./img/tupi-masking.png}
+\caption{The Masking Effectiveness (in the Y-axis) as a
+   function of the network bandwidth capacity (X-axis),
+   the number of MPI ranks (colors), and problem
+   size (facets). Case for the \texttt{tupi}
+   host configuration.}
+\label{fig:tupi-masking}
+\end{figure}
+#+end_export
+
+*** TODO Partitioning Topology: Blocks vs. Slices
+
+Throughput results (MSamples/s) expose a striking consequence of
+partitioning shape. At $512^3$ on the 100~Gbps simulated network, an
+8-worker $\{2,2,2\}$ block decomposition reaches $\approx$9\,374~MSamples/s,
+while a 5-worker $\{5,1,1\}$ slices decomposition yields only
+$\approx$3\,215~MSamples/s — below the single-node baseline of
+3\,870~MSamples/s. The negative speedup of the 5-worker configuration is
+caused by ~MPI_Dims_create~'s forced 1D partitioning for the prime count 5:
+each slab communicates $\approx$64~MB per iteration compared to
+$\approx$25~MB for the block sub-domains, and the $512\times512$ face halos
+trigger higher-latency MPI protocol paths (rendezvous handshaking, amplified
+PCIe transfer costs) that accumulate over 1\,001 iterations and are not
+relieved by increasing bandwidth. The result illustrates that process count
+selection — specifically, avoiding prime counts — is as decisive as network
+bandwidth for achieving masking scalability.
+
+# #+BEGIN_EXPORT latex
+# \begin{table}[ht]
+# \centering
+# \caption{Summary of approximate compute load across all experimental scenarios.}
+# \label{tab:results_summary}
+# \begin{tabular}{llll}
+# \hline
+# Backend & Problem size & Network & Compute load \\
+# \hline
+# CPU (OpenMP) & $256^3$ & 10~Gbps (real)       & $\approx 75\%$       \\
+# CPU (OpenMP) & $512^3$ & 10~Gbps (real)       & $\approx 87\%$       \\
+# GPU (CUDA)   & $128^3$ & 1~Gbps (real)        & $\approx 20$--$25\%$ \\
+# GPU (CUDA)   & $256^3$ & 1~Gbps (real)        & $\approx 20\%$       \\
+# GPU (CUDA)   & $512^3$ & 1~Gbps (real)        & $\approx 20\%$       \\
+# GPU (CUDA)   & $256^3$ & 10~Gbps (simulated)  & $\approx 65$--$70\%$ \\
+# GPU (CUDA)   & $512^3$ & 10~Gbps (simulated)  & $\approx 75$--$80\%$ \\
+# GPU (CUDA)   & $256^3$ & 100~Gbps (simulated) & $\approx 85$--$90\%$ \\
+# GPU (CUDA)   & $512^3$ & 100~Gbps (simulated) & $>90\%$              \\
+# \hline
+# \end{tabular}
+# \end{table}
+# #+END_EXPORT
+
+** Conclusion                                                     :noexport:
+:PROPERTIES:
+:CUSTOM_ID: sec.conclusion
+:END:
 ** Conclusion
 :PROPERTIES:
 :CUSTOM_ID: sec.conclusion
 :END:
 
-** Acknowledgments                                                 :ignore:
+This paper presented a distributed MPI implementation of the Fletcher
+RTM application with 3D block decomposition and asynchronous ghost
+cell communication, alongside a calibrated SimGrid/SMPI simulation
+framework for exploring network configurations beyond those physically
+available. Experiments across four host configurations (cei, tsubasa,
+poti, and tupi) spanning both CPU-only and GPU-equipped clusters
+exposed two sharply contrasting regimes. On CPU-only machines, modest
+floating-point throughput naturally yields near-perfect communication
+hiding across most network conditions: the cei cluster reaches
+approximately 87% compute load at 512³ on its real 10 Gbps network,
+and tsubasa corroborates the same trend, establishing that arithmetic
+intensity alone is sufficient to mask communication on this class of
+hardware without any special tuning. On GPU-equipped clusters, the
+picture inverts entirely: the raw throughput of RTX4070 and RTX4090
+accelerators makes network bandwidth the governing bottleneck, with
+both poti and tupi stalling near 20% compute load on a 1 Gbps
+interconnect regardless of problem size.
+
+Simulated network upgrades demonstrated a clear progression toward
+computation-bound behavior, with values exceeding 90% achieved at 100
+Gbps, confirming that SimGrid/SMPI is a practical capacity-planning
+tool when real infrastructure is unavailable.
+
+The partitioning topology experiment further revealed that prime
+process counts are as detrimental as slow networks: a 5-worker {5,1,1}
+slices decomposition fell below the single-node throughput baseline
+regardless of simulated bandwidth, establishing process count
+selection as a co-determining factor alongside interconnection
+bandwidth for ghost cell masking effectiveness.
+
+Future work includes experiments on the Santos Dumont supercomputer to
+evaluate the application on a production platform with a high-speed
+interconnect, detailed SimGrid modeling of the Santos Dumont network
+topology, and integration of HIP kernels to evaluate AMD GPU
+architectures within the same simulation framework.
+
+** Acknowledgments                                                  :ignore:
 
 #+LATEX:\section*{Acknowledgements}
 
 All experiments in this work used the PCAD platform,
-http://pcad.inf.ufrgs.br, at INF/UFRGS.
+http://pcad.inf.ufrgs.br, at INF/UFRGS. This work was partially
+supported by Petrobras through an agreement with UFRGS under 2.20.2205
+(361), SAP 23078.450001/2022-17, and SIC 2020/00182-5.
 
 * References                                                        :ignore:
 

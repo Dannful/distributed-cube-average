@@ -690,7 +690,7 @@ entirely.
 \end{figure}
 #+end_export
 
-*** TODO Partitioning Topology: Blocks vs. Slices
+*** TODO Partitioning Topology: Blocks vs. Slices                :noexport:
 
 Throughput results (MSamples/s) expose a striking consequence of
 partitioning shape. At $512^3$ on the 100~Gbps simulated network, an

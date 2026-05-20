@@ -6991,7 +6991,8 @@ cat("Plot saved to masking_heatmap_gpu.pdf and .png\n")
 
 #+end_src
 **** Weak scaling analysis
-***** Read everything and merge into a single CSV
+***** swr-weak-scalability
+****** Read everything and merge into a single CSV
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 options(crayon.enabled=FALSE)
@@ -7060,7 +7061,8 @@ runs |>
 # ℹ 74 more rows
 # ℹ Use `print(n = ...)` to see more rows
 #+end_example
-***** Plot
+
+****** Plot
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 library(tidyverse)
@@ -7109,6 +7111,126 @@ df |>
 [36mℹ[39m Use the conflicted package ([3m[34m<http://conflicted.r-lib.org/>[39m[23m) to force all conflicts to become errors
 [1mindexing[0m [34mswr-weak-scalability.csv[0m [========================] [32m85.11MB/s[0m, eta: [36m 0s[0m
 #+end_example
+***** swr-weak-scalability-new
+****** Read everything and merge into a single CSV
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+options(crayon.enabled=FALSE)
+library(tidyverse)
+
+# Your tibble
+runs <- tribble(
+  ~DIR,                                    ~TYPE,
+  "swr-weak-scalability-new/run-784608/", "poti",  
+)
+
+read_me_files <- function(dir, type) {
+  # Determine the doe subdirectory name based on type
+  doe_dir <- str_glue("{dir}distributed-cube-average/{type}-weak-scalability-new")
+
+  # Find all me.csv files and extract their order
+  me_files <- fs::dir_ls(doe_dir, regexp = "order-[0-9]+/me\\.csv$", recurse = TRUE)
+
+  # Read all me.csv files, tagging each with its order number
+  me_data <- me_files |>
+    map(read_csv, show_col_types = FALSE, progress=FALSE) |>
+    list_rbind(names_to = "path") |>
+    mutate(
+      order = as.integer(str_extract(path, "(?<=order-)\\d+")),
+      DIR   = dir,
+      TYPE  = type
+    ) |>
+    select(-path)
+
+  # Read the DoE file
+  doe_file <- str_glue("{doe_dir}/{type}-weak-scalability-new.csv")
+  doe_data <- read_csv(doe_file, show_col_types = FALSE, progress=FALSE)
+
+  # Left-join me data with DoE on order
+  left_join(me_data, doe_data, by = c("order" = "Order"))
+}
+
+# Apply across all runs and bind results
+runs |>
+  rowwise() |>
+  slice(1) |>
+  reframe(read_me_files(DIR, TYPE)) |>
+  mutate(TYPE = factor(TYPE, levels=c("cei", "tsubasa", "poti", "tupi"))) |>
+  select(-DIR) |>
+  select(-Communication) |>
+  write_csv("swr-weak-scalability-new.csv", progress=FALSE) |>
+  print()
+#+end_src
+
+#+RESULTS:
+#+begin_example
+── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+✔ dplyr     1.2.1     ✔ readr     2.2.0
+✔ forcats   1.0.1     ✔ stringr   1.6.0
+✔ ggplot2   4.0.3     ✔ tibble    3.3.1
+✔ lubridate 1.9.4     ✔ tidyr     1.3.2
+✔ purrr     1.2.2     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ dplyr::filter() masks stats::filter()
+✖ dplyr::lag()    masks stats::lag()
+ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+# A tibble: 115 × 8
+   Masking.Effectiveness order TYPE  trajectory hosts  size    mem
+                   <dbl> <dbl> <fct> <chr>      <dbl> <dbl>  <dbl>
+ 1                 0.934     1 poti  A              8   256  0.125
+ 2                 0.913    10 poti  A             36   423  0.564
+ 3                NA       100 poti  B            216  1440 22.2  
+ 4                 0.947   101 poti  C              8   512  1    
+ 5                 0.816   102 poti  C             12   586  1.50 
+ 6                 0.863   103 poti  C             16   645  2.00 
+ 7                 0.930   104 poti  C             18   671  2.25 
+ 8                 0.881   105 poti  C             20   695  2.50 
+ 9                 0.848   106 poti  C             24   738  2.99 
+10                 0.775   107 poti  C             27   768  3.38 
+# ℹ 105 more rows
+# ℹ 1 more variable: Posso.Executar <lgl>
+# ℹ Use `print(n = ...)` to see more rows
+#+end_example
+
+****** Plot
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+library(tidyverse)
+
+df <- read_csv("swr-weak-scalability-new.csv", show_col_types = FALSE) |>
+  mutate(TYPE = factor(TYPE, levels = c("poti", "tupi"))) #|>
+#  mutate(speed = as.factor(speed))
+
+# ── 1. Main weak-scaling plot ─────────────────────────────────
+# ME vs hosts, one line per TYPE, facet by trajectory x speed
+df |>
+  filter(TYPE == "poti") |>
+  filter(trajectory == "A") |>
+  ggplot(aes(x = hosts, y = Masking.Effectiveness)) +#, color = speed, group = speed)) +
+  geom_line() +
+  geom_point(size = 1.5) +
+  facet_grid(~ trajectory, labeller = label_both) +
+#  scale_x_continuous(breaks = c(8, 27, 64, 125)) +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
+  labs(
+    x = "Number of Hosts (problem size scales proportionally)",
+    y = "Masking Effectiveness",
+    color = "Type"
+  ) +
+  theme_bw(base_size = 16) +
+  theme(
+    panel.grid.minor   = element_blank(),
+    legend.position    = "top",
+    legend.direction   = "horizontal",
+    legend.box.margin  = margin(0,0,0,0),
+    legend.box.spacing = unit(0, "pt"),
+    plot.margin        = unit(c(0, 0.2, 0, 0), "cm")
+  )
+#+end_src
+
+#+RESULTS:
+: indexing swr-weak-scalability-new.csv [===================] 275.87MB/s, eta:  0s                                                                                Ignoring unknown labels:
+: • colour : "Type"
 
 *** DONE The Tupi anomaly behavior (256 vs 516 for four nodes)
 *** Gantt-chart aggregated

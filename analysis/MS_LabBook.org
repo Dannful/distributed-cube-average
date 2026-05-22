@@ -7232,6 +7232,160 @@ df |>
 : indexing swr-weak-scalability-new.csv [===================] 275.87MB/s, eta:  0s                                                                                Ignoring unknown labels:
 : • colour : "Type"
 
+***** TODO swr-weak-scalability-new-17 (weak)
+****** Read everything and merge into a single CSV
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+options(crayon.enabled=FALSE)
+library(tidyverse)
+
+# Your tibble
+runs <- tribble(
+  ~DIR,                                    ~TYPE,
+  "swr-weak-scalability-new-17/run-785720/", "poti",
+)
+
+read_me_files <- function(dir, type) {
+  # Determine the doe subdirectory name based on type
+  doe_dir <- str_glue("{dir}distributed-cube-average/{type}-weak-scalability-new-17")
+
+  # Find all me.csv files and extract their order
+  me_files <- fs::dir_ls(doe_dir, regexp = "order-[0-9]+/me\\.csv$", recurse = TRUE)
+
+  # Read all me.csv files, tagging each with its order number
+  me_data <- me_files |>
+    map(read_csv, show_col_types = FALSE, progress=FALSE) |>
+    list_rbind(names_to = "path") |>
+    mutate(
+      order = as.integer(str_extract(path, "(?<=order-)\\d+")),
+      DIR   = dir,
+      TYPE  = type
+    )# |>
+#    select(-path)
+
+  # Read the DoE file
+  doe_file <- str_glue("{doe_dir}/{type}-weak-scalability-new-17.csv")
+  doe_data <- read_csv(doe_file, show_col_types = FALSE, progress=FALSE)
+
+  # Left-join me data with DoE on order
+  left_join(me_data, doe_data, by = c("order" = "Order"))
+}
+
+# Apply across all runs and bind results
+runs |>
+  rowwise() |>
+  slice(1) |>
+  reframe(read_me_files(DIR, TYPE)) |>
+  mutate(TYPE = factor(TYPE, levels=c("cei", "tsubasa", "poti", "tupi"))) |>
+ # select(-DIR) |>
+  select(-Communication) |>
+  write_csv("swr-weak-scalability-new-17.csv", progress=FALSE) |>
+  print()
+#+end_src
+
+#+RESULTS:
+#+begin_example
+# A tibble: 370 × 11
+   path     Masking.Effectiveness order DIR   TYPE  speed trajectory hosts  size
+   <chr>                    <dbl> <dbl> <chr> <fct> <dbl> <chr>      <dbl> <dbl>
+ 1 swr-wea…                 0.101     1 swr-… poti    1   A              8   256
+ 2 swr-wea…                 0.114    10 swr-… poti    1   A             36   423
+ 3 swr-wea…                 0.180   100 swr-… poti    2.5 A             90   574
+ 4 swr-wea…                 0.172   101 swr-… poti    2.5 A             96   586
+ 5 swr-wea…                 0.288   102 swr-… poti    2.5 A             98   590
+ 6 swr-wea…                 0.276   103 swr-… poti    2.5 A            100   594
+ 7 swr-wea…                 0.178   104 swr-… poti    2.5 A            108   610
+ 8 swr-wea…                 0.180   105 swr-… poti    2.5 A            112   617
+ 9 swr-wea…                 0.177   106 swr-… poti    2.5 A            120   631
+10 swr-wea…                 0.146   107 swr-… poti    2.5 A            125   640
+# ℹ 360 more rows
+# ℹ 2 more variables: mem <dbl>, Posso.Executar <lgl>
+# ℹ Use `print(n = ...)` to see more rows
+#+end_example
+
+****** Plot
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+library(tidyverse)
+
+df <- read_csv("swr-weak-scalability-new-17.csv", show_col_types = FALSE) |>
+  mutate(speed = as.factor(speed)) |>
+  mutate(TYPE = factor(TYPE, levels = c("poti", "tupi"))) |>
+  print()
+
+
+# ── 1. Main weak-scaling plot ─────────────────────────────────
+# ME vs hosts, one line per TYPE, facet by trajectory x speed
+df |>
+  filter(TYPE == "poti") |>
+  filter(trajectory == "A") |>
+  ggplot(aes(x = hosts, y = Masking.Effectiveness, color = speed, group = speed)) +
+  geom_line() +
+  geom_point(size = 1.5) +
+#  facet_grid(~ speed, labeller = label_both) +
+#  scale_x_continuous(breaks = c(8, 27, 64, 125)) +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
+  labs(
+    x = "Number of Hosts (problem size scales proportionally)",
+    y = "Masking Effectiveness",
+    color = "Type"
+  ) +
+  theme_bw(base_size = 16) +
+  theme(
+    panel.grid.minor   = element_blank(),
+    legend.position    = "top",
+    legend.direction   = "horizontal",
+    legend.box.margin  = margin(0,0,0,0),
+    legend.box.spacing = unit(0, "pt"),
+    plot.margin        = unit(c(0, 0.2, 0, 0), "cm")
+  )
+#+end_src
+
+#+RESULTS:
+#+begin_example
+indexing swr-weak-scalability-new-17.csv [==================] 4.01GB/s, eta:  0s                                                                                # A tibble: 370 × 11
+   path     Masking.Effectiveness order DIR   TYPE  speed trajectory hosts  size
+   <chr>                    <dbl> <dbl> <chr> <fct> <fct> <chr>      <dbl> <dbl>
+ 1 swr-wea…                 0.101     1 swr-… poti  1     A              8   256
+ 2 swr-wea…                 0.114    10 swr-… poti  1     A             36   423
+ 3 swr-wea…                 0.180   100 swr-… poti  2.5   A             90   574
+ 4 swr-wea…                 0.172   101 swr-… poti  2.5   A             96   586
+ 5 swr-wea…                 0.288   102 swr-… poti  2.5   A             98   590
+ 6 swr-wea…                 0.276   103 swr-… poti  2.5   A            100   594
+ 7 swr-wea…                 0.178   104 swr-… poti  2.5   A            108   610
+ 8 swr-wea…                 0.180   105 swr-… poti  2.5   A            112   617
+ 9 swr-wea…                 0.177   106 swr-… poti  2.5   A            120   631
+10 swr-wea…                 0.146   107 swr-… poti  2.5   A            125   640
+# ℹ 360 more rows
+# ℹ 2 more variables: mem <dbl>, Posso.Executar <lgl>
+# ℹ Use `print(n = ...)` to see more rows
+#+end_example
+
+****** Strange result, let's dive in with the space/time view
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df |>
+  filter(speed == 100) |>
+#  filter(Masking.Effectiveness < 0.4) |>
+#  filter(Masking.Effectiveness > 0.3) |>
+  filter(hosts %in% 40:60) |>
+#  filter(hosts > 90) |>
+#  filter(hosts == 96) |>
+  select(path) |>
+  mutate(FILE = paste0(dirname(path), "/dc.state.csv")) |>
+  mutate(DATA = map(FILE, our_read_function)) |>
+  mutate(DATA = map(DATA, add_compute_state)) |>
+  mutate(DATA.AGG = map(DATA, do_the_reference_aggregation, 100)) |>
+  mutate(ST.AGG = map(DATA.AGG, \(x) do_the_viz(x, has.summary=FALSE))) |>
+  mutate(ST = map(DATA, our_st_plot)) |>
+  mutate(ST = map(ST, function(p) { p + theme(legend.position="none", axis.title.x = element_blank()) })) |>
+  pull(ST) -> p.list
+  wrap_plots(p.list, ncol=1)
+#+end_src
+
+#+RESULTS:
+
+
 *** DONE The Tupi anomaly behavior (256 vs 516 for four nodes)
 *** Gantt-chart aggregated
 ****** The aggregation framework (starvz-inspired)

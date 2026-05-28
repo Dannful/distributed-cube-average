@@ -130,13 +130,9 @@ Submission must be done using EasyChair:
 ** Latex configurations                                             :ignore:
 ** Frontpage                                                        :ignore:
 #+BEGIN_EXPORT latex
-\title{Distributed Implementation of Anisotropic RTM Using the
-       Fletcher Method with MPI and Halo}
-
-\author{
-\IEEEauthorblockN{Vinícius Daniel Spadotto, Lucas Mello Schnorr}
-\IEEEauthorblockA{Institute of Informatics, Porto Alegre, Brazil}
-}
+\title{MPI-Based 3D Anisotropic RTM with Fletcher's Method and Ghost Cell Halo Exchange}
+\author{\IEEEauthorblockN{Vinícius Daniel Spadotto, Lucas Mello Schnorr}
+\IEEEauthorblockA{Institute of Informatics, Porto Alegre, Brazil}}
 #+END_EXPORT
 
 #+LaTeX: \maketitle

@@ -472,7 +472,7 @@ compute the interior while halos are in transit; (5) wait for all
 incoming halos (\texttt{MPI\_Waitall}), insert them, and swap
 wavefield vectors. This scheme hides communication latency only when
 interior computation takes longer than the halo transfer; if the
-network is the bottleneck, step~(5) blocks and communication overhead
+network is the bottleneck, step (5) blocks and communication overhead
 becomes the dominant cost.
 
 ** Results

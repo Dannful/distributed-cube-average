@@ -207,7 +207,25 @@ Submission must be done using EasyChair:
 
 #+LaTeX: \begin{abstract}
 
-Put the abstract here.
+Distributing iterative stencil computations across HPC nodes requires
+careful design of inter-process communication, particularly to overlap
+halo exchanges with interior computation using ghost cells. Whether
+such overlap achieves genuine communication masking depends on the
+relationship between problem size, partitioning topology, and network
+bandwidth. This paper presents a distributed MPI implementation of the
+Fletcher RTM seismic application using 3D block decomposition and
+asynchronous ghost cell communication, with GPU acceleration via CUDA.
+Experiments on real HPC clusters reveal two contrasting regimes:
+CPU-only machines achieve near-perfect communication hiding due to
+modest floating-point throughput, while GPU-equipped clusters invert
+the bottleneck entirely — accelerator throughput outpaces a 1~Gbps
+interconnect and stalls compute load near 20\% regardless of problem
+size. Partitioning topology is shown to be as decisive as bandwidth:
+prime process counts force slice decompositions that fall below
+single-node throughput baselines irrespective of network speed.
+Together, these results establish interconnection bandwidth and
+partitioning topology as co-determining factors for ghost cell masking
+effectiveness in distributed stencil applications.
 
 #+LaTeX: \end{abstract}
 
@@ -226,43 +244,41 @@ networks, computation can fully hide the transfers
 \cite{stencil_supercomputers}. When correctly tailored to the variety
 of configurations, the benefits of halo exchange are undeniable.
 
-*** Present the existing Fletcher implementation and RW            :ignore:
-
-Fletcher solves pseudo-acoustic wave equations for seismic imaging in
-anisotropic media \cite{fletcher, fletcher_modeling}, applying an
-eighth-order finite-difference stencil over a discretized 3D grid at
-each time step.  The application is computationally intensive and
-memory-bound per iteration, and benefits strongly from GPU
-acceleration \cite{multi-gpu, okamoto2010}.
+The Fletcher method solves pseudo-acoustic wave equations for seismic
+imaging in anisotropic media \cite{fletcher, fletcher_modeling},
+applying an eighth-order finite-difference stencil over a discretized
+3D grid at each time step.  The application is computationally
+intensive and memory-bound per iteration, and benefits strongly from
+GPU acceleration \cite{multi-gpu, okamoto2010}.
 
 Early contributions targeted GPU memory efficiency on single-node
 systems. Pavan et al. applied shared memory, read-only cache, and
 register reuse strategies to Fletcher-based stencil kernels, achieving
 performance improvements of up to 264.6% on NVIDIA P100
-\cite{pavan2018wperf}.  I/O was identified as a complementary
+\cite{pavan2018wperf}. I/O was identified as a complementary
 bottleneck, and checkpointing strategies reduced RTM execution time by
-up to 17.33% \cite{pavan2018wscad}.  A significant algorithmic advance
+up to 17.33% \cite{pavan2018wscad}. A significant algorithmic advance
 was the reformulation of the Fletcher cross-derivative terms, reducing
 floating-point operations and yielding up to 73.6% performance and
 42.6% energy efficiency improvements \cite{serpa2020erad}; these
 optimizations were subsequently integrated into a systematic
 comparison across multicore and GPU architectures using OpenMP,
 OpenACC, and CUDA, establishing that CUDA on NVIDIA Volta delivers
-peak performance while OpenACC provides a portable alternative with
-less than 10--20% degradation \cite{serpa2019wscad}
-\cite{serpa2021ccpe}.  At the multi-GPU level, Rigon et al. overlapped
+peak performance. In comparison, OpenACC provides a portable
+alternative with less than 10--20% degradation \cite{serpa2019wscad}
+\cite{serpa2021ccpe}. At the multi-GPU level, Rigon et al. overlapped
 inter-device border-region communication with computation, reducing
-the energy-delay product by up to 40% \cite{rigon2024erad}, while
-Schussler et al. proposed a genetic-algorithm-driven autotuner (BTO)
-for CUDA thread-block configurations that achieves up to 83.8% EDP
-improvement over default execution on both AMD and NVIDIA GPUs
-\cite{schussler2024pdp}.  Portability to novel architectures has also
-been investigated. Künas et al. evaluated SYCL with ESIMD and subgroup
-optimizations for the Fletcher/RTM kernel on Intel Max GPU, obtaining
-speedups of up to 4.6\times \cite{kunas2025carla}, and Lorenzon et
-al. assessed twelve programming-model implementations across eleven
+the energy-delay product by up to 40% \cite{rigon2024erad}. In
+comparison, Schussler et al. proposed a genetic-algorithm-driven
+autotuner (BTO) for CUDA thread-block configurations that achieves up
+to 83.8% EDP improvement over default execution on both AMD and NVIDIA
+GPUs \cite{schussler2024pdp}. Portability to novel architectures has
+also been investigated. Künas et al. evaluated SYCL with ESIMD and
+subgroup optimizations for the Fletcher/RTM kernel on Intel Max GPU,
+obtaining speedups of up to 4.6\times \cite{kunas2025carla}, and Lorenzon
+et al. assessed twelve programming-model implementations across eleven
 GPUs from NVIDIA and AMD, reporting that HIP and RAJA achieve the
-highest carbon-efficiency portability \cite{lorenzon2025sbacpad}.  At
+highest carbon-efficiency portability \cite{lorenzon2025sbacpad}. At
 the systems level, Machado et al. deployed the Fletcher application on
 cloud SaaS instances \cite{machado2023sbacpadw}, and introduced
 MPI-based strategies to overlap computation with disk I/O, achieving
@@ -291,35 +307,34 @@ non-blocking halo exchange for Lattice Boltzmann methods on real
 supercomputers, confirming that overlap is achievable but inherently
 hardware-specific. In the context of seismic applications, as
 previously explicited, Rigon et al. \cite{multi-gpu} distribute the
-Fletcher computation across multiple GPUs within a single node using
+Fletcher load across multiple GPUs within a single node using
 device-to-device ghost-cell transfers, achieving a speedup of 2.77 for
 large domains but observing severe degradation on small grids due to
 synchronization overhead.
 
 Despite this extensive body of work, all existing multi-GPU Fletcher
 implementations \cite{multi-gpu, okamoto2010} are limited to a single
-computational node, operating within a single compute node or within a
-multi-GPU server relying on shared memory or peer-to-peer GPU
-links. This single-node limitation imposes immediate scalability
+computational node, operating either within a single compute node or
+within a multi-GPU server that relies on shared memory or peer-to-peer
+GPU links. This single-node limitation imposes immediate scalability
 constraints in both computational throughput and GPU memory. The
 natural path to resolving this bottleneck is to distribute computation
 across multiple nodes via proper domain partitioning and inter-node
-asynchronous communication.  As far as we known, the distribution of
-the Fletcher method implementation across multiple cluster nodes via
-MPI, with ghost-cell halo exchange to manage subdomain boundary data,
-has not been explored. There is a clear gap in the literature leaving
+asynchronous communication. As far as we know, the distribution of the
+Fletcher method implementation across multiple cluster nodes via MPI,
+with ghost-cell halo exchange to manage subdomain boundary data, has
+not been explored. There is a clear gap in the literature, leaving
 open the question of how partitioning topology and network bandwidth
 jointly determine communication-overlap effectiveness at large-scale
-cluster deployments for this application. Although the implementation
-itself of the halo exchange remains relatively easily attainable, the
-challenges relies really taking advantage from this implementation in
-realistic scenarios. For example, when paired with a slow
-interconnect, it creates precisely the bandwidth asymmetry that makes
-ghost cell masking most challenging to achieve. GPU resources finish
-local stencil computation far faster than the network can deliver
-boundary data. It becomes necessary therefore not only design the halo
-exchange but carry out a profound performance analysis to tackle these
-challenges.
+cluster deployments for this application. Although implementing the
+halo exchange remains relatively easy, the challenge lies in
+leveraging it in realistic scenarios. For example, when paired with a
+slow network, it creates precisely the bandwidth asymmetry that
+makes the method most challenging to achieve. GPUs 
+finish local stencil computation far faster than the network can
+deliver boundary data. It is therefore necessary not only to design
+the halo exchange but also to conduct a thorough performance analysis
+to address these challenges.
 
 # However, this approach introduces synchronization dependencies that
 # the application must handle at each time step via halo exchanges,
@@ -340,19 +355,22 @@ computation-communication overlap strategy as the CPU backend; and
 *(iii)* an evaluation on real HPC clusters showing how network bandwidth
 and partitioning topology jointly determine ghost cell masking
 effectiveness, with compute loads ranging from approximately 20% on a
-1Gbps GPU cluster to above 87% on a 10Gbps CPU cluster.  These
-contributions collectively establish that ghost cell effectiveness is
-inherently application- and platform-dependent, and scales with
-problem size, partitioning shape, and available bandwidth.
+1Gbps GPU cluster to above 87% on a 10Gbps CPU cluster. *(iv)* an
+evaluation through emulation to anticipate the necessary network
+capacity to perfectly leverage the halo exchange for hiding
+communication latency.  These contributions collectively establish
+that ghost cell effectiveness is inherently application- and
+platform-dependent, and scales with problem size, partitioning shape,
+and available bandwidth.
 
-Section [[#sec.methods]] outlines the methods and materials used, which
-include the theoretical background on partitioning, ghost cells, and
-the Fletcher equations, along with the MPI application design and the
+Section [[#sec.methods]] outlines the methods and materials used,
+including the theoretical background on partitioning, ghost cells, and
+the Fletcher equations, as well as the MPI application design and the
 evaluation methodology. Section [[#sec.results]] presents our findings,
-detailing the experimental methodology and the results in terms of
-compute load and communication masking. Finally, Section
-[[#sec.conclusion]] addresses the limitations of our approach and
-concludes the document by offering some perspectives on our work.
+detailing the experimental methodology and results for compute load
+and communication masking. Finally, Section [[#sec.conclusion]] addresses
+the limitations of our approach and concludes the document by offering
+some perspectives on our work.
 
 ** Methods and Materials
 :PROPERTIES:

@@ -669,6 +669,108 @@ confidence.
 :CUSTOM_ID: sec.results
 :END:
 
+We present results from our implementation of the MPI-Based 3D
+Anisotropic RTM with Fletcher's Method and Ghost Cell Halo Exchange,
+first on real HPC clusters and then via SMPI-based simulation. We also
+provide a comprehensive analysis of throughput in MSamples/s, a common
+metric for the reference Fletcher code base \cite{serpa2021ccpe}.
+
+*** CPU: Effective Communication Masking
+
+Figure \ref{fig:real_cpu_gantt_256} illustrates a space-time chart of
+the $256^3$ problem size execution, showing the behavior of each rank
+(Y axis) over time (X axis), with rectangle colors representing the
+operations performed and their durations. The first 3 seconds
+illustrate the overall behavior across iterations. Although the chart
+contains three distinct MPI operations (\texttt{Irecv},
+\texttt{Isend}, and \texttt{Waitall}), the latter is the most present
+in time, since the other two are practically instantaneous. The most
+relevant observation is the predominance of computation over
+communication time, as quantified in Figure
+\ref{fig:real_cpu_load_256}: the aggregate compute load is
+approximately 75% across all quantiles, indicating that a $256^3$
+problem size requires more time than an Intel Xeon can deliver over a
+10Gbit network.
+
+#+begin_export latex
+\begin{figure}[!htb]
+\centering
+\begin{subfigure}{\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{./img/real_cpu/gantt_256.pdf}
+  \caption{Gantt chart of the first three seconds of the execution.}
+\label{fig:real_cpu_gantt_256}
+\end{subfigure}
+\begin{subfigure}{\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{./img/real_cpu/load_256.pdf}
+  \caption{Space-time load chart of a full execution, split by
+    quantiles with the respective load of each operation along time.}
+\label{fig:real_cpu_load_256}
+\end{subfigure}
+\caption{Gantt and load charts of a $256^3$ problem size execution.}
+\end{figure}
+#+end_export
+
+By observing Figure \ref{fig:real_cpu_gantt_512}, representing the
+first five seconds of a $512^3$ problem size execution, we notice even
+longer compute events than MPI events. Figure
+\ref{fig:real_cpu_load_512} reveals an approximately 87% load from
+compute alone, indicating that as problem sizes grow, computation
+costs increase at a faster rate than communication costs, as predicted
+in the theoretical background (see Section [[#sec.partitioning]]). The
+reasoning is immediate: block faces grow more slowly, as
+$6(\sqrt[3]{P} - 1)L^2$, compared to the volume of the cube as
+$L^3$. While processing capacity grows cubically, the communication
+requirement (boundary) grows only quadratically. Table
+\ref{tab:frontier_volume} presents different boundary-to-volume ratios
+for a fixed number of processors $P = 64$. Increasing the problem size
+tenfold increases the volume (useful work) 1000 times, while the
+boundary (communication cost) increases only 100 times. This
+relationship demonstrates that the larger the local problem (larger
+$L$) on each processor, the ``cheaper'' communication becomes relative
+to it. The system therefore gains computational efficiency because the
+communication-to-computation ratio tends to zero as the problem grows.
+
+#+begin_export latex
+\begin{table}[!htb]
+\centering
+\caption{Boundary-to-volume ratio for different block widths $L$
+with $P = 64$ processors.}
+\label{tab:frontier_volume}
+\begin{tabular}{lccc}
+\hline
+$L$ (Width) & Volume ($L^3$) & Boundary ($18L^2$) & Ratio \\
+\hline
+10 & 1~000 & 1~800 & 1.80 \\
+100 & 1~000~000 & 180~000 & 0.18 \\
+1000 & 1~000~000~000 & 18~000~000 & 0.018 \\
+\hline
+\end{tabular}
+\end{table}
+#+end_export
+
+#+begin_export latex
+\begin{figure}[!htb]
+\centering
+\begin{subfigure}{\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{./img/real_cpu/gantt_512.pdf}
+    \caption{Gantt chart of the first five seconds of the execution.}
+
+\label{fig:real_cpu_gantt_512}
+\end{subfigure}
+\begin{subfigure}{\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{./img/real_cpu/load_512.pdf}
+    \caption{Space-time load chart of the full execution, split by
+    quantiles with the respective load of each operation along time.}
+\label{fig:real_cpu_load_512}
+\end{subfigure}
+\caption{Gantt and load charts of a $512^3$ problem size execution.}
+\end{figure}
+#+end_export
+
 ** Conclusion
 :PROPERTIES:
 :CUSTOM_ID: sec.conclusion

@@ -415,6 +415,9 @@ finite-difference scheme advances both $p$ and $q$ by a time step $\Delta
 t$.
 
 **** Partitioning
+:PROPERTIES:
+:CUSTOM_ID: sec.partitioning
+:END:
 
 Because the Fletcher stencil applies identical operations uniformly
 across the grid, each processing element inherits a balanced workload,

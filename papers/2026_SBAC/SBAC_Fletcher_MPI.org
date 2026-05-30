@@ -771,6 +771,110 @@ $L$ (Width) & Volume ($L^3$) & Boundary ($18L^2$) & Ratio \\
 \end{figure}
 #+end_export
 
+*** GPU: Communication-Bound Regime
+
+# In the figures that follow, each Gantt chart shows only a subset of
+# the total execution time, chosen for visibility of the individual
+# iterations; the load charts, on the other hand, always cover the
+# full execution duration and therefore provide the most meaningful
+# quantitative perspective.
+
+Figure \ref{fig:real_gpu_gantt_128} presents the Gantt and load charts
+for a $128^3$ problem size for a GPU cluster. The Gantt chart shows
+the first second of execution, where \texttt{Waitall} dominates, with
+computation appearing as thin slivers between long waiting
+periods. The load chart confirms this across the full 17-second run:
+the aggregate compute load sits at approximately 20--25%, indicating
+that the RTX4070 finishes its local computation far faster than the
+Gigabit network can deliver the ghost cells, leaving each rank idle
+for the majority of each iteration. We have repeated the experiment
+with a larger problem size ($256^3$) and observed that the load chart
+still shows a similar approximately 20% compute fraction, confirming
+that the network remains the bottleneck.
+
+#+begin_export latex
+\begin{figure}[!htb]
+\centering
+\begin{subfigure}{\linewidth}
+  \centering
+    \includegraphics[width=\linewidth]{./img/real_gpu/gantt_128.pdf}
+  \caption{Gantt chart of the first second of the execution.}
+  \label{fig:real_gpu_gantt_128}
+\end{subfigure}
+\begin{subfigure}{\linewidth}
+  \centering
+    \includegraphics[width=\linewidth]{./img/real_gpu/load_128.pdf}
+  \caption{Space-time load chart of the full execution, split by
+    quantiles with the respective load of each operation along time.}
+  \label{fig:real_gpu_load_128}
+\end{subfigure}
+\caption{Gantt and load charts of a $128^3$ GPU execution.}
+\end{figure}
+#+end_export
+
+# Figure \ref{fig:real_gpu_gantt_256} shows the results for a $256^3$
+# execution. The Gantt chart shows that the compute segments become
+# more visible compared to $128^3$; however, the load chart still
+# shows a similar approximately 20% compute fraction, confirming
+# that the network remains the bottleneck.
+
+# #+begin_export latex
+# \begin{figure}[!htb]
+# \centering
+# \begin{subfigure}{\linewidth}
+#   \centering
+#     \includegraphics[width=\linewidth]{./img/real_gpu/gantt_256.pdf}
+#   \caption{Gantt chart of the first second of the execution.}
+# \label{fig:real_gpu_gantt_256}
+# \end{subfigure}
+# \begin{subfigure}{\linewidth}
+#   \centering
+#     \includegraphics[width=\linewidth]{./img/real_gpu/load_256.pdf}
+#   \caption{Space-time load chart of the full execution, split by
+#     quantiles with the respective load of each operation along time.}
+# \label{fig:real_gpu_load_256}
+# \end{subfigure}
+# \caption{Gantt and load charts of a $256^3$ GPU execution.}
+# \end{figure}
+# #+end_export
+
+Figure \ref{fig:real_gpu_gantt_512} presents the $512^3$ case. The
+Gantt chart shows wider compute blocks than the previous sizes, yet
+\texttt{Waitall} still prevails. Although Table
+\ref{tab:frontier_volume} predicts a decreasing boundary-to-volume
+ratio with larger blocks, the load chart reveals that the compute
+fraction remains at approximately 20%, virtually unchanged from
+$128^3$ and $256^3$. This lack of improvements indicates that, despite
+the volume growing cubically, the RTX4070 processes even the larger
+domain so quickly that the Gigabit network remains the overwhelming
+bottleneck. Increasing problem size alone is therefore insufficient to
+achieve masking on this platform. Further increasing the block size is
+impractical: the RTX4070's 12GB VRAM easily becomes a resource
+bottleneck, and experiments still show communication-dominated
+behavior on the Gigabit network. The path forward is therefore not to
+enlarge the problem, but to improve the interconnection network, a
+change infeasible on the physical /poti/ cluster but readily explorable
+through simulation.
+
+#+begin_export latex
+\begin{figure}[!htb]
+\centering
+\begin{subfigure}{\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{./img/real_gpu/gantt_512.pdf}
+  \caption{Gantt chart of the first three seconds of a execution.}
+  \label{fig:real_gpu_gantt_512}
+\end{subfigure}
+\begin{subfigure}{\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{./img/real_gpu/load_512.pdf}
+  \caption{Space-time load chart of a full execution, split by
+  quantiles with the respective load of each operation along time.}
+  \label{fig:real_gpu_load_512}
+  \end{subfigure}
+  \caption{Gantt and load charts of a $512^3$ GPU execution.}
+\end{figure}
+#+end_export
 ** Conclusion
 :PROPERTIES:
 :CUSTOM_ID: sec.conclusion

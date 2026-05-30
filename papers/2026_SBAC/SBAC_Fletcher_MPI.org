@@ -1080,7 +1080,7 @@ bandwidth on masking effectiveness.
 experimental scenarios with larger values representing better
 communication masking.}
 \label{tab:results_summary}
-\begin{tabular}{lccc}
+\begin{tabular}{llll}
 \hline
 Backend & Problem size & Network & Compute load \\
 \hline

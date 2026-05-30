@@ -682,6 +682,30 @@ first on real HPC clusters and then via SMPI-based simulation. We also
 provide a comprehensive analysis of throughput in MSamples/s, a common
 metric for the reference Fletcher code base \cite{serpa2021ccpe}.
 
+The figures in this section are generated from PajeNG state files
+\cite{pajeng} collected during each simulation or real execution.
+Each state file records a per-rank timeline of MPI operations
+(~MPI_Irecv~, ~MPI_Isend~, ~MPI_Waitall~) with start and end times.  The
+visualization pipeline first synthesizes a ``Compute'' state by
+inserting a synthetic task into each rank's timeline for the gaps
+between consecutive MPI events, thereby reconstructing the full
+compute-communication schedule. Note that this inserted state
+comprises the whole CPU/GPU activities, including copying data back
+and forth the GPU through the PCI bus at every iteration. For each
+rank, the pipeline then produces two complementary views. The first is
+a space-time Gantt chart (see Figure \ref{fig:real_cpu_gantt_256} for
+an example) that plots each rank on the Y axis and time on the X axis,
+drawing a colored rectangle for every MPI event and computed interval
+at full temporal resolution. The second is an aggregated space-time
+load chart (see Figure \ref{fig:real_cpu_load_256} for an example)
+inspired by the StarVZ framework \cite{starvz}, which bins the full
+execution into 100 uniform time intervals via time-slice integration:
+for each rank-task pair, the pipeline computes what fraction of each
+interval a task occupied, then stacks the Compute and ~MPI_Waitall~
+fractions proportionally to produce a per-interval utilization profile
+that abstracts away iteration-level detail and highlights the overall
+balance between computation and communication throughout the run.
+
 *** CPU: Effective Communication Masking
 
 Figure \ref{fig:real_cpu_gantt_256} illustrates a space-time chart of
@@ -1594,6 +1618,16 @@ Tangle this file with C-c C-v t
   year      = {2016},
   publisher = {ACM},
 }
+
+@inproceedings{starvz,
+  title={Providing in-depth performance analysis for heterogeneous task-based applications with starvz},
+  author={Pinto, Vin{\'\i}cius Garcia and Nesi, Lucas Leandro and Miletto, Marcelo Cogo and Schnorr, Lucas Mello},
+  booktitle={2021 IEEE International Parallel and Distributed Processing Symposium Workshops (IPDPSW)},
+  pages={16--25},
+  year={2021},
+  organization={IEEE}
+}
+
 #+end_src
 * Emacs setup                                                      :noexport:
 

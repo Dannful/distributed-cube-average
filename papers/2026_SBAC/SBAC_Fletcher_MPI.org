@@ -222,7 +222,7 @@ Experiments on real HPC clusters reveal two contrasting regimes:
 CPU-only machines achieve near-perfect communication hiding due to
 modest floating-point throughput, while GPU-equipped clusters invert
 the bottleneck entirely — accelerator throughput outpaces a 1~Gbps
-interconnect and stalls compute load near 20\% regardless of problem
+interconnect and stalls compute load near 20% regardless of problem
 size. Partitioning topology is shown to be as decisive as bandwidth:
 prime process counts force slice decompositions that fall below
 single-node throughput baselines irrespective of network speed.

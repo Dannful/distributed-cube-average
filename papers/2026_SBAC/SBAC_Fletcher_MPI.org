@@ -875,6 +875,127 @@ through simulation.
   \caption{Gantt and load charts of a $512^3$ GPU execution.}
 \end{figure}
 #+end_export
+ 
+
+*** Transition from Communication- to Computation-Bound
+
+Building on the observation that the RTX4070's raw throughput makes
+the Gigabit network the overwhelming bottleneck even at $512^3$ and
+possibly larger sizes, we now evaluate how increased bandwidth alters
+the communication-to-computation balance. The simulation setup follows
+the methodology described in Section [[#sec.experimental_design]], with
+the /poti/ platform model configured at 10Gbps and 100Gbps to explore
+bandwidth configurations beyond the physical hardware.  Figure
+\ref{fig:sim_gpu_10g_load_256} presents the results for a $256^3$
+execution on the 10Gbps simulated network. The Gantt chart shows a
+reversal compared to the real Gigabit results: computation now
+dominates each iteration. The load chart confirms this, with the
+aggregate compute load rising to approximately 65--70%.
+
+#+begin_export latex
+\begin{figure}[!htb]
+\centering
+\begin{subfigure}{\linewidth}
+\centering
+\includegraphics[width=\linewidth]{./img/sim_gpu_10Gbps/gantt_256.pdf}
+\caption{Gantt chart of the first second of a execution.}
+\label{fig:sim_gpu_10g_gantt_256}
+\end{subfigure}
+\begin{subfigure}{\linewidth}
+\centering
+\includegraphics[width=\linewidth]{./img/sim_gpu_10Gbps/load_256.pdf}
+\caption{Space-time load chart of the full execution, split by quantiles with the respective load of each operation along time.}
+\label{fig:sim_gpu_10g_load_256}
+\end{subfigure}
+\caption{Gantt and load charts of a simulated $256^3$ GPU execution with a 10Gbps network.}
+\end{figure}
+#+end_export
+
+At $512^3$ on the same 10Gbps network (Figure
+\ref{fig:sim_gpu_10g_load_512}), the Gantt chart shows even wider
+compute blocks. The load chart confirms that the compute fraction
+rises further to approximately 75--80%: the larger volume-to-boundary
+ratio, combined with the faster network, shifts the balance decisively
+towards computation, with \texttt{Waitall} reduced to a minor
+component.
+
+#+begin_export latex
+\begin{figure}[!htb]
+\centering
+\begin{subfigure}{\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{./img/sim_gpu_10Gbps/gantt_512.pdf}
+\caption{Gantt chart of the first second of execution.}
+\label{fig:sim_gpu_10g_gantt_512}
+\end{subfigure}
+\begin{subfigure}{\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{./img/sim_gpu_10Gbps/load_512.pdf}
+\caption{Space-time load chart of a full execution, split by quantiles with the respective load of each operation along time.}
+\label{fig:sim_gpu_10g_load_512}
+\end{subfigure}
+\caption{Gantt and load charts of a simulated $512^3$ GPU execution with a 10~Gbps network.}
+\end{figure}
+#+end_export
+
+Figures \ref{fig:sim_gpu_100g_load_256} and
+\ref{fig:sim_gpu_100g_load_512} present the 100Gbps simulated network
+results for $256^3$ and $512^3$, respectively. The Gantt charts show
+computation filling nearly every iteration, with \texttt{Waitall}
+barely perceptible. The load charts quantify this: the aggregate
+compute load reaches approximately 85--90% for $256^3$ and exceeds 90%
+for $512^3$, with \texttt{Waitall} reduced to a negligible
+fraction. The asynchronous ghost cell exchanges are effectively masked
+by the interior computation, confirming that the MPI overlap strategy
+implemented in this work achieves its goal if equipped with an
+adequate interconnection network.
+
+#+begin_export latex
+\begin{figure}[!htb]
+\centering
+\begin{subfigure}{\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{./img/sim_gpu_100Gbps/gantt_256.pdf}
+\caption{Gantt chart of the first second of the execution.}
+\label{fig:sim_gpu_100g_gantt_256}
+\end{subfigure}
+\begin{subfigure}{\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{./img/sim_gpu_100Gbps/load_256.pdf}
+\caption{Space-time load chart of a full execution, split by quantiles with the respective load of each operation along time.}
+\label{fig:sim_gpu_100g_load_256}
+\end{subfigure}
+\caption{Gantt and load charts of a simulated $256^3$ GPU execution with a 100~Gbps network.}
+\end{figure}
+#+end_export
+
+#+begin_export latex
+\begin{figure}[!htb]
+\centering
+\begin{subfigure}{\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{./img/sim_gpu_100Gbps/gantt_512.pdf}
+\caption{Gantt chart of the first two seconds of the execution.}
+\label{fig:sim_gpu_100g_gantt_512}
+\end{subfigure}
+\begin{subfigure}{\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{./img/sim_gpu_100Gbps/load_512.pdf}
+\caption{Space-time load chart of a the full execution, split by quantiles with the respective load of each operation along time.}
+\label{fig:sim_gpu_100g_load_512}
+\end{subfigure}
+\caption{Gantt and load charts of a simulated $512^3$ GPU execution with a 100~Gbps network.}
+\end{figure}
+#+end_export
+
+These experiments confirm that the masking directives implemented in
+the program are effective when the balance between the interconnection
+network capacity and the computational capacity of the accelerators is
+adequate. The progression from 1Gbps (real) to 10Gbps, then to 100Gbps
+(simulated) demonstrates a clear, gradual shift from
+communication-bound to computation-bound behavior, validating both the
+application design and the simulation methodology.
+
 ** Conclusion
 :PROPERTIES:
 :CUSTOM_ID: sec.conclusion

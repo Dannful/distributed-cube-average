@@ -459,6 +459,9 @@ block decomposition.
 #+end_export
 
 **** Ghost Cells
+:PROPERTIES:
+:CUSTOM_ID: sec.ghost_cells
+:END:
 
 Each process augments its local grid with a thin shell of ghost cells
 holding boundary data exchanged with neighbouring processes
@@ -596,6 +599,9 @@ events at per-rank granularity to compute compute-load fractions
 throughout the full execution window.
 
 **** Experimental Design
+:PROPERTIES:
+:CUSTOM_ID: sec.experimental_design
+:END:
 
 The Design of Experiments is grounded in a reproducible,
 multi-platform approach. All experiments are built using Nix

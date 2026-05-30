@@ -409,7 +409,7 @@ field $p$ with an auxiliary field $q$ through:
 where $v_{pz}$, $v_{pn}$, $v_{px}$ are derived P-wave velocities, $v_{sx}$ is the
 shear velocity, and $H_1$, $H_2$ are differential operators encoding
 the anisotropic and isotropic stencil components, respectively
-\cite{fletcher_modeling}. The parameter $\alpha$ is set to~1 following
+\cite{fletcher_modeling}. The parameter $\alpha$ is set to 1 following
 Fletcher's recommendation. At every grid point, an eighth-order
 finite-difference scheme advances both $p$ and $q$ by a time step $\Delta
 t$.
@@ -493,7 +493,7 @@ distribute any wavefield data. Each worker independently allocates and
 initializes its own sub-volume, including the four wavefield arrays
 ($p_{\text{past}}$, $p_{\text{curr}}$, $q_{\text{past}}$, $q_{\text{curr}}$) and
 the precomputed anisotropy coefficients. This design eliminates a
-central memory bottleneck at rank~0, a concern well documented in the
+central memory bottleneck at rank zero, a concern well documented in the
 literature for large-scale seismic workloads, where per-node memory,
 particularly GPU memory, is the primary scaling constraint. The same
 principle extends to the output phase. Rather than funneling all
@@ -615,7 +615,7 @@ exact versions.
 Beyond the standard metrics of compute load and execution time, we
 also report throughput in MSamples/s, a common performance metric used
 for the analysis of the reference Fletcher code base
-~\cite{serpa2018wscad, serpa2021ccpe}. This metric normalizes across
+\cite{serpa2018wscad, serpa2021ccpe}. This metric normalizes across
 backends and problem sizes, enabling comparison of distributed
 performance with a single-node baseline. Finally, we note that the
 physical /poti/ cluster's GPU VRAM (12 GB) imposes a practical ceiling
@@ -654,7 +654,7 @@ model that captures the different slopes observed for small and large
 messages. The calibration step ensures that both computation and
 communication timings in simulation reproduce those observed on the
 physical /poti/ platform within a bounded error margin of at most
-15--17% for messages up to 1~GiB with the largest halo size used in
+15--17% for messages up to 1GiB with the largest halo size used in
 our experiments. The combined effect of communication calibration and
 faithful kernel emulation is that the compute-load distributions
 closely mirror their real-cluster counterparts, enabling us to

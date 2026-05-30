@@ -996,6 +996,108 @@ adequate. The progression from 1Gbps (real) to 10Gbps, then to 100Gbps
 communication-bound to computation-bound behavior, validating both the
 application design and the simulation methodology.
 
+*** Throughput: Partitioning Topology as Critical Factor
+
+Figure \ref{fig:msamples} presents the throughput in MSamples/s as a
+function of the problem size for the single-node baseline, the real
+five-node cluster execution, and the simulated scenarios with 5 and 8
+workers at 10Gbps and 100Gbps. The most striking observation is the
+dramatic gap between 5-worker and 8-worker configurations. At $512^3$,
+the 8-worker simulations reach 8309 MSamples/s (10Gbps) and 9374
+MSamples/s (100Gbps), while the corresponding 5-worker results plateau
+at 3030 and 3215 MSamples/s, values that are below the single-node
+baseline of 3870 MSamples/s. In other words, with 5 workers the
+communication overhead is so severe that distributing the computation
+yields \emph{negative} speedup.
+
+#+begin_export latex
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=\linewidth]{./img/msamples.pdf}
+\caption{Throughput (MSamples/s) as a function of problem size for real and simulated executions, compared to the single-node baseline.}
+\label{fig:msamples}
+\end{figure}
+#+end_export
+
+The root cause lies in the partitioning shape imposed by
+~MPI_Dims_create~. Since 5 is prime, it is forced into a $\{5, 1, 1\}$
+slices decomposition, whereas 8 factors into a $\{2, 2, 2\}$ blocks
+decomposition. As established in Section [[#sec.ghost_cells]] and Figure
+\ref{fig:comm_cost}, the total communication boundary for slices grows
+as $2(P - 1)L^2$, while for blocks it grows as $6(\sqrt[3]{P} -
+1)L^2$. Concretely, for a $512^3$ domain with a stencil thickness of 4
+cells:
+
+- \textbf{5 workers $\{5,1,1\}$}: each slab measures approximately
+  $108 \times 512 \times 512$ and communicates with at most 2 neighbors, since
+  the 1D partitioning produces no diagonal adjacencies. Each face halo
+  is $4 \times 512 \times 512 = 1048576$ doubles (approximately 8~MB). With two
+  fields ($P$ and $Q$) and up to two neighbors, the total
+  communication per iteration reaches approximately 64MB.
+- \textbf{8 workers $\{2,2,2\}$}: each sub-cube measures $260 \times 260 \times
+  260$ (including ghost cells) and communicates with 7 neighbors: 3 on
+  the same level and 4 on the adjacent level, including diagonal
+  adjacencies. The face halos are $4 \times 256 \times 256 = 262144$ doubles
+  (approximately 2MB) each, while edge and corner halos are
+  substantially smaller ($4 \times 4 \times 256$ and $4 \times 4 \times 4$,
+  respectively). The total communication per iteration amounts to
+  approximately 25MB.
+
+The block decomposition therefore reduces the per-worker communication
+volume by approximately 2.5\times, from 64MB to 25MB, despite each worker
+communicating with more neighbors (7 vs. 2). As expected from a
+balanced partitioning, the computation time decreases proportionally
+when moving from 5 to 8 workers: at $512^3$ on the 100Gbps simulated
+network, total computation drops from approximately 28s to
+approximately 14s, consistent with the $8/5 = 1.6$ factor in available
+parallelism. This scaling of the computational component is the
+expected behavior of a distributed implementation.
+
+The MPI overhead, however, exhibits a disproportionately large
+reduction that cannot be explained by the 2.5\times communication volume
+difference alone. Furthermore, increasing the network bandwidth
+tenfold (10Gbps to 100Gbps) barely improves the 5-worker throughput
+(3030 to 3215 MSamples/s, +6%), indicating that the bottleneck in the
+$\{5,1,1\}$ configuration is not the network bandwidth itself. The
+precise cause of this behavior remains to be fully characterized
+through detailed profiling; however, it is hypothesized that the large
+face size of the $\{5,1,1\}$ slabs ($512 \times 512$ per face,
+approximately 8MB per halo) triggers higher-latency MPI protocol paths
+(such as the rendezvous protocol for large messages) and amplifies
+fixed per-transfer costs (PCIe host--device copies, synchronization
+handshakes) that are independent of network bandwidth and accumulate
+over the 1001 iterations of the simulation.
+
+Table \ref{tab:results_summary} consolidates the approximate compute
+load observed across all experimental scenarios, allowing a direct
+comparison of the influence of backend, problem size and network
+bandwidth on masking effectiveness.
+
+#+begin_export latex
+\begin{table}[!htb]
+\centering
+\caption{Summary of approximate compute load across all
+experimental scenarios with larger values representing better
+communication masking.}
+\label{tab:results_summary}
+\begin{tabular}{lccc}
+\hline
+Backend & Problem size & Network & Compute load \\
+\hline
+CPU (OpenMP) & $256^3$ & 10~Gbps (real) & $\approx75\%$ \\
+CPU (OpenMP) & $512^3$ & 10~Gbps (real) & $\approx87\%$ \\
+GPU (CUDA)   & $128^3$ & 1~Gbps (real) & $\approx20\%$--$25\%$ \\
+GPU (CUDA)   & $256^3$ & 1~Gbps (real) & $\approx20\%$ \\
+GPU (CUDA)   & $512^3$ & 1~Gbps (real) & $\approx20\%$ \\
+GPU (CUDA)   & $256^3$ & 10~Gbps (simulated) & $\approx65\%$--$70\%$ \\
+GPU (CUDA)   & $512^3$ & 10~Gbps (simulated) & $\approx75\%$--$80\%$ \\
+GPU (CUDA)   & $256^3$ & 100~Gbps (simulated) & $\approx85\%$--$90\%$ \\
+GPU (CUDA)   & $512^3$ & 100~Gbps (simulated) & $>90\%$ \\
+\hline
+\end{tabular}
+\end{table}
+#+end_export
+
 ** Conclusion
 :PROPERTIES:
 :CUSTOM_ID: sec.conclusion

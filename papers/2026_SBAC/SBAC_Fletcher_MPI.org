@@ -1116,13 +1116,19 @@ on real HPC clusters exposed two sharply contrasting regimes. On
 CPU-only machines, modest floating-point throughput naturally yields
 near-perfect communication hiding across realistic network conditions:
 the /cei/ cluster reaches approximately 87% compute load at $512^3$ on
-its real 10~Gbps network, and the compute fraction at $256^3$ already
+its real 10Gbps network, and the compute fraction at $256^3$ already
 achieves 75%, establishing that arithmetic intensity alone is
 sufficient to mask communication on this class of hardware. On
 GPU-equipped clusters, the picture inverts entirely: the raw
-throughput of RTX~4070 accelerators makes network bandwidth the
+throughput of RTX4070 accelerators makes network bandwidth the
 governing bottleneck, with /poti/ stalling near 20% compute load on a
-1~Gbps interconnect regardless of problem size.
+1Gbps interconnect regardless of problem size. Calibrated SimGrid
+SMPI simulations further demonstrate a smooth, bandwidth-driven
+transition from communication-bound to computation-bound behavior:
+increasing the interconnect from 1Gbps to 10Gbps raises GPU compute
+load from \approx20% to \approx75--80%, and to \approx85--90% at 100Gbps, confirming
+that the asynchronous ghost cell masking strategy is effective when
+provided with adequate network capacity.
 
 The boundary-to-volume analysis confirms the root cause: as problem
 size grows, the stencil volume increases as $O(n^3)$ while the halo
@@ -1138,20 +1144,30 @@ performance gap between prime and non-prime process counts. Since 5 is
 prime, ~MPI_Dims_create~ forces a $\{5,1,1\}$ slices decomposition
 with per-iteration communication volumes of approximately 64~MB,
 whereas 8 processes factor into a $\{2,2,2\}$ block decomposition
-requiring only approximately 25~MB — a 2.5$\times$ reduction despite
+requiring only approximately 25MB, a 2.5$\times$ reduction despite
 communicating with more neighbors. As a result, the 5-worker
 configuration falls below the single-node throughput baseline,
-demonstrating negative speedup from distribution. Prime process counts
-are therefore as detrimental as slow networks, and should be avoided
-when deploying block-decomposed stencil applications.
+demonstrating negative speedup from distribution. This effect is so
+severe that increasing the interconnect bandwidth tenfold (from 1Gbps
+simulated to 10Gbps simulated) barely improves the 5-worker
+throughput (+6%), indicating that the bottleneck in the
+$\{5,1,1\}$ configuration extends beyond raw network bandwidth to
+large-message protocol paths and fixed per-transfer costs. Prime
+process counts are therefore as detrimental as slow networks, and
+should be avoided when deploying block-decomposed stencil
+applications.
 
 Future work includes experiments on the Santos Dumont supercomputer to
 evaluate the application on a production platform with a high-speed
-interconnect, detailed simulation of the Santos Dumont network topology
-to enable capacity-planning studies, integration of HIP kernels for AMD
-GPU architectures, and a more thorough throughput characterization
-across the full range of problem sizes and network configurations that
-balance accelerator and network capacity.
+interconnect, detailed simulation of the Santos Dumont network
+topology to enable capacity-planning studies, integration of HIP
+kernels for AMD GPU architectures, and a more thorough throughput
+characterization across the full range of problem sizes and network
+configurations that balance accelerator and network capacity. We also
+intend to explore comparisons between CUDA- and HIP-aware
+implementations of the MPI specification to evaluate how these compare
+against typical non-RDMA MPI implementations from the perspective of
+ghost cells.
 
 ** Acknowledgments                                                  :ignore:
 

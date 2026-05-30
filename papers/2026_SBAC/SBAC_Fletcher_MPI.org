@@ -14,6 +14,7 @@
 
 #+LATEX_CLASS: IEEEtran
 #+LATEX_CLASS_OPTIONS: [conference,letter,10pt,final]
+#+LATEX_HEADER: \usepackage{censor}
 
 # You need at least Org 9 and Emacs 24 to make this work.
 # If you do, just type make (thanks Luka Stanisic for this).
@@ -197,8 +198,8 @@ Submission must be done using EasyChair:
 ** Frontpage                                                        :ignore:
 #+BEGIN_EXPORT latex
 \title{MPI-Based 3D Anisotropic RTM with Fletcher's Method and Ghost Cell Halo Exchange}
-\author{\IEEEauthorblockN{Vinícius Daniel Spadotto, Lucas Mello Schnorr}
-\IEEEauthorblockA{Institute of Informatics, Porto Alegre, Brazil}}
+\author{\IEEEauthorblockN{\censor{Vinícius Daniel Spadotto, Lucas Mello Schnorr}}
+\IEEEauthorblockA{\censor{Institute of Informatics, Porto Alegre, Brazil}}}
 #+END_EXPORT
 
 #+LaTeX: \maketitle

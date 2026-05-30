@@ -1035,14 +1035,13 @@ as $2(P - 1)L^2$, while for blocks it grows as $6(\sqrt[3]{P} -
 1)L^2$. Concretely, for a $512^3$ domain with a stencil thickness of 4
 cells:
 
-- \textbf{5 workers $\{5,1,1\}$}: each slab measures approximately
+- 5 workers $\{5,1,1\}$: each slab measures approximately
   $108 \times 512 \times 512$ and communicates with at most 2 neighbors, since
   the 1D partitioning produces no diagonal adjacencies. Each face halo
   is $4 \times 512 \times 512 = 1048576$ doubles (approximately 8~MB). With two
   fields ($P$ and $Q$) and up to two neighbors, the total
   communication per iteration reaches approximately 64MB.
-- \textbf{8 workers $\{2,2,2\}$}: each sub-cube measures $260 \times 260 \times
-  260$ (including ghost cells) and communicates with 7 neighbors: 3 on
+- 8 workers $\{2,2,2\}$: each sub-cube measures $260\times260\times260$ (including ghost cells) and communicates with 7 neighbors: 3 on
   the same level and 4 on the adjacent level, including diagonal
   adjacencies. The face halos are $4 \times 256 \times 256 = 262144$ doubles
   (approximately 2MB) each, while edge and corner halos are
@@ -1091,15 +1090,15 @@ communication masking.}
 \hline
 Backend & Problem size & Network & Compute load \\
 \hline
-CPU (OpenMP) & $256^3$ & 10~Gbps (real) & $\approx75\%$ \\
-CPU (OpenMP) & $512^3$ & 10~Gbps (real) & $\approx87\%$ \\
-GPU (CUDA)   & $128^3$ & 1~Gbps (real) & $\approx20\%$--$25\%$ \\
-GPU (CUDA)   & $256^3$ & 1~Gbps (real) & $\approx20\%$ \\
-GPU (CUDA)   & $512^3$ & 1~Gbps (real) & $\approx20\%$ \\
-GPU (CUDA)   & $256^3$ & 10~Gbps (simulated) & $\approx65\%$--$70\%$ \\
-GPU (CUDA)   & $512^3$ & 10~Gbps (simulated) & $\approx75\%$--$80\%$ \\
-GPU (CUDA)   & $256^3$ & 100~Gbps (simulated) & $\approx85\%$--$90\%$ \\
-GPU (CUDA)   & $512^3$ & 100~Gbps (simulated) & $>90\%$ \\
+CPU (OpenMP) & $256^3$ & 10Gbps (real) & $\approx75\%$ \\
+CPU (OpenMP) & $512^3$ & 10Gbps (real) & $\approx87\%$ \\
+GPU (CUDA)   & $128^3$ & 1Gbps (real) & $\approx20\%$--$25\%$ \\
+GPU (CUDA)   & $256^3$ & 1Gbps (real) & $\approx20\%$ \\
+GPU (CUDA)   & $512^3$ & 1Gbps (real) & $\approx20\%$ \\
+GPU (CUDA)   & $256^3$ & 10Gbps (simulated) & $\approx65\%$--$70\%$ \\
+GPU (CUDA)   & $512^3$ & 10Gbps (simulated) & $\approx75\%$--$80\%$ \\
+GPU (CUDA)   & $256^3$ & 100Gbps (simulated) & $\approx85\%$--$90\%$ \\
+GPU (CUDA)   & $512^3$ & 100Gbps (simulated) & $>90\%$ \\
 \hline
 \end{tabular}
 \end{table}

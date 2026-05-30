@@ -610,18 +610,36 @@ multi-platform approach. All experiments are built using Nix
 \cite{nix}, which guarantees a fully deterministic software
 environment across every run and ensures that the compiled
 application, its MPI library, and all analysis tools are pinned to
-exact versions.  Because the physical clusters have limited
-interconnect bandwidth and GPU memory, SimGrid SMPI
-\cite{degomme2017simulating} is employed to run calibrated simulations
-on a single node of the ~poti~ cluster. In such a scenario, the SimGrid
-platform model has been set with 10Gbps and 100Gbps networks to
-explore configurations beyond what the hardware offers. We manage to
+exact versions.
+
+Beyond the standard metrics of compute load and execution time, we also
+report throughput in MSamples/s, a common performance metric used for
+the analysis of the reference Fletcher code base
+~\cite{serpa2018wscad, serpa2021ccpe}. This metric normalizes across
+backend and problem size, making it possible to compare distributed
+performance against a single-node baseline. Finally, we note that the
+physical /poti/ cluster's GPU VRAM (12~GB) imposes a practical ceiling
+on the maximum solvable domain per worker, a constraint that directly
+influences the range of problem sizes evaluated in our GPU experiments
+and motivates the use of simulation to explore configurations
+beyond what the physical hardware can accommodate.
+
+SimGrid SMPI \cite{degomme2017simulating} is employed for two
+complementary reasons. First, the physical clusters have limited
+interconnect bandwidth, preventing direct evaluation of high-speed
+network configurations. Second, the GPU VRAM limitation described
+below restricts the maximum problem sizes achievable on real hardware.
+Together, these constraints motivate the use of simulation to explore
+configurations beyond what the physical platforms can accommodate.
+To this end, the SimGrid platform model has been set with 10~Gbps and
+100~Gbps networks. A single /poti/ node runs the SMPI simulations so
+that computation times match those obtained on the real platform. We
 adjust SMPI's emulation so that the compute kernel, either CPU- or
-GPU-based, executes without the SMPI sampling, capturing the whole GPU
-or CPU behavior to account for compute artifacts absent with the
-sampling option. To ensure that simulated results faithfully reproduce
-the behavior observed on the real ~poti~ cluster, we follow the
-calibration methodology described by Cornebize
+GPU-based, executes without the SMPI sampling, capturing the full GPU
+or CPU behavior including compute artifacts absent with the sampling
+option. To ensure that simulated results faithfully reproduce the
+behavior observed on the real /poti/ cluster, we follow the calibration
+methodology described by Cornebize
 \cite{Cornebize2022VariabilityMatters}, which provides a systematic approach for
 extracting and modeling the characteristics of the MPI runtime backend
 and the underlying network into accurate SimGrid platform
@@ -635,19 +653,13 @@ defines the network links with realistic bandwidth--latency models,
 typically using a double-linear model that captures the different
 slopes observed for small and large messages. The calibration step
 ensures that both computation and communication timings in simulation
-reproduce those observed on the physical ~poti~ platform within a
-bounded error margin of at most 15--17% for messages up to 1GiB with
-the largest halo size used in our experiments. Beyond communication,
-we also disable SMPI's computation sampling for the main kernel,
-forcing the actual CPU or CUDA kernel to execute in its entirety
-during simulation so that compute artifacts, such as GPU memory
-transfers, PCIe copy latencies, and kernel launch overheads, are
-captured without approximation. The combined effect of communication
-calibration and faithful kernel emulation is that the compute-load
-distributions closely mirror their real-cluster counterparts, allowing
-us to confidently extrapolate performance to configurations (10Gbps,
-100Gbps) that are inaccessible on the physical hardware we have access
-to.
+reproduce those observed on the physical /poti/ platform within a
+bounded error margin of at most 15--17\% for messages up to 1~GiB with
+the largest halo size used in our experiments. The combined effect of
+communication calibration and faithful kernel emulation is that the
+compute-load distributions closely mirror their real-cluster
+counterparts, allowing us to confidently extrapolate performance
+across the explored configurations.
 
 ** Results
 :PROPERTIES:

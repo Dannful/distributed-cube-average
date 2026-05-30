@@ -217,18 +217,25 @@ such overlap achieves genuine communication masking depends on the
 relationship between problem size, partitioning topology, and network
 bandwidth. This paper presents a distributed MPI implementation of the
 Fletcher RTM seismic application using 3D block decomposition and
-asynchronous ghost cell communication, with GPU acceleration via CUDA.
-Experiments on real HPC clusters reveal two contrasting regimes:
-CPU-only machines achieve near-perfect communication hiding due to
-modest floating-point throughput, while GPU-equipped clusters invert
-the bottleneck entirely — accelerator throughput outpaces a 1~Gbps
-interconnect and stalls compute load near 20% regardless of problem
-size. Partitioning topology is shown to be as decisive as bandwidth:
-prime process counts force slice decompositions that fall below
-single-node throughput baselines irrespective of network speed.
-Together, these results establish interconnection bandwidth and
-partitioning topology as co-determining factors for ghost cell masking
-effectiveness in distributed stencil applications.
+asynchronous ghost cell communication, with GPU acceleration via
+CUDA. Experiments on real HPC clusters reveal two sharply contrasting
+regimes: CPU-only machines achieve near-perfect communication hiding
+(75--87% compute load) due to modest floating-point throughput, while
+GPU-equipped clusters invert the bottleneck entirely: the RTX4070
+accelerator outpaces a 1Gbps interconnect, and stalls compute load
+near 20% regardless of problem size. Calibrated SimGrid SMPI
+simulations demonstrate a smooth, bandwidth-driven transition from
+communication-bound to computation-bound behavior, with GPU compute
+load rising from \approx20% at 1Gbps to \approx75--80% at 10Gbps and \approx85--90% at
+100Gbps. Partitioning topology is shown to be as decisive as
+bandwidth: prime process counts force slice decompositions that yield
+negative speedup relative to the single-node baseline, with a 5-worker
+configuration falling below the 3870 MSamples/s baseline while an
+8-worker configuration reaches 8309 MSamples/s (10Gbps) and 9374
+MSamples/s (100Gbps). Together, these results establish that
+interconnection bandwidth and the partitioning topology are
+co-determining factors for ghost cell masking effectiveness in
+distributed stencil applications.
 
 #+LaTeX: \end{abstract}
 

@@ -611,8 +611,35 @@ explore configurations beyond what the hardware offers. We manage to
 adjust SMPI's emulation so that the compute kernel, either CPU- or
 GPU-based, executes without the SMPI sampling, capturing the whole GPU
 or CPU behavior to account for compute artifacts absent with the
-sampling option. We validate these emulations against real runs for
-the ~poti~ cluster achieving an accuracy mismatch of \approx17%.
+sampling option. To ensure that simulated results faithfully reproduce
+the behavior observed on the real ~poti~ cluster, we follow the
+calibration methodology described by Cornebize
+\cite{Cornebize2022VariabilityMatters}, which provides a systematic approach for
+extracting and modeling the characteristics of the MPI runtime backend
+and the underlying network into accurate SimGrid platform
+descriptions. This methodology involves profiling the MPI
+implementation (OpenMPI in our case) to extract protocol thresholds,
+such as the message size at which the communication library switches
+from the eager to the rendezvous protocol, as well as measuring
+latency and bandwidth curves for various message sizes. These
+parameters are then encoded into a SimGrid platform description that
+defines the network links with realistic bandwidth--latency models,
+typically using a double-linear model that captures the different
+slopes observed for small and large messages. The calibration step
+ensures that both computation and communication timings in simulation
+reproduce those observed on the physical ~poti~ platform within a
+bounded error margin of at most 15--17% for messages up to 1GiB with
+the largest halo size used in our experiments. Beyond communication,
+we also disable SMPI's computation sampling for the main kernel,
+forcing the actual CPU or CUDA kernel to execute in its entirety
+during simulation so that compute artifacts, such as GPU memory
+transfers, PCIe copy latencies, and kernel launch overheads, are
+captured without approximation. The combined effect of communication
+calibration and faithful kernel emulation is that the compute-load
+distributions closely mirror their real-cluster counterparts, allowing
+us to confidently extrapolate performance to configurations (10Gbps,
+100Gbps) that are inaccessible on the physical hardware we have access
+to.
 
 ** Results
 :PROPERTIES:
@@ -689,6 +716,18 @@ supported by Petrobras through an agreement with UFRGS under 2.20.2205
 Tangle this file with C-c C-v t
 
 #+begin_src bib :tangle refs.bib
+@article{Cornebize2022VariabilityMatters,
+  title   = {Simulation-based Optimization and Sensibility Analysis of MPI Applications: Variability Matters},
+  author  = {Cornebize, Tom and Legrand, Arnaud},
+  journal = {Parallel Computing},
+  volume   = {115},
+  pages    = {102946},
+  year     = {2022},
+  issn     = {0167-8191},
+  doi      = {10.1016/j.parco.2022.102946},
+  publisher = {Elsevier}
+}
+
 @article{degomme2017simulating,
   title={Simulating MPI applications: the SMPI approach},
   author={Degomme, Augustin and Legrand, Arnaud and Markomanolis, George S and Quinson, Martin and Stillwell, Mark and Suter, Fr{\'e}d{\'e}ric},

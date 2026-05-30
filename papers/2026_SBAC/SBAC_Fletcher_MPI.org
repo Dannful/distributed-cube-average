@@ -475,6 +475,144 @@ interior computation takes longer than the halo transfer; if the
 network is the bottleneck, step (5) blocks and communication overhead
 becomes the dominant cost.
 
+*** Distributed Fletcher RTM Design
+
+Our implementation of the MPI-based 3D Fletcher uses a
+coordinator-worker model. The coordinator (rank 0) partitions the
+global $N_x \times N_y \times N_z$ domain using \texttt{MPI\_Dims\_create} and
+dispatches compact metadata packets (local dimensions, global offsets,
+absorption zone parameters, and seismic source position) to all
+workers via point-to-point sends. Crucially, the coordinator does not
+distribute any wavefield data. Each worker independently allocates and
+initializes its own sub-volume, including the four wavefield arrays
+($p_{\text{past}}$, $p_{\text{curr}}$, $q_{\text{past}}$, $q_{\text{curr}}$) and
+the precomputed anisotropy coefficients. This design eliminates a
+central memory bottleneck at rank~0, a concern well documented in the
+literature for large-scale seismic workloads, where per-node memory,
+particularly GPU memory, is the primary scaling constraint. The same
+principle extends to the output phase. Rather than funneling all
+wavefield data back through the coordinator for a single write,
+results are collected in a streaming fashion, avoiding a second
+centralization bottleneck at finalization. The code accounts for an
+expanded global domain to accommodate absorption zones at the
+boundaries and the additional cells required by the eighth-order
+finite-difference stencil, mirroring the behavior of the reference
+public implementation of the Fletcher method.
+
+The main computation loop executes a fixed number of time steps that
+advance the wavefield simulation governed by Fletcher's equations in
+anisotropic media using a five-step ghost cell overlap strategy. At
+the start of every iteration, a seismic source is injected into the
+grid cell owned by whichever process contains the source location. The
+loop then proceeds through five phases: first, ~MPI_Irecv~ calls are
+posted for the ghost-cell data expected from all 26 neighbors on the
+3D Cartesian topology, covering both wavefield components =p= and =q=;
+second, the boundary strips of each local partition, the outermost
+cells whose values will be sent to neighbors, are propagated forward
+using a stencil-based finite-difference kernel (CUDA-accelerated or
+OpenMP-parallelized depending on the build), and the updated halo
+faces are immediately dispatched asynchronously via ~MPI_Isend~ to each
+neighbor; third, while these transfers are in flight, the interior
+region, stripped of its halo layers, is advanced concurrently; fourth,
+a final ~MPI_Waitall~ synchronizes all pending communication requests,
+and the incoming halo slices are inserted into the corresponding ghost
+regions; fifth, the wavefield buffers are swapped to prepare for the
+next iteration. Because the coordinator rank participates in the same
+Cartesian topology as the workers, all processes execute the identical
+computation loop with no special treatment during time-stepping. When
+the overlap strategy is effective, the time spent in ~MPI_Waitall~
+remains negligible across all ranks, since interior computation fully
+hides communication latency. Once all iterations are complete, each
+non-coordinator process sends its final $p_{curr}$ and $q_{curr}$ fields
+back to the coordinator via ~MPI_Send~, which gathers and writes to
+output files.
+
+At the heart of each time step, every thread (CUDA block thread or
+OpenMP parallel iteration) computes a nine-point stencil update for
+two coupled wavefield variables, p and q, using a leapfrog
+finite-difference scheme. For each grid point, second-order
+derivatives are evaluated in all three principal directions (xx, yy,
+zz) as well as three mixed directions (xy, yz, xz), producing six
+second-derivative terms per variable. These are then combined through
+a coordinate transformation parameterized by anisotropy angles (theta
+and phi) to form two auxiliary operators, which capture the
+directional dependence of wave propagation in
+tilted-transverse-isotropic (TTI) media. The right-hand sides of the
+Fletcher equations are assembled as weighted sums, where the weights
+are the squared P- and S-wave velocities derived from the local
+anisotropic velocity model. Finally, the new-time-step values are
+written via explicit leapfrog recurrence, advancing the ~p~ and ~q~ fields
+simultaneously while reusing the previous two time levels.  When
+multiple MPI processes share a node with multiple GPUs, each process
+is assigned a GPU based on its rank, distributing processes cyclically
+across all available devices without manual configuration.
+
+Numerical validation is performed externally by comparing binary
+output files from the single-node reference run against our
+implementation with both OpenMP and CUDA backends. Each output file
+contains both wavefield components packed as a contiguous array of
+single-precision floats. For the OpenMP backend, reproducibility is
+assessed by computing =SHA-256= checksums across 30 configurations
+spanning 1--6 workers and five problem sizes from $32^3$ to $512^3$,
+confirming bitwise-identical output. For the CUDA backend, per-element
+delta checks are performed with a tolerance of $10^{-15}$, confirming
+near-bitwise agreement that reflects the expected accumulation of
+floating-point rounding differences between CPU and GPU execution
+paths. We validate therefore that the numerical results of our
+implementation against reference single-node implementations.
+
+*** Evaluation Methodology
+
+We run experiments on two clusters of the PCAD platform at INF/UFRGS:
+one CPU-only and one GPU-equipped, targeting distinct
+compute-to-communication regimes.
+
+**** CPU Cluster
+
+We conduct CPU experiments on the /cei/ cluster of the PCAD platform at
+INF/UFRGS. The cluster consists of six Supermicro X11DPU systems,
+functioning as computational nodes, connected by a 10Gbit
+network. Each node is equipped with 2\times Intel Xeon Silver 4116
+processors at 2.1 GHz, offering 48 threads with 24 cores and 96GB DDR4
+RAM. Experiments use OpenMP to leverage each node's parallelism. We
+trace every execution with akypuera \cite{akypuera}, providing low
+observation overhead to record every MPI operation performed by each
+process. Traces are converted to CSV using the PajeNG tool
+\cite{pajeng} and analyzed using R with the tidyverse/ggplot2 stack to
+compute communication load fractions and throughput metrics.
+
+**** GPU Cluster
+
+We conduct GPU experiments on the /poti/ cluster of the PCAD
+platform. The cluster consists of five computational nodes, each
+equipped with an Intel Core i7-14700KF processor at 3.4GHz (20 cores,
+28 threads), 96GB of DDR5 RAM, an NVIDIA GeForce RTX 4070 GPU with
+12GB of VRAM, and a 1Gbps Gigabit network interconnect. Experiments
+use all five nodes with only RTX4070 accelerators, running the
+optimized CUDA propagation kernel. The same tracing and analysis
+toolchain used in the CPU experiments applies here, recording MPI
+events at per-rank granularity to compute compute-load fractions
+throughout the full execution window.
+
+**** Experimental Design
+
+The Design of Experiments is grounded in a reproducible,
+multi-platform approach. All experiments are built using Nix
+\cite{nix}, which guarantees a fully deterministic software
+environment across every run and ensures that the compiled
+application, its MPI library, and all analysis tools are pinned to
+exact versions.  Because the physical clusters have limited
+interconnect bandwidth and GPU memory, SimGrid SMPI
+\cite{degomme2017simulating} is employed to run calibrated simulations
+on a single node of the ~poti~ cluster. In such a scenario, the SimGrid
+platform model has been set with 10Gbps and 100Gbps networks to
+explore configurations beyond what the hardware offers. We manage to
+adjust SMPI's emulation so that the compute kernel, either CPU- or
+GPU-based, executes without the SMPI sampling, capturing the whole GPU
+or CPU behavior to account for compute artifacts absent with the
+sampling option. We validate these emulations against real runs for
+the ~poti~ cluster achieving an accuracy mismatch of \approx17%.
+
 ** Results
 :PROPERTIES:
 :CUSTOM_ID: sec.results
@@ -484,6 +622,50 @@ becomes the dominant cost.
 :PROPERTIES:
 :CUSTOM_ID: sec.conclusion
 :END:
+
+This paper presented a distributed MPI implementation of the Fletcher
+RTM application with 3D block decomposition and asynchronous ghost
+cell communication, alongside GPU acceleration via CUDA. Experiments
+on real HPC clusters exposed two sharply contrasting regimes. On
+CPU-only machines, modest floating-point throughput naturally yields
+near-perfect communication hiding across realistic network conditions:
+the /cei/ cluster reaches approximately 87% compute load at $512^3$ on
+its real 10~Gbps network, and the compute fraction at $256^3$ already
+achieves 75%, establishing that arithmetic intensity alone is
+sufficient to mask communication on this class of hardware. On
+GPU-equipped clusters, the picture inverts entirely: the raw
+throughput of RTX~4070 accelerators makes network bandwidth the
+governing bottleneck, with /poti/ stalling near 20% compute load on a
+1~Gbps interconnect regardless of problem size.
+
+The boundary-to-volume analysis confirms the root cause: as problem
+size grows, the stencil volume increases as $O(n^3)$ while the halo
+surface grows only as $O(n^2)$, so a larger local domain should
+improve masking. On GPU clusters, however, the accelerator processes
+even the largest domain so rapidly that the Gigabit network remains the
+overwhelming bottleneck. Increasing problem size alone is therefore
+insufficient to achieve masking on this platform; the determining
+factor is the ratio of network bandwidth to accelerator throughput.
+
+The importance of proper domain segmentation is demonstrated by the
+performance gap between prime and non-prime process counts. Since 5 is
+prime, ~MPI_Dims_create~ forces a $\{5,1,1\}$ slices decomposition
+with per-iteration communication volumes of approximately 64~MB,
+whereas 8 processes factor into a $\{2,2,2\}$ block decomposition
+requiring only approximately 25~MB — a 2.5$\times$ reduction despite
+communicating with more neighbors. As a result, the 5-worker
+configuration falls below the single-node throughput baseline,
+demonstrating negative speedup from distribution. Prime process counts
+are therefore as detrimental as slow networks, and should be avoided
+when deploying block-decomposed stencil applications.
+
+Future work includes experiments on the Santos Dumont supercomputer to
+evaluate the application on a production platform with a high-speed
+interconnect, detailed simulation of the Santos Dumont network topology
+to enable capacity-planning studies, integration of HIP kernels for AMD
+GPU architectures, and a more thorough throughput characterization
+across the full range of problem sizes and network configurations that
+balance accelerator and network capacity.
 
 ** Acknowledgments                                                  :ignore:
 
@@ -506,32 +688,396 @@ supported by Petrobras through an agreement with UFRGS under 2.20.2205
 Tangle this file with C-c C-v t
 
 #+begin_src bib :tangle refs.bib
-@article{orgmode,
-  author =	"Eric Schulte and Dan Davison and Thomas Dye and Carsten Dominik",
-  title =	"A Multi-Language Computing Environment for Literate Programming and Reproducible Research",
-  journal =	"J. of Stat. Soft.",
-  volume =	"46",
-  number =	"3",
-  day =  	"25",
-  year = 	"2012",
-  CODEN =	"JSSOBK",
-  ISSN = 	"1548-7660",
-  bibdate =	"2011-10-03",
-  accepted =	"2011-10-03",
-  acknowledgement = "",
-  submitted =	"2010-12-22",
-}
-
-@incollection{schnorr2013visualizing,
-  title={Visualizing More Performance Data Than What Fits on Your Screen},
-  author={Schnorr, Lucas M and Legrand, Arnaud},
-  booktitle={Tools for High Performance Computing 2012},
-  pages={149--162},
-  year={2013},
-  publisher={Springer}
+@article{degomme2017simulating,
+  title={Simulating MPI applications: the SMPI approach},
+  author={Degomme, Augustin and Legrand, Arnaud and Markomanolis, George S and Quinson, Martin and Stillwell, Mark and Suter, Fr{\'e}d{\'e}ric},
+  journal={IEEE Transactions on Parallel and Distributed Systems},
+  volume={28},
+  number={8},
+  pages={2387--2400},
+  year={2017},
+  publisher={IEEE}
 }
 
 
+@misc{seismiccity_rtm,
+  author        = {{SeismicCity}},
+  title         = {Reverse Time Migration (RTM)},
+  year          = {2026},
+  url           = {http://www.seismiccity.com/RTM.html},
+  note          = {Accessed: 2026-03-18}
+}
+
+@article{ghost_cells,
+  author        = {Snir, Marc and Berg Kjolstad, Fredrik},
+  title         = {Ghost Cell Pattern},
+  year          = {2010}
+}
+
+@article{rtm,
+  title         = {Reverse time migration: A prospect of seismic imaging methodology},
+  journal       = {Earth-Science Reviews},
+  volume        = {179},
+  pages         = {207--227},
+  year          = {2018},
+  issn          = {0012-8252},
+  doi           = {10.1016/j.earscirev.2018.02.008},
+  author        = {Hua-Wei Zhou and Hao Hu and Zhihui Zou and Yukai Wo and Oong Youn},
+}
+
+@article{fletcher_modeling,
+  title         = {Sobre a Modelagem Fletcher},
+  author        = {Panetta, Jairo},
+  year          = {2009},
+  volume        = {74},
+  number        = {6}
+}
+
+@article{fletcher,
+  title         = {Reverse time migration in tilted transversely isotropic (TTI) media},
+  author        = {Robin P. Fletcher and Xiang Du and Paul J. Fowler},
+  year          = {2018}
+}
+
+@article{anisotropy,
+  title         = {Weak elastic anisotropy},
+  author        = {Leon, Thomsen},
+  year          = {1986},
+  month         = {Oct},
+  volume        = {51},
+  number        = {10}
+}
+
+@article{multi-gpu,
+  title         = {Towards a Multi-GPU Implementation of a Seismic Application},
+  author        = {Pedro H. C. Rigon and Brenda S. Schussler and Edson L. Padoin and Arthur F. Lorenzon and Alexandre Carissimi and Philippe O. A. Navaux},
+  year          = {2023},
+}
+
+@inproceedings{stencil_supercomputers,
+  author        = {Pearson, Carl and Hidayeto\u{g}lu, Mert and Almasri, Mohammad and Anjum, Omer and Chung, I-Hsin and Xiong, Jinjun and Hwu, Wen-Mei W.},
+  booktitle     = {2020 IEEE International Parallel and Distributed Processing Symposium Workshops (IPDPSW)},
+  title         = {Node-Aware Stencil Communication for Heterogeneous Supercomputers},
+  year          = {2020},
+  pages         = {796--805},
+  doi           = {10.1109/IPDPSW50202.2020.00136}
+}
+
+@article{okamoto2010,
+  author        = {Okamoto, Taro and Takenaka, Hiroshi and Nakamura, Takeshi and Aoki, Takayuki},
+  title         = {Accelerating large-scale simulation of seismic wave propagation by multi-GPUs and three-dimensional domain decomposition},
+  journal       = {Earth, Planets and Space},
+  year          = {2010},
+  volume        = {62},
+  number        = {12},
+  pages         = {939--942},
+  doi           = {10.5047/eps.2010.11.009}
+}
+
+@book{grama2003,
+  title         = {Introduction to Parallel Computing},
+  author        = {Grama, Ananth and Gupta, Anshul and Karypis, George and Kumar, Vipin},
+  year          = {2003},
+  publisher     = {Pearson Education},
+  edition       = {2nd}
+}
+
+@misc{akypuera,
+  author        = {Schnorr, Lucas Mello},
+  title         = {akypuera: MPI tracing library},
+  year          = {2025},
+  url           = {https://github.com/schnorr/akypuera},
+  note          = {Accessed: 2026-04-27}
+}
+
+@misc{pajeng,
+  author        = {Schnorr, Lucas Mello},
+  title         = {PajeNG: Paj\'{e} Next Generation},
+  year          = {2025},
+  url           = {https://github.com/schnorr/pajeng},
+  note          = {Accessed: 2026-04-27}
+}
+
+@techreport{minighost,
+  author        = {Heroux, Michael A. and Phipps, Eric T.},
+  title         = {{MiniGhost}: A Miniapp for Exploring Boundary Exchange Strategies Using Stencil Computations in Scientific Parallel Computing},
+  institution   = {Sandia National Laboratories},
+  year          = {2012},
+  number        = {SAND2012-10347},
+  note          = {Part of the Mantevo project miniapp suite}
+}
+
+@techreport{heroux2009improving,
+  title         = {{Improving Performance via Mini-applications}},
+  author        = {Heroux, Michael A and Doerfler, Douglas W and Crozier, Paul S and Willenbring, James M and Edwards, H Carter and Williams, Alan and Rajan, Mahesh and Keiter, Eric R and Thornquist, Heidi K and Numrich, Robert W},
+  institution   = {Sandia National Laboratories},
+  number        = {SAND2009-5574},
+  year          = {2009}
+}
+
+@article{gmd_halo,
+  author        = {van den Berg, Babette and van Meijgaard, Erik and van Ulft, Bert},
+  title         = {Simulation of the Performance and Scalability of {MPI} Communications of Atmospheric Models Running on Exascale Supercomputers},
+  journal       = {Geoscientific Model Development},
+  year          = {2018},
+  volume        = {11},
+  number        = {8},
+  pages         = {3409--3426},
+  doi           = {10.5194/gmd-11-3409-2018}
+}
+
+@article{simdag_affinity,
+  author        = {Mercier, Guillaume and Jeannot, Emmanuel},
+  title         = {Process Affinity, Metrics and Impact on Performance: An Empirical Study},
+  journal       = {International Journal of High Performance Computing Applications},
+  year          = {2011},
+  volume        = {25},
+  number        = {3},
+  pages         = {322--336},
+  doi           = {10.1177/1094342010394246}
+}
+
+@phdthesis{topology_aware,
+  author        = {Mercier, Guillaume},
+  title         = {Topology-Aware Optimization of Communication Cost of Parallel Applications in Heterogeneous {HPC} Systems},
+  school        = {Universit\'{e} de Bordeaux},
+  year          = {2011}
+}
+
+@article{blocking_nonblocking_halo,
+  author        = {Wittmann, Markus and Hager, Georg and Zeiser, Thomas and Treibig, Jan and Wellein, Gerhard},
+  title         = {Comparison of Different Propagation Steps for Lattice {Boltzmann} Methods},
+  journal       = {Computers \& Mathematics with Applications},
+  year          = {2013},
+  volume        = {65},
+  number        = {6},
+  pages         = {924--931},
+  doi           = {10.1016/j.camwa.2012.05.002},
+  note          = {Includes blocking vs.\ non-blocking halo exchange analysis}
+}
+
+@inproceedings{pavan2018wperf,
+  author    = {Pablo Jos{\'e} Pavan and
+               Matheus da Silva Serpa and
+               V{\'i}ctor Mart{\'i}nez and
+               Edson Luiz Padoin and
+               Jairo Panetta and
+               Philippe O. A. Navaux},
+  title     = {Strategies to Improve the Performance and Energy
+               Efficiency of Stencil Computations for {NVIDIA} {GPUs}},
+  booktitle = {Anais do Workshop em Desempenho de Sistemas
+               Computacionais e de Comunica{\c{c}}{\~a}o (WPerformance)},
+  year      = {2018},
+  publisher = {SBC},
+  address   = {S{\~a}o Paulo, Brazil},
+}
+
+@inproceedings{pavan2018wscad,
+  author    = {Pablo J. Pavan and
+               Matheus S. Serpa and
+               Lucas M. Schnorr and
+               Philippe O. A. Navaux and
+               Edson L. Padoin and
+               Jairo Panetta},
+  title     = {Improving {I/O} Performance of {RTM} Algorithm for Oil
+               and Gas Simulation},
+  booktitle = {Anais do XIX Simp{\'o}sio em Sistemas Computacionais de
+               Alto Desempenho (WSCAD)},
+  year      = {2018},
+  publisher = {SBC},
+  address   = {S{\~a}o Paulo, Brazil},
+}
+
+@inproceedings{serpa2018wscad,
+  author    = {Matheus S. Serpa and
+               Philippe O. A. Navaux and
+               Eduardo H. M. Cruz and
+               Jairo Panetta},
+  title     = {Optimizing Geophysics Models Using Thread and Data
+               Mapping},
+  booktitle = {Anais do XIX Simp{\'o}sio em Sistemas Computacionais de
+               Alto Desempenho (WSCAD)},
+  year      = {2018},
+  publisher = {SBC},
+  address   = {S{\~a}o Paulo, Brazil},
+}
+
+@inproceedings{serpa2019wscad,
+  author    = {Matheus S. Serpa and
+               Pablo J. Pavan and
+               Jairo Panetta and
+               Ant{\^o}nio Azambuja and
+               Alexandre Carissimi and
+               Philippe O. A. Navaux},
+  title     = {Portabilidade e Efici{\^e}ncia do M{\'e}todo {Fletcher}
+               de Aplica{\c{c}}{\~o}es S{\'i}smicas em Arquiteturas
+               Multicore e {GPU}},
+  booktitle = {Anais do XX Simp{\'o}sio em Sistemas Computacionais de
+               Alto Desempenho (WSCAD/SSCAD)},
+  year      = {2019},
+  publisher = {SBC},
+  address   = {S{\~a}o Paulo, Brazil},
+}
+
+@inproceedings{serpa2020erad,
+  author    = {Matheus S. Serpa and
+               Pablo J. Pavan and
+               Jairo Panetta and
+               Alexandre Carissimi and
+               Philippe O. A. Navaux},
+  title     = {Melhorando o Desempenho e a Efici{\^e}ncia Energ{\'e}tica
+               do M{\'e}todo {Fletcher} para Simula{\c{c}}{\~a}o de
+               Extra{\c{c}}{\~a}o de Petr{\'o}leo},
+  booktitle = {Anais da XX Escola Regional de Alto Desempenho da
+               Regi{\~a}o Sul (ERAD-RS)},
+  year      = {2020},
+  publisher = {SBC},
+  address   = {S{\~a}o Paulo, Brazil},
+}
+
+@article{serpa2021ccpe,
+  author    = {Matheus S. Serpa and
+               Pablo J. Pavan and
+               Eduardo H. M. Cruz and
+               Rodrigo L. Machado and
+               Jairo Panetta and
+               Ant{\^o}nio Azambuja and
+               Alexandre S. Carissimi and
+               Philippe O. A. Navaux},
+  title     = {Energy efficiency and portability of oil and gas
+               simulations on multicore and graphics processing unit
+               architectures},
+  journal   = {Concurrency and Computation: Practice and Experience},
+  year      = {2021},
+  publisher = {Wiley},
+}
+
+@inproceedings{machado2023sbacpadw,
+  author    = {Rodrigo C. Machado and
+               Cristiano A. K{\"u}nas and
+               Arthur F. Lorenzon and
+               Alexandre Carissimi and
+               Philippe O. A. Navaux},
+  title     = {Harnessing Cloud Computing for Geophysical Exploration},
+  booktitle = {2023 International Symposium on Computer Architecture and
+               High Performance Computing Workshops (SBAC-PADW)},
+  year      = {2023},
+  publisher = {IEEE},
+}
+
+@inproceedings{schussler2023erad,
+  author    = {Brenda S. Schussler and
+               Pedro H. C. Rigon and
+               Matheus S. Serpa and
+               Cristiano A. K{\"u}nas and
+               Alexandre Carissimi and
+               Jairo Panetta and
+               Philippe O. A. Navaux},
+  title     = {Comparando o Desempenho entre Computa{\c{c}}{\~a}o em
+               Nuvem e Servidor Local na Execu{\c{c}}{\~a}o do
+               M{\'e}todo {Fletcher}},
+  booktitle = {Anais da XXIII Escola Regional de Alto Desempenho da
+               Regi{\~a}o Sul (ERAD-RS)},
+  year      = {2023},
+  publisher = {SBC},
+  address   = {S{\~a}o Paulo, Brazil},
+}
+
+@inproceedings{rigon2024erad,
+  author    = {Pedro H. C. Rigon and
+               Brenda S. Schussler and
+               Cristiano A. K{\"u}nas and
+               Arthur F. Lorenzon and
+               Alexandre Carissimi and
+               Philippe O. A. Navaux},
+  title     = {Otimizando a Implementa{\c{c}}{\~a}o Multi-{GPU} do
+               M{\'e}todo {Fletcher} atrav{\'e}s da Paraleliza{\c{c}}{\~a}o
+               Eficiente na Computa{\c{c}}{\~a}o e Comunica{\c{c}}{\~a}o
+               de Dados},
+  booktitle = {Anais da XXIV Escola Regional de Alto Desempenho da
+               Regi{\~a}o Sul (ERAD-RS)},
+  year      = {2024},
+  publisher = {SBC},
+  address   = {S{\~a}o Paulo, Brazil},
+}
+
+@inproceedings{schussler2024erad,
+  author    = {Brenda S. Schussler and
+               Pedro H. C. Rigon and
+               Cristiano A. K{\"u}nas and
+               Arthur F. Lorenzon and
+               Alexandre Carissimi and
+               Philippe O. A. Navaux},
+  title     = {Otimiza{\c{c}}{\~a}o de Configura{\c{c}}{\~o}es de
+               Threads por Bloco para Kernels {GPU} na Explora{\c{c}}{\~a}o
+               Geof{\'i}sica},
+  booktitle = {Anais da XXIV Escola Regional de Alto Desempenho da
+               Regi{\~a}o Sul (ERAD-RS)},
+  year      = {2024},
+  publisher = {SBC},
+  address   = {S{\~a}o Paulo, Brazil},
+}
+
+@inproceedings{schussler2024pdp,
+  author    = {Brenda Schussler and
+               Pedro Rigon and
+               Arthur F. Lorenzon and
+               Philippe O. A. Navaux},
+  title     = {{BTO}: Block and Thread Optimization of {GPU} Kernels
+               on Geophysical Exploration},
+  booktitle = {32nd Euromicro International Conference on Parallel,
+               Distributed and Network-Based Processing (PDP)},
+  year      = {2024},
+  publisher = {IEEE},
+}
+
+@inproceedings{kunas2025carla,
+  author    = {Cristiano K{\"u}nas and
+               Gabriel Freytag and
+               Alexandre Sardinha and
+               Philippe Navaux and
+               Alexandre Carissimi and
+               Everton Paulino and
+               Fabio Zuvanov},
+  title     = {Subgroup and {SIMD} Optimization of {RTM} Kernels in
+               Intel {SYCL} for Portable Performance},
+  booktitle = {Latin American High Performance Computing Conference
+               (CARLA)},
+  year      = {2025},
+}
+
+@inproceedings{lorenzon2025sbacpad,
+  author    = {Arthur F. Lorenzon and
+               Philippe O. A. Navaux and
+               Alexandre Sardinha and
+               Bronson Messer},
+  title     = {Evaluating Code Portability for Carbon-Efficient {RTM}
+               Computing},
+  booktitle = {2025 IEEE/SBC 37th International Symposium on Computer
+               Architecture and High Performance Computing (SBAC-PAD)},
+  year      = {2025},
+  publisher = {IEEE},
+}
+
+@article{machado2026ccpe,
+  author    = {Rodrigo C. Machado and
+               Arthur F. Lorenzon and
+               Philippe O. A. Navaux},
+  title     = {{MPI}-Based Approaches to Overlap Computation and {I/O}
+               in Geophysical Simulations},
+  journal   = {Concurrency and Computation: Practice and Experience},
+  year      = {2026},
+  publisher = {Wiley},
+}
+
+@inproceedings{nix,
+  author    = {Dolstra, Eelco and Kuzniar, Eric and Sanchez, Eduardo},
+  title     = {The {Nix}/{Guix} Recipe for Reproducible Software Deployment and Updates},
+  booktitle = {Proceedings of the 5th ACM SIGPLAN International Workshop on
+               the Nix Project (NIX '16)},
+  year      = {2016},
+  publisher = {ACM},
+}
 #+end_src
 * Emacs setup                                                      :noexport:
 

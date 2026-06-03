@@ -8302,6 +8302,67 @@ plot_total_time_per_operation <- function(df) {
 #+end_src
 
 #+RESULTS:
+*** Common styles in-here
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+sbac_gantt_style <- function() {
+  list(
+  theme_bw(base_size=8),
+  theme(
+    plot.margin = unit(c(0, 0, 0, 0), "cm"),
+    legend.spacing = unit(0, "mm"),
+    legend.margin = unit(c(0, 0, 0, 0), "cm"),
+    panel.grid = element_blank(),
+    legend.position = "top",
+    legend.direction = "horizontal",    
+    legend.justification = "left",
+    legend.title = element_blank(),
+    legend.key.size   = unit(0.3, "cm"),
+    legend.box.spacing = unit(0, "pt"),
+    legend.box.margin = margin(0, 0, 0, 0)
+  )
+  )
+}
+
+sbac_load_style_top <- function()
+{
+  list(
+    theme_bw(base_size=8),
+    xlab(NULL),
+    theme(
+      axis.title.x = element_blank(),
+      axis.text.x = element_blank()
+    ),
+    theme(
+      plot.margin = unit(c(0, 0, 0, 0), "cm"),
+      legend.spacing = unit(0, "mm"),
+      legend.margin = unit(c(0, 0, 0, 0), "cm"),
+      panel.grid = element_blank(),
+      legend.position = "top",
+      legend.direction = "horizontal",    
+      legend.justification = "left",
+      legend.title = element_blank(),
+      legend.key.size   = unit(0.3, "cm"),
+      legend.box.spacing = unit(0, "pt"),
+      legend.box.margin = margin(0, 0, 0, 0)
+    )
+  )
+}
+
+sbac_load_style_bottom <- function()
+{
+  list(
+    theme_bw(base_size=8),
+    theme(
+      plot.margin = unit(c(0, 0, 0, 0), "cm"),
+      panel.grid = element_blank(),
+      legend.position = "none",
+      )
+  )
+}
+#+end_src
+
+#+RESULTS:
+
 *** Real traces (cei)
 **** Read
 

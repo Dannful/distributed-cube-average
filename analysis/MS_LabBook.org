@@ -8142,7 +8142,9 @@ our_read_function <- function(f) {
     filter(Start < core_end) |>    
     filter(End > core_start) |>    
     mutate(Start = pmax(Start, core_start), End = pmin(End, core_end), Duration = End - Start) |>
-    select(Container, Value, Start, End)
+    select(Container, Value, Start, End) |>
+    mutate(End = End - min(Start)) |>
+    mutate(Start = Start - min(Start))
 # Return the data frame
   return(df)
 }

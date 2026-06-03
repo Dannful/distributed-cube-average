@@ -21,6 +21,19 @@
 # You need at least Org 9 and Emacs 24 to make this work.
 # If you do, just type make (thanks Luka Stanisic for this).
 
+* Lisp                                                             :noexport:
+
+#+begin_src emacs-lisp
+(defun my-insert-nbsp ()
+  "Insert a non-breaking space (U+00A0)."
+  (interactive)
+  (insert-char #x00A0))
+(global-set-key (kbd "C-c SPC") #'my-insert-nbsp)
+#+end_src
+
+#+RESULTS:
+: my-insert-nbsp
+
 * Figures                                                          :noexport:
 ** Comm. Cost vs. Partitioning Strategy
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes :eval no
@@ -838,9 +851,9 @@ that the network remains the bottleneck.
     \caption{}
   \label{fig:real_gpu_load_128}
 \end{subfigure}
-\caption{GPU Execution of a $128^3$ problem size with five nodes in the
+\caption{GPU real run of a $128^3$ problem size with five nodes in the
    \texttt{poti} cluster:
-   (a) the Gantt chart of the second half-second of the execution
+   (a) the Gantt chart of the first second of the execution
    of the ranks along time with rectangles representing the compute
    (yellow) or MPI operations (other colors);
    and (b) the Space-time load chart of the full execution
@@ -897,23 +910,28 @@ through simulation.
 \begin{figure}[!htb]
 \centering
 \begin{subfigure}{\linewidth}
-  \centering
-  \includegraphics[width=\linewidth]{./img/real_gpu/gantt_512.pdf}
-  \caption{Gantt chart of the first three seconds of a execution.}
+\centering\hfill%
+\includegraphics[width=.975\linewidth]{./img/real_gpu/gantt_512.pdf}
+  \caption{}
   \label{fig:real_gpu_gantt_512}
 \end{subfigure}
 \begin{subfigure}{\linewidth}
   \centering
   \includegraphics[width=\linewidth]{./img/real_gpu/load_512.pdf}
-  \caption{Space-time load chart of a full execution, split by
-  quantiles with the respective load of each operation along time.}
+  \caption{}
   \label{fig:real_gpu_load_512}
   \end{subfigure}
-  \caption{Gantt and load charts of a $512^3$ GPU execution.}
+\caption{GPU real run of a $512^3$ problem size with five nodes in the
+   \texttt{poti} cluster:
+   (a) the Gantt chart of the first second of the execution
+   of the ranks along time with rectangles representing the compute
+   (yellow) or MPI operations (other colors);
+   and (b) the Space-time load chart of the full execution
+   with the respective load of each operation along time (top) and
+   the global load considering all ranks (bottom).}
 \end{figure}
 #+end_export
  
-
 *** Transition from Communication- to Computation-Bound
 
 Building on the observation that the RTX4070's raw throughput makes
@@ -922,8 +940,8 @@ possibly larger sizes, we now evaluate how increased bandwidth alters
 the communication-to-computation balance. The simulation setup follows
 the methodology described in Section [[#sec.experimental_design]], with
 the /poti/ platform model configured at 10Gbps and 100Gbps to explore
-bandwidth configurations beyond the physical hardware.  Figure
-\ref{fig:sim_gpu_10g_load_256} presents the results for a $256^3$
+bandwidth configurations beyond the physical hardware.
+Figure \ref{fig:sim_gpu} presents the results for a $256^3$
 execution on the 10Gbps simulated network. The Gantt chart shows a
 reversal compared to the real Gigabit results: computation now
 dominates each iteration. The load chart confirms this, with the
@@ -945,6 +963,7 @@ aggregate compute load rising to approximately 65--70%.
 \label{fig:sim_gpu_10g_load_256}
 \end{subfigure}
 \caption{Gantt and load charts of a simulated $256^3$ GPU execution with a 10Gbps network.}
+\label{fig:sim_gpu}
 \end{figure}
 #+end_export
 

@@ -829,7 +829,7 @@ that the network remains the bottleneck.
 \begin{subfigure}{\linewidth}
   \centering
     \includegraphics[width=\linewidth]{./img/real_gpu/gantt_128.pdf}
-  \caption{Gantt chart of the first second of the execution.}
+  \caption{Gantt chart of the second half-second of the execution.}
   \label{fig:real_gpu_gantt_128}
 \end{subfigure}
 \begin{subfigure}{\linewidth}

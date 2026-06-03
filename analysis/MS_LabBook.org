@@ -8398,7 +8398,7 @@ plots[[1]] #+ coord_cartesian(xlim=c(0,3))
 
 #+RESULTS:
 
-*** Real traces (poti)
+*** Real traces (poti) / Figure 4
 **** Process with =aky_converter= and =pj_dump_csv=
 
 #+begin_src shell :results output :exports both :dir ../ :eval no
@@ -8417,9 +8417,8 @@ for case in "$DIR"/*; do
   done
 done
 #+end_src
-
-**** Fig 4a
-
+**** FIGURE 4
+***** Read and create figures
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 options(crayon.enabled=FALSE)
 suppressMessages(library(tidyverse))
@@ -8441,67 +8440,82 @@ tibble(
   mutate(ST = map(DATA, our_st_plot)) |>  
   mutate(ST.AGG1 = map(DATA.AGG, \(x) do_the_viz(x, has.summary=FALSE))) |>
   mutate(ST.AGG2 = map(DATA.AGG, \(x) do_the_viz(x, has.summary="Summary"))) -> df
-df |>
-  pull(ST) -> plots
-plots[[1]] +
-  theme_bw(base_size=8) +
-   theme(
-    plot.margin = unit(c(0, 0, 0, 0), "cm"),
-    legend.spacing = unit(0, "mm"),
-    legend.margin = unit(c(0, 0, 0, 0), "cm"),
-    panel.grid = element_blank(),
-    legend.position = "top",
-    legend.direction = "horizontal",    
-    legend.justification = "left",
-    legend.title = element_blank(),
-    legend.key.size   = unit(0.3, "cm"),
-    legend.box.spacing = unit(0, "pt"),
-    legend.box.margin = margin(0, 0, 0, 0)
-    ) +
-  coord_cartesian(xlim=c(0.50,1)) -> p
+#+end_src
+
+#+RESULTS:
+
+***** Fig 4a
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df |> pull(ST) -> plots
+plots[[1]] + sbac_gantt_style() + coord_cartesian(xlim=c(0,1)) -> p
 ggsave("../papers/2026_SBAC/img/real_gpu/gantt_128.pdf", width = 4, height = 1.3, units = "in", dpi = 300)
 #+end_src
 
 #+RESULTS:
 
-**** Fig 4b
+***** Fig 4b
 
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
 df |> pull(ST.AGG1) -> p1
 df |> pull(ST.AGG2) -> p2
-(p1[[1]] +
-  theme_bw(base_size=8) +
-  xlab(NULL) +
-   theme(
-    axis.title.x = element_blank(),
-    axis.text.x = element_blank()
-  ) +
-   theme(
-    plot.margin = unit(c(0, 0, 0, 0), "cm"),
-    legend.spacing = unit(0, "mm"),
-    legend.margin = unit(c(0, 0, 0, 0), "cm"),
-    panel.grid = element_blank(),
-    legend.position = "top",
-    legend.direction = "horizontal",    
-    legend.justification = "left",
-    legend.title = element_blank(),
-    legend.key.size   = unit(0.3, "cm"),
-    legend.box.spacing = unit(0, "pt"),
-    legend.box.margin = margin(0, 0, 0, 0)
-    )
-) /
-  (p2[[1]] +
-   theme_bw(base_size=8) +
-   theme(
-    plot.margin = unit(c(0, 0, 0, 0), "cm"),
-    panel.grid = element_blank(),
-    legend.position = "none",
-    )
-  ) +
+(p1[[1]] + sbac_load_style_top()) /
+  (p2[[1]] + sbac_load_style_bottom()) +
   plot_annotation(theme = theme(plot.margin = margin(0, 0, 0, 0))) +
   plot_layout(heights = c(4, 1)) -> p
 
 ggsave("../papers/2026_SBAC/img/real_gpu/load_128.pdf", width = 4, height = 2.6, units = "in")
+#+end_src
+
+#+RESULTS:
+**** FIGURE 5
+***** Read and create figures
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+options(crayon.enabled=FALSE)
+suppressMessages(library(tidyverse))
+suppressMessages(library(fs))
+tibble(
+  FILE=c(
+    "../analysis_2026-03-26_1__512.state.csv"
+  )
+) |>
+  mutate(DATA = map(FILE, our_read_function)) |>
+  mutate(DATA = map(DATA, add_compute_state)) |>
+  mutate(DATA = map(DATA, function(df) { df |> mutate(Duration = End-Start) })) |>
+  mutate(SUMMARY = map(DATA, summary_per_operation)) |>
+  mutate(SUMMARY.PLOT = map(SUMMARY, plot_summary_per_operation)) |>
+  mutate(SUMMARY.TIME.PLOT = map(DATA, plot_total_time_per_operation)) |>
+  mutate(SUMMARY.COMBINED = map2(SUMMARY.PLOT, SUMMARY.TIME.PLOT, `|`)) |>
+  mutate(DATA.AGG = map(DATA, do_the_reference_aggregation, 100)) |>
+  # tradicional ST view
+  mutate(ST = map(DATA, our_st_plot)) |>  
+  mutate(ST.AGG1 = map(DATA.AGG, \(x) do_the_viz(x, has.summary=FALSE))) |>
+  mutate(ST.AGG2 = map(DATA.AGG, \(x) do_the_viz(x, has.summary="Summary"))) -> df
+#+end_src
+
+#+RESULTS:
+
+***** Fig 5a
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df |> pull(ST) -> plots
+plots[[1]] + sbac_gantt_style() + coord_cartesian(xlim=c(0,3)) -> p
+ggsave("../papers/2026_SBAC/img/real_gpu/gantt_512.pdf", width = 4, height = 1.3, units = "in", dpi = 300)
+#+end_src
+
+#+RESULTS:
+
+***** Fig 5b
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df |> pull(ST.AGG1) -> p1
+df |> pull(ST.AGG2) -> p2
+(p1[[1]] + sbac_load_style_top()) /
+  (p2[[1]] + sbac_load_style_bottom()) +
+  plot_annotation(theme = theme(plot.margin = margin(0, 0, 0, 0))) +
+  plot_layout(heights = c(4, 1)) -> p
+
+ggsave("../papers/2026_SBAC/img/real_gpu/load_512.pdf", width = 4, height = 2.6, units = "in")
 #+end_src
 
 #+RESULTS:

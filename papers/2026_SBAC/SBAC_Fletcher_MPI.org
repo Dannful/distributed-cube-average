@@ -949,7 +949,7 @@ the communication-to-computation balance. The simulation setup follows
 the methodology described in Section [[#sec.experimental_design]], with
 the /poti/ platform model configured at 10Gbps and 100Gbps to explore
 bandwidth configurations beyond the physical hardware.
-Figure \ref{fig:sim_gpu} presents the results for a $256^3$
+Figure \ref{fig:sim_gpu-10-256} presents the results for a $256^3$
 execution on the 10Gbps simulated network. The Gantt chart shows a
 reversal compared to the real Gigabit results: computation now
 dominates each iteration. The load chart confirms this, with the
@@ -980,12 +980,12 @@ Simulated GPU execution of a $256^3$ problem size with five nodes in the
    and (b) the Space-time load chart of the full execution
    with the respective load of each operation along time (top) and
    the global load considering all ranks (bottom).}
-\label{fig:sim_gpu}
+\label{fig:sim_gpu-10-256}
 \end{figure}
 #+end_export
 
 At $512^3$ on the same 10Gbps network (Figure
-\ref{fig:sim_gpu_10g_load_512}), the Gantt chart shows even wider
+\ref{fig:sim_gpu-10-512}), the Gantt chart shows even wider
 compute blocks. The load chart confirms that the compute fraction
 rises further to approximately 75--80%: the larger volume-to-boundary
 ratio, combined with the faster network, shifts the balance decisively
@@ -996,18 +996,28 @@ component.
 \begin{figure}[!htb]
 \centering
 \begin{subfigure}{\linewidth}
-  \centering
-  \includegraphics[width=\linewidth]{./img/sim_gpu_10Gbps/gantt_512.pdf}
-\caption{Gantt chart of the first second of execution.}
+\centering\hfill%
+\includegraphics[width=.975\linewidth]{./img/sim_gpu_10Gbps/gantt_512.pdf}
+\caption{}
 \label{fig:sim_gpu_10g_gantt_512}
 \end{subfigure}
+\\ \smallskip
 \begin{subfigure}{\linewidth}
-  \centering
-  \includegraphics[width=\linewidth]{./img/sim_gpu_10Gbps/load_512.pdf}
-\caption{Space-time load chart of a full execution, split by quantiles with the respective load of each operation along time.}
+\centering
+\includegraphics[width=\linewidth]{./img/sim_gpu_10Gbps/load_512.pdf}
+\caption{}
 \label{fig:sim_gpu_10g_load_512}
 \end{subfigure}
-\caption{Gantt and load charts of a simulated $512^3$ GPU execution with a 10~Gbps network.}
+\caption{
+Simulated GPU execution of a $512^3$ problem size with five nodes in the
+\texttt{poti} cluster if equipped with a 10Gbps network:
+   (a) the Gantt chart of the first second of the execution
+   of the ranks along time with rectangles representing the compute
+   (yellow) or MPI operations (other colors);
+   and (b) the Space-time load chart of the full execution
+   with the respective load of each operation along time (top) and
+   the global load considering all ranks (bottom).}
+\label{fig:sim_gpu-10-512}
 \end{figure}
 #+end_export
 
@@ -1027,18 +1037,28 @@ adequate interconnection network.
 \begin{figure}[!htb]
 \centering
 \begin{subfigure}{\linewidth}
-  \centering
-  \includegraphics[width=\linewidth]{./img/sim_gpu_100Gbps/gantt_256.pdf}
-\caption{Gantt chart of the first second of the execution.}
+\centering\hfill%
+\includegraphics[width=.975\linewidth]{./img/sim_gpu_100Gbps/gantt_256.pdf}
+\caption{}
 \label{fig:sim_gpu_100g_gantt_256}
 \end{subfigure}
+\\ \smallskip
 \begin{subfigure}{\linewidth}
-  \centering
-  \includegraphics[width=\linewidth]{./img/sim_gpu_100Gbps/load_256.pdf}
-\caption{Space-time load chart of a full execution, split by quantiles with the respective load of each operation along time.}
+\centering
+\includegraphics[width=\linewidth]{./img/sim_gpu_100Gbps/load_256.pdf}
+\caption{}
 \label{fig:sim_gpu_100g_load_256}
 \end{subfigure}
-\caption{Gantt and load charts of a simulated $256^3$ GPU execution with a 100~Gbps network.}
+\caption{
+Simulated GPU execution of a $256^3$ problem size with five nodes in the
+\texttt{poti} cluster if equipped with a 100Gbps network:
+   (a) the Gantt chart of the first second of the execution
+   of the ranks along time with rectangles representing the compute
+   (yellow) or MPI operations (other colors);
+   and (b) the Space-time load chart of the full execution
+   with the respective load of each operation along time (top) and
+   the global load considering all ranks (bottom).}
+\label{fig:sim_gpu-100-256}
 \end{figure}
 #+end_export
 
@@ -1046,18 +1066,28 @@ adequate interconnection network.
 \begin{figure}[!htb]
 \centering
 \begin{subfigure}{\linewidth}
-  \centering
-  \includegraphics[width=\linewidth]{./img/sim_gpu_100Gbps/gantt_512.pdf}
-\caption{Gantt chart of the first two seconds of the execution.}
+\centering\hfill%
+\includegraphics[width=.975\linewidth]{./img/sim_gpu_100Gbps/gantt_512.pdf}
+\caption{}
 \label{fig:sim_gpu_100g_gantt_512}
 \end{subfigure}
+\\ \smallskip
 \begin{subfigure}{\linewidth}
-  \centering
-  \includegraphics[width=\linewidth]{./img/sim_gpu_100Gbps/load_512.pdf}
-\caption{Space-time load chart of a the full execution, split by quantiles with the respective load of each operation along time.}
+\centering
+\includegraphics[width=\linewidth]{./img/sim_gpu_100Gbps/load_512.pdf}
+\caption{}
 \label{fig:sim_gpu_100g_load_512}
 \end{subfigure}
-\caption{Gantt and load charts of a simulated $512^3$ GPU execution with a 100~Gbps network.}
+\caption{
+Simulated GPU execution of a $512^3$ problem size with five nodes in the
+\texttt{poti} cluster if equipped with a 100Gbps network:
+   (a) the Gantt chart of the first second of the execution
+   of the ranks along time with rectangles representing the compute
+   (yellow) or MPI operations (other colors);
+   and (b) the Space-time load chart of the full execution
+   with the respective load of each operation along time (top) and
+   the global load considering all ranks (bottom).}
+\label{fig:sim_gpu-100-512}
 \end{figure}
 #+end_export
 

@@ -7383,7 +7383,6 @@ df |>
 
 #+RESULTS:
 
-
 *** DONE The Tupi anomaly behavior (256 vs 516 for four nodes)
 *** Gantt-chart aggregated
 ****** The aggregation framework (starvz-inspired)

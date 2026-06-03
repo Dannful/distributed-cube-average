@@ -329,7 +329,7 @@ et al. \cite{blocking_nonblocking_halo} benchmark blocking versus
 non-blocking halo exchange for Lattice Boltzmann methods on real
 supercomputers, confirming that overlap is achievable but inherently
 hardware-specific. In the context of seismic applications, as
-previously explicited, Rigon et al. \cite{multi-gpu} distribute the
+previously discussed, Rigon et al. \cite{multi-gpu} distribute the
 Fletcher load across multiple GPUs within a single node using
 device-to-device ghost-cell transfers, achieving a speedup of 2.77 for
 large domains but observing severe degradation on small grids due to
@@ -378,7 +378,7 @@ computation-communication overlap strategy as the CPU backend; and
 *(iii)* an evaluation on real HPC clusters showing how network bandwidth
 and partitioning topology jointly determine ghost cell masking
 effectiveness, with compute loads ranging from approximately 20% on a
-1Gbps GPU cluster to above 87% on a 10Gbps CPU cluster. *(iv)* an
+1Gbps GPU cluster to above 87% on a 10Gbps CPU cluster; and *(iv)* an
 evaluation through emulation to anticipate the necessary network
 capacity to perfectly leverage the halo exchange for hiding
 communication latency.  These contributions collectively establish
@@ -587,8 +587,8 @@ confirming bitwise-identical output. For the CUDA backend, per-element
 delta checks are performed with a tolerance of $10^{-15}$, confirming
 near-bitwise agreement that reflects the expected accumulation of
 floating-point rounding differences between CPU and GPU execution
-paths. We validate therefore that the numerical results of our
-implementation against reference single-node implementations.
+paths. We therefore validate the numerical results of our
+implementation against those of the reference single-node implementations.
 
 *** Evaluation Methodology
 
@@ -602,7 +602,7 @@ We conduct CPU experiments on the /cei/ cluster of the \censor{PCAD} platform at
 \censor{INF/UFRGS}. The cluster consists of six Supermicro X11DPU systems,
 functioning as computational nodes, connected by a 10Gbit
 network. Each node is equipped with 2\times Intel Xeon Silver 4116
-processors at 2.1 GHz, offering 48 threads with 24 cores and 96GB DDR4
+processors at 2.1 GHz, offering 24 cores and 48 threads with 96GB DDR4
 RAM. Experiments use OpenMP to leverage each node's parallelism. We
 trace every execution with \censor{akypuera} \cite{akypuera}, providing low
 observation overhead to record every MPI operation performed by each
@@ -620,7 +620,7 @@ equipped with an Intel Core i7-14700KF processor at 3.4GHz (20 cores,
 use all five nodes with only RTX4070 accelerators, running the
 optimized CUDA propagation kernel. The same tracing and analysis
 toolchain used in the CPU experiments applies here, recording MPI
-events at per-rank granularity to compute compute-load fractions
+events at per-rank granularity to measure compute-load fractions
 throughout the full execution window.
 
 **** Experimental Design
@@ -703,8 +703,8 @@ visualization pipeline first synthesizes a ``Compute'' state by
 inserting a synthetic task into each rank's timeline for the gaps
 between consecutive MPI events, thereby reconstructing the full
 compute-communication schedule. Note that this inserted state
-comprises the whole CPU/GPU activities, including copying data back
-and forth the GPU through the PCI bus at every iteration. For each
+comprises the whole CPU/GPU activities, including copying data to and
+from the GPU through the PCI bus at every iteration. For each
 rank, the pipeline then produces two complementary views. The first is
 a space-time Gantt chart (see Figure \ref{fig:real_cpu_gantt_256} for
 an example) that plots each rank on the Y axis and time on the X axis,
@@ -1091,7 +1091,7 @@ Simulated GPU execution of a $512^3$ problem size with five nodes in the
 \end{figure}
 #+end_export
 
-These experiments confirm that the masking directives implemented in
+These experiments confirm that the masking strategies implemented in
 the program are effective when the balance between the interconnection
 network capacity and the computational capacity of the accelerators is
 adequate. The progression from 1Gbps (real) to 10Gbps, then to 100Gbps

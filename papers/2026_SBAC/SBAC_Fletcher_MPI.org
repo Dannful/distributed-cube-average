@@ -23,7 +23,7 @@
 
 * Figures                                                          :noexport:
 ** Comm. Cost vs. Partitioning Strategy
-#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes :eval no
 # Load libraries
 library(ggplot2)
 library(tidyr)

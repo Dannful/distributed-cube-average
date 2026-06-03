@@ -6628,8 +6628,6 @@ read_csv("../../dc.csv", progress=FALSE, show_col_types=FALSE)
 # ℹ Use `print(n = ...)` to see more rows
 #+end_example
 
-
-
 **** *2. GPU Cluster: The Network Bottleneck (poti, 1 Gbps)*
 
 Show how compute load stays stuck at ~20% regardless of problem size

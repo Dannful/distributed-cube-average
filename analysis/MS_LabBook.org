@@ -8363,7 +8363,7 @@ sbac_load_style_bottom <- function()
 
 #+RESULTS:
 
-*** Real traces (cei)
+*** Real traces (cei) / Figures 2 and 3
 **** Process with =aky_converter= and =pj_dump_csv=
 
 #+begin_src shell :results output :exports both :dir ../ :eval no
@@ -8486,7 +8486,7 @@ ggsave("../papers/2026_SBAC/img/real_cpu/load_512.pdf", width = 4, height = 2.6,
 
 #+RESULTS:
 
-*** Real traces (poti) / Figure 4
+*** Real traces (poti) / Figures 4 and 5
 **** Process with =aky_converter= and =pj_dump_csv=
 
 #+begin_src shell :results output :exports both :dir ../ :eval no
@@ -8604,6 +8604,266 @@ df |> pull(ST.AGG2) -> p2
   plot_layout(heights = c(4, 1)) -> p
 
 ggsave("../papers/2026_SBAC/img/real_gpu/load_512.pdf", width = 4, height = 2.6, units = "in")
+#+end_src
+
+#+RESULTS:
+*** Simu traces / Figures 6, 7, 8, 9
+**** Process with bash and sed to look like a real trace
+
+#+begin_src shell :results output :exports both :dir ../ :eval no
+for DIR in \
+  analysis/sim_traces_100Gbps \
+  analysis/sim_traces_10Gbps \
+  analysis/sim_traces_1Gbps
+do
+for case in "$DIR"/*; do
+  key="${case//\//_}"
+  outfile="$key.csv"
+  echo $case $key
+  ORIG=$(find $case | grep dc.csv)
+  cp -v $ORIG $outfile
+  # add header
+  sed -i '1i State, Container, Type, Start, End, Duration, Imbrication, Value' "$outfile"
+  # fix content
+  sed -i -E 's/rank-([0-9]+)/rank\1/; s/MPI_STATE/STATE/; s/PMPI_/MPI_/' "$outfile"
+done
+done
+#+end_src
+
+#+RESULTS:
+#+begin_example
+analysis/sim_traces_100Gbps/128 analysis_sim_traces_100Gbps_128
+'analysis/sim_traces_100Gbps/128/dc.csv' -> 'analysis_sim_traces_100Gbps_128.csv'
+analysis/sim_traces_100Gbps/256 analysis_sim_traces_100Gbps_256
+'analysis/sim_traces_100Gbps/256/dc.csv' -> 'analysis_sim_traces_100Gbps_256.csv'
+analysis/sim_traces_100Gbps/32 analysis_sim_traces_100Gbps_32
+'analysis/sim_traces_100Gbps/32/dc.csv' -> 'analysis_sim_traces_100Gbps_32.csv'
+analysis/sim_traces_100Gbps/512 analysis_sim_traces_100Gbps_512
+'analysis/sim_traces_100Gbps/512/dc.csv' -> 'analysis_sim_traces_100Gbps_512.csv'
+analysis/sim_traces_100Gbps/64 analysis_sim_traces_100Gbps_64
+'analysis/sim_traces_100Gbps/64/dc.csv' -> 'analysis_sim_traces_100Gbps_64.csv'
+analysis/sim_traces_10Gbps/128 analysis_sim_traces_10Gbps_128
+'analysis/sim_traces_10Gbps/128/dc.csv' -> 'analysis_sim_traces_10Gbps_128.csv'
+analysis/sim_traces_10Gbps/256 analysis_sim_traces_10Gbps_256
+'analysis/sim_traces_10Gbps/256/dc.csv' -> 'analysis_sim_traces_10Gbps_256.csv'
+analysis/sim_traces_10Gbps/32 analysis_sim_traces_10Gbps_32
+'analysis/sim_traces_10Gbps/32/dc.csv' -> 'analysis_sim_traces_10Gbps_32.csv'
+analysis/sim_traces_10Gbps/512 analysis_sim_traces_10Gbps_512
+'analysis/sim_traces_10Gbps/512/dc.csv' -> 'analysis_sim_traces_10Gbps_512.csv'
+analysis/sim_traces_10Gbps/64 analysis_sim_traces_10Gbps_64
+'analysis/sim_traces_10Gbps/64/dc.csv' -> 'analysis_sim_traces_10Gbps_64.csv'
+analysis/sim_traces_1Gbps/128 analysis_sim_traces_1Gbps_128
+'analysis/sim_traces_1Gbps/128/dc.csv' -> 'analysis_sim_traces_1Gbps_128.csv'
+analysis/sim_traces_1Gbps/256 analysis_sim_traces_1Gbps_256
+'analysis/sim_traces_1Gbps/256/dc.csv' -> 'analysis_sim_traces_1Gbps_256.csv'
+analysis/sim_traces_1Gbps/32 analysis_sim_traces_1Gbps_32
+'analysis/sim_traces_1Gbps/32/dc.csv' -> 'analysis_sim_traces_1Gbps_32.csv'
+analysis/sim_traces_1Gbps/512 analysis_sim_traces_1Gbps_512
+'analysis/sim_traces_1Gbps/512/dc.csv' -> 'analysis_sim_traces_1Gbps_512.csv'
+analysis/sim_traces_1Gbps/64 analysis_sim_traces_1Gbps_64
+'analysis/sim_traces_1Gbps/64/dc.csv' -> 'analysis_sim_traces_1Gbps_64.csv'
+#+end_example
+**** FIGURE 6
+***** Read and create figures
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+options(crayon.enabled=FALSE)
+suppressMessages(library(tidyverse))
+suppressMessages(library(fs))
+tibble(
+  FILE=c(
+    "../analysis_sim_traces_10Gbps_256.csv"
+  )
+) |>
+  mutate(DATA = map(FILE, our_read_function)) |>
+  mutate(DATA = map(DATA, add_compute_state)) |>
+  mutate(DATA = map(DATA, function(df) { df |> mutate(Duration = End-Start) })) |>
+  mutate(SUMMARY = map(DATA, summary_per_operation)) |>
+  mutate(SUMMARY.PLOT = map(SUMMARY, plot_summary_per_operation)) |>
+  mutate(SUMMARY.TIME.PLOT = map(DATA, plot_total_time_per_operation)) |>
+  mutate(SUMMARY.COMBINED = map2(SUMMARY.PLOT, SUMMARY.TIME.PLOT, `|`)) |>
+  mutate(DATA.AGG = map(DATA, do_the_reference_aggregation, 100)) |>
+  # tradicional ST view
+  mutate(ST = map(DATA, our_st_plot)) |>  
+  mutate(ST.AGG1 = map(DATA.AGG, \(x) do_the_viz(x, has.summary=FALSE))) |>
+  mutate(ST.AGG2 = map(DATA.AGG, \(x) do_the_viz(x, has.summary="Summary"))) -> df
+#+end_src
+
+#+RESULTS:
+
+***** Fig 6a
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df |> pull(ST) -> plots
+plots[[1]] + sbac_gantt_style() + coord_cartesian(xlim=c(0,1)) -> p
+ggsave("../papers/2026_SBAC/img/sim_gpu_10Gbps/gantt_256.pdf", width = 4, height = 1.3, units = "in", dpi = 300)
+#+end_src
+
+#+RESULTS:
+
+***** Fig 6b
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df |> pull(ST.AGG1) -> p1
+df |> pull(ST.AGG2) -> p2
+(p1[[1]] + sbac_load_style_top()) /
+  (p2[[1]] + sbac_load_style_bottom()) +
+  plot_annotation(theme = theme(plot.margin = margin(0, 0, 0, 0))) +
+  plot_layout(heights = c(4, 1)) -> p
+
+ggsave("../papers/2026_SBAC/img/sim_gpu_10Gbps/load_256.pdf", width = 4, height = 2.6, units = "in")
+#+end_src
+
+#+RESULTS:
+**** FIGURE 7
+***** Read and create figures
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+options(crayon.enabled=FALSE)
+suppressMessages(library(tidyverse))
+suppressMessages(library(fs))
+tibble(
+  FILE=c(
+    "../analysis_sim_traces_10Gbps_512.csv"
+  )
+) |>
+  mutate(DATA = map(FILE, our_read_function)) |>
+  mutate(DATA = map(DATA, add_compute_state)) |>
+  mutate(DATA = map(DATA, function(df) { df |> mutate(Duration = End-Start) })) |>
+  mutate(SUMMARY = map(DATA, summary_per_operation)) |>
+  mutate(SUMMARY.PLOT = map(SUMMARY, plot_summary_per_operation)) |>
+  mutate(SUMMARY.TIME.PLOT = map(DATA, plot_total_time_per_operation)) |>
+  mutate(SUMMARY.COMBINED = map2(SUMMARY.PLOT, SUMMARY.TIME.PLOT, `|`)) |>
+  mutate(DATA.AGG = map(DATA, do_the_reference_aggregation, 100)) |>
+  # tradicional ST view
+  mutate(ST = map(DATA, our_st_plot)) |>  
+  mutate(ST.AGG1 = map(DATA.AGG, \(x) do_the_viz(x, has.summary=FALSE))) |>
+  mutate(ST.AGG2 = map(DATA.AGG, \(x) do_the_viz(x, has.summary="Summary"))) -> df
+#+end_src
+
+#+RESULTS:
+
+***** Fig 7a
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df |> pull(ST) -> plots
+plots[[1]] + sbac_gantt_style() + coord_cartesian(xlim=c(0,1)) -> p
+ggsave("../papers/2026_SBAC/img/sim_gpu_10Gbps/gantt_512.pdf", width = 4, height = 1.3, units = "in", dpi = 300)
+#+end_src
+
+#+RESULTS:
+
+***** Fig 7b
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df |> pull(ST.AGG1) -> p1
+df |> pull(ST.AGG2) -> p2
+(p1[[1]] + sbac_load_style_top()) /
+  (p2[[1]] + sbac_load_style_bottom()) +
+  plot_annotation(theme = theme(plot.margin = margin(0, 0, 0, 0))) +
+  plot_layout(heights = c(4, 1)) -> p
+
+ggsave("../papers/2026_SBAC/img/sim_gpu_10Gbps/load_512.pdf", width = 4, height = 2.6, units = "in")
+#+end_src
+
+#+RESULTS:
+**** FIGURE 8
+***** Read and create figures
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+options(crayon.enabled=FALSE)
+suppressMessages(library(tidyverse))
+suppressMessages(library(fs))
+tibble(
+  FILE=c(
+    "../analysis_sim_traces_100Gbps_256.csv"
+  )
+) |>
+  mutate(DATA = map(FILE, our_read_function)) |>
+  mutate(DATA = map(DATA, add_compute_state)) |>
+  mutate(DATA = map(DATA, function(df) { df |> mutate(Duration = End-Start) })) |>
+  mutate(SUMMARY = map(DATA, summary_per_operation)) |>
+  mutate(SUMMARY.PLOT = map(SUMMARY, plot_summary_per_operation)) |>
+  mutate(SUMMARY.TIME.PLOT = map(DATA, plot_total_time_per_operation)) |>
+  mutate(SUMMARY.COMBINED = map2(SUMMARY.PLOT, SUMMARY.TIME.PLOT, `|`)) |>
+  mutate(DATA.AGG = map(DATA, do_the_reference_aggregation, 100)) |>
+  # tradicional ST view
+  mutate(ST = map(DATA, our_st_plot)) |>  
+  mutate(ST.AGG1 = map(DATA.AGG, \(x) do_the_viz(x, has.summary=FALSE))) |>
+  mutate(ST.AGG2 = map(DATA.AGG, \(x) do_the_viz(x, has.summary="Summary"))) -> df
+#+end_src
+
+#+RESULTS:
+
+***** Fig 8a
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df |> pull(ST) -> plots
+plots[[1]] + sbac_gantt_style() + coord_cartesian(xlim=c(0,1)) -> p
+ggsave("../papers/2026_SBAC/img/sim_gpu_100Gbps/gantt_256.pdf", width = 4, height = 1.3, units = "in", dpi = 300)
+#+end_src
+
+#+RESULTS:
+
+***** Fig 8b
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df |> pull(ST.AGG1) -> p1
+df |> pull(ST.AGG2) -> p2
+(p1[[1]] + sbac_load_style_top()) /
+  (p2[[1]] + sbac_load_style_bottom()) +
+  plot_annotation(theme = theme(plot.margin = margin(0, 0, 0, 0))) +
+  plot_layout(heights = c(4, 1)) -> p
+
+ggsave("../papers/2026_SBAC/img/sim_gpu_100Gbps/load_256.pdf", width = 4, height = 2.6, units = "in")
+#+end_src
+
+#+RESULTS:
+**** FIGURE 9
+***** Read and create figures
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+options(crayon.enabled=FALSE)
+suppressMessages(library(tidyverse))
+suppressMessages(library(fs))
+tibble(
+  FILE=c(
+    "../analysis_sim_traces_100Gbps_512.csv"
+  )
+) |>
+  mutate(DATA = map(FILE, our_read_function)) |>
+  mutate(DATA = map(DATA, add_compute_state)) |>
+  mutate(DATA = map(DATA, function(df) { df |> mutate(Duration = End-Start) })) |>
+  mutate(SUMMARY = map(DATA, summary_per_operation)) |>
+  mutate(SUMMARY.PLOT = map(SUMMARY, plot_summary_per_operation)) |>
+  mutate(SUMMARY.TIME.PLOT = map(DATA, plot_total_time_per_operation)) |>
+  mutate(SUMMARY.COMBINED = map2(SUMMARY.PLOT, SUMMARY.TIME.PLOT, `|`)) |>
+  mutate(DATA.AGG = map(DATA, do_the_reference_aggregation, 100)) |>
+  # tradicional ST view
+  mutate(ST = map(DATA, our_st_plot)) |>  
+  mutate(ST.AGG1 = map(DATA.AGG, \(x) do_the_viz(x, has.summary=FALSE))) |>
+  mutate(ST.AGG2 = map(DATA.AGG, \(x) do_the_viz(x, has.summary="Summary"))) -> df
+#+end_src
+
+#+RESULTS:
+
+***** Fig 8a
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df |> pull(ST) -> plots
+plots[[1]] + sbac_gantt_style() + coord_cartesian(xlim=c(0,1)) -> p
+ggsave("../papers/2026_SBAC/img/sim_gpu_100Gbps/gantt_512.pdf", width = 4, height = 1.3, units = "in", dpi = 300)
+#+end_src
+
+#+RESULTS:
+
+***** Fig 8b
+
+#+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes
+df |> pull(ST.AGG1) -> p1
+df |> pull(ST.AGG2) -> p2
+(p1[[1]] + sbac_load_style_top()) /
+  (p2[[1]] + sbac_load_style_bottom()) +
+  plot_annotation(theme = theme(plot.margin = margin(0, 0, 0, 0))) +
+  plot_layout(heights = c(4, 1)) -> p
+
+ggsave("../papers/2026_SBAC/img/sim_gpu_100Gbps/load_512.pdf", width = 4, height = 2.6, units = "in")
 #+end_src
 
 #+RESULTS:

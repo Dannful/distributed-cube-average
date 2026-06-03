@@ -740,19 +740,23 @@ problem size requires more time than an Intel Xeon can deliver over a
 \begin{figure}[!htb]
 \centering
 \begin{subfigure}{\linewidth}
-  \centering
-  \includegraphics[width=\linewidth]{./img/real_cpu/gantt_256.pdf}
-  \caption{Gantt chart of the first three seconds of the execution.}
-\label{fig:real_cpu_gantt_256}
+\centering\hfill%
+\includegraphics[width=.975\linewidth]{./img/real_cpu/gantt_256.pdf}
+    \caption{}
+    \label{fig:real_cpu_gantt_256}
 \end{subfigure}
+\\ \smallskip
 \begin{subfigure}{\linewidth}
   \centering
   \includegraphics[width=\linewidth]{./img/real_cpu/load_256.pdf}
-  \caption{Space-time load chart of a full execution, split by
-    quantiles with the respective load of each operation along time.}
+    \caption{}
 \label{fig:real_cpu_load_256}
 \end{subfigure}
-\caption{Gantt and load charts of a $256^3$ problem size execution.}
+\caption{CPU execution of a $256^3$ problem on six nodes of the \texttt{cei} cluster:
+(a) Gantt chart of the first three seconds, showing per-rank behavior over time
+-- yellow indicates computation, while other colors denote distinct MPI operations;
+(b) space-time load chart for the full execution, with per-operation load
+over time (top) and aggregate load across all ranks (bottom).}
 \end{figure}
 #+end_export
 
@@ -798,20 +802,23 @@ $L$ (Width) & Volume ($L^3$) & Boundary ($18L^2$) & Ratio \\
 \begin{figure}[!htb]
 \centering
 \begin{subfigure}{\linewidth}
-  \centering
-  \includegraphics[width=\linewidth]{./img/real_cpu/gantt_512.pdf}
-    \caption{Gantt chart of the first five seconds of the execution.}
-
-\label{fig:real_cpu_gantt_512}
+\centering\hfill%
+\includegraphics[width=.975\linewidth]{./img/real_cpu/gantt_512.pdf}
+    \caption{}
+    \label{fig:real_cpu_gantt_512}
 \end{subfigure}
+\\ \smallskip
 \begin{subfigure}{\linewidth}
   \centering
   \includegraphics[width=\linewidth]{./img/real_cpu/load_512.pdf}
-    \caption{Space-time load chart of the full execution, split by
-    quantiles with the respective load of each operation along time.}
+    \caption{}
 \label{fig:real_cpu_load_512}
 \end{subfigure}
-\caption{Gantt and load charts of a $512^3$ problem size execution.}
+\caption{CPU execution of a $512^3$ problem on six nodes of the \texttt{cei} cluster:
+(a) Gantt chart of the first five seconds, showing per-rank behavior over time
+-- yellow indicates computation, while other colors denote distinct MPI operations;
+(b) space-time load chart for the full execution, with per-operation load
+over time (top) and aggregate load across all ranks (bottom).}
 \end{figure}
 #+end_export
 
@@ -915,6 +922,7 @@ through simulation.
   \caption{}
   \label{fig:real_gpu_gantt_512}
 \end{subfigure}
+\\ \smallskip
 \begin{subfigure}{\linewidth}
   \centering
   \includegraphics[width=\linewidth]{./img/real_gpu/load_512.pdf}

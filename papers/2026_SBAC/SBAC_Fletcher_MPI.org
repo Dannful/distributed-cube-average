@@ -959,18 +959,27 @@ aggregate compute load rising to approximately 65--70%.
 \begin{figure}[!htb]
 \centering
 \begin{subfigure}{\linewidth}
-\centering
-\includegraphics[width=\linewidth]{./img/sim_gpu_10Gbps/gantt_256.pdf}
-\caption{Gantt chart of the first second of a execution.}
+\centering\hfill%
+\includegraphics[width=.975\linewidth]{./img/sim_gpu_10Gbps/gantt_256.pdf}
+\caption{}
 \label{fig:sim_gpu_10g_gantt_256}
 \end{subfigure}
+\\ \smallskip
 \begin{subfigure}{\linewidth}
 \centering
 \includegraphics[width=\linewidth]{./img/sim_gpu_10Gbps/load_256.pdf}
-\caption{Space-time load chart of the full execution, split by quantiles with the respective load of each operation along time.}
+\caption{}
 \label{fig:sim_gpu_10g_load_256}
 \end{subfigure}
-\caption{Gantt and load charts of a simulated $256^3$ GPU execution with a 10Gbps network.}
+\caption{
+Simulated GPU execution of a $256^3$ problem size with five nodes in the
+\texttt{poti} cluster if equipped with a 10Gbps network:
+   (a) the Gantt chart of the first second of the execution
+   of the ranks along time with rectangles representing the compute
+   (yellow) or MPI operations (other colors);
+   and (b) the Space-time load chart of the full execution
+   with the respective load of each operation along time (top) and
+   the global load considering all ranks (bottom).}
 \label{fig:sim_gpu}
 \end{figure}
 #+end_export

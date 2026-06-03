@@ -858,7 +858,7 @@ that the network remains the bottleneck.
     \caption{}
   \label{fig:real_gpu_load_128}
 \end{subfigure}
-\caption{GPU real run of a $128^3$ problem size with five nodes in the
+\caption{GPU execution of a $128^3$ problem size with five nodes in the
    \texttt{poti} cluster:
    (a) the Gantt chart of the first second of the execution
    of the ranks along time with rectangles representing the compute
@@ -929,7 +929,7 @@ through simulation.
   \caption{}
   \label{fig:real_gpu_load_512}
   \end{subfigure}
-\caption{GPU real run of a $512^3$ problem size with five nodes in the
+\caption{GPU execution of a $512^3$ problem size with five nodes in the
    \texttt{poti} cluster:
    (a) the Gantt chart of the first second of the execution
    of the ranks along time with rectangles representing the compute

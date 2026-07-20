@@ -665,9 +665,8 @@ including high-compute-capacity (large number of GPUs) and CPU-only
 clusters.
 
 We consider these hosts to run the simulations with their respective
-compute configurations: =tupi= (GPU RTX4090), =poti= (GPU RTX4070), =cei=
-(CPU 2\times Xeon Silver 4116), and =tsubasa= (2\times Xeon Gold 6226). When
-running the simulations on a GPU-equipped machine, we run the
+compute configurations: =tupi= (1\times GPU RTX4090 per node, 6 nodes total), =poti= (1\times GPU RTX4070 per node, 5 nodes total), and =cei= (CPU 2\times Xeon Silver 4116 per node, 6 nodes total), with the nodes being interconnected in a star-shaped topology via a switch.
+When running the simulations on a GPU-equipped machine, we run the
 optimized CUDA code. When in CPU-equipped mode, we run the OpenMP
 kernel that exploits all CPU cores (both logical and physical). We run
 all simulations using calibrated MPI communication values based on the

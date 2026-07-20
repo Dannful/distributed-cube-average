@@ -25,6 +25,8 @@
 # If you do, just type make (thanks Luka Stanisic for this).
 
 * Reviews                                                          :noexport:
+** Deadline for changes Camera-Ready Version Due: July 27th, 2026 GMT
+https://carlaconference.org/
 ** DONE Review 1 (Acceptance)
 
 On the manuscript: Well written, applied best practices for latency

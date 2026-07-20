@@ -623,7 +623,7 @@ sufficiently faithful to evaluate communication masking effectiveness.
 
 We first describe the evaluation methodology and introduce the Masking
 Effectiveness metric used throughout the analysis. We then present the
-results for the two CPU-only hosts, =cei= and =tsubasa=, followed by the
+results for the CPU-only host, =cei=, followed by the
 two GPU-equipped clusters, =poti= and =tupi=. Finally, we present a joint
 heatmap visualization of Masking Effectiveness across all GPU
 experimental conditions, enabling direct identification of optimal
@@ -749,26 +749,6 @@ surprisingly forgiving from an MPI communication-hiding perspective.
 \end{figure}
 #+end_export
 
-The =tsubasa= machine (a CPU-only host with dual Xeon Gold 6226
-processors, representing a somewhat more powerful CPU platform than
-=cei=) fully corroborates the same trend. We observe that Masking
-Effectiveness stays near zero for sub-100 Mbps bandwidths across all
-problem sizes and host counts, but surges past 0.90 at 1 Gbps for the
-largest problem size (512³) with 8 hosts, and remains consistently
-high (above 0.80) for large problems at faster interconnects. The
-slightly higher core count and clock speed of the Gold 6226 relative
-to the Silver 4116 do not fundamentally alter the picture: the
-compute-bound nature of the application on CPU-only hardware ensures
-that, as soon as the network delivers data at a reasonable pace,
-computation effortlessly absorbs the communication latency.
-
-Both =cei= and =tsubasa= have a coherent story. On CPU-only clusters,
-near-perfect communication masking (closer to 1 in our plots) is
-easily achievable because arithmetic intensity exceeds network
-throughput, requiring no special software tuning. Interestingly, the
-=cei= cluster has a 10 Gbps network, so one might already expect good
-ghost-cell capability for communication hiding in this cluster.
-
 *** GPU Cluster: The Network Bottleneck
 
 Figure \ref{fig:poti-masking} illustrates the results for the =poti= GPU
@@ -892,14 +872,11 @@ This paper presented a distributed MPI implementation of the Fletcher
 RTM application with 3D block decomposition and asynchronous ghost
 cell communication, alongside a calibrated SimGrid/SMPI simulation
 framework for exploring network configurations beyond those physically
-available. Experiments across four host configurations (cei, tsubasa,
-poti, and tupi) spanning both CPU-only and GPU-equipped clusters
+available. Experiments across four host configurations (cei, poti, and tupi) spanning both CPU-only and GPU-equipped clusters
 exposed two sharply contrasting regimes. On CPU-only machines, modest
 floating-point throughput naturally yields near-perfect communication
 hiding across most network conditions: the cei cluster reaches
-approximately 87% compute load at 512³ on its real 10 Gbps network,
-and tsubasa corroborates the same trend, establishing that arithmetic
-intensity alone is sufficient to mask communication on this class of
+approximately 87% compute load at 512³ on its real 10 Gbps network, establishing that arithmetic intensity alone is sufficient to mask communication on this class of
 hardware without any special tuning. On GPU-equipped clusters, the
 picture inverts entirely: the raw throughput of RTX4070 and RTX4090
 accelerators makes network bandwidth the governing bottleneck, with

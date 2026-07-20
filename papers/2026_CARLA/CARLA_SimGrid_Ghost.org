@@ -24,6 +24,290 @@
 # You need at least Org 9 and Emacs 24 to make this work.
 # If you do, just type make (thanks Luka Stanisic for this).
 
+* Reviews                                                          :noexport:
+** DONE Review 1 (Acceptance)
+
+On the manuscript: Well written, applied best practices for latency
+hiding for stencil codes, chose plausible execution platforms, results
+consistent to what is expected from the literature. Clean design of
+experiment, clean presentation of results. Very good computer science
+and HPC methodology. More than deserving of publication.
+
+Not an impediment for current publication, but, I would like to make
+some comments that might be useful for future work by the authors,
+which are mostly focused on the user/geophysical point of view:
+
+1) The domain sizes are artificially low for the kind of experiments
+   the authors seek to investigate, from a geophysicist point of
+   view. Most workloads are defined by the smallest unit where the
+   system state can be hosted (i.e. domain with all fields), and for
+   the biggest size domain, 512^3, this is still a couple GBs, no more
+   than 10 GB.
+
+From just a pratical point of view, it would not make sense to split
+such small domain among either nodes or devices, since one could
+simply take a bit longer on a per-shot basis and get perfect linear
+scaling, by distributing one shot per node. This is even more true for
+the smaller-sized grids.
+
+This is specially noticeable on the GPU-accelerated cases, since
+moving data and communicating through the PCI-e bus is a huge penalty,
+which normally is avoided at all costs on production codes. Most
+geophysical workflows (not simulations) are throughput-bound, not
+latency bound.
+
+It would be very interesting to see authors explore these kind of
+analysis for high-resolution elastic simulations, which require much
+finer grids and a larger number of fields per grid-point. These
+usually do not fit the memory of a single GPU, even datacenter GPUs,
+for reasonable frequency ranges, thus inter-accelerator or inter-node
+communication becomes an actual necessity, and low network speed
+quickly becomes a very real problem, specially for legacy
+infrastructure.
+
+#+begin_comment
+Future work.
+#+end_comment
+
+
+2) Again, I don't understand why such large number of domain splits,
+   at least for geophysical workflows. Assuming 64 RTX 4090 GPUs,
+   split among 16 nodes, having one MPI rank per GPU, and exchanging
+   halos accordingly, the reasonable grid size to justify that many
+   nodes for one single domain would be around 3400^3 (= 64 x 24 GB /
+   5 fields / 8 bytes ) for the fletcher acoustic wave equation.
+
+This is way bigger than both: 1) The largest domain size investigated
+by the authors; 2) Almost any simulation for wave propagation which is
+not fully elastic, given frequency content limitation and the minimum
+speed of sound in realistic scenarios. This creates a scenario of
+unrealistic network pressure, and could paint a unnecessarily
+pessimistic view of the system.
+
+#+begin_comment
+Não temos o HW para isso. Future Work.
+#+end_comment
+
+3) I don't understand why the authors chose to investigate network
+   bandwidths as low as 10 Mbps (Fig. 3), specially in the context of
+   HPC systems. Such slow networks can barely be bought for consumer
+   settings, the bare minimum being usually around 100/1000 Mbps
+   nowadays. It would be useful to understand this choice beyond "it
+   is a possible network speed value".
+
+#+begin_comment
+É o que temos. Não vamos mudar nada aqui.
+#+end_comment
+
+4) It would be interesting, on a future work, for the authors to
+   explicitly account for PCI-e bus latency when discussing the
+   effects of network on GPU nodes, because there is significant
+   penalty in moving data from two gpus inside the same node, just
+   from the PCI-e latency. This limitation should provide different
+   threshold values than from the network alone.
+
+#+begin_comment
+Realmente future work.
+#+end_comment
+
+** DONE Review 2 (Revision)
+
+The manuscript addresses runtime optimization in distributed
+simulation applications by analyzing the ghost cell asynchronous
+communication technique to overlap computation and
+communication. Although the work demonstrates the effectiveness of the
+algorithm in a specific case study, the problem statement lacks the
+specificity necessary to clearly establish the context of the research
+and the restrictions under which the proposed solution operates;
+
+It is essential that the environmental conditions and characteristics
+of the hardware infrastructure where the algorithm is applicable are
+explicitly defined to substantiate the relevance of the study.
+
+Likewise, there is an ambiguity in the methodological approach
+derived from the wording of the introduction, which wrongly suggests a
+multi-objective combinatorial approach based on variables such as the
+size of the problem, the architecture and the bandwidth, for which a
+balance is sought that is ultimately not addressed from that
+perspective nor does it delve into the details of the specific
+algorithm used.
+
+Therefore, it is necessary to define whether the design corresponds to
+an experimental research, which would require the formal definition of
+a function or goal objective, or to an exploratory study, in which
+case the exploration strategy, the observation framework and the
+systematic analysis of the results must be made explicit.
+
+In its current state, the narrative adopts the procedural structure of
+a technical development report instead of a scientific research
+article aimed at solving a generic problem in the area, so reorienting
+the document towards standard methodological rigor and a solid
+theoretical justification will allow raising the quality of the
+manuscript, ensuring its replicability and facilitating its
+understanding for the scientific community.
+
+** TODO Review 3 (Acceptance)
+
+This paper discusses the use of SimGrid simulations as a medium to quantify and analyze the effectiveness of computation and communication overlap in halo exchanges present in MPI parallel applications. The authors focus on a particular seismic simulation (Fletcher RTM) to analyze how masking effectiveness is influenced by the number of processing units (CPU or GPUs), problem size, and available interconnect bandwidth.
+
+Strengths
+
+ * The paper presents an interesting approach to using simulations to
+   evaluate the impact of network bandwidth changes on communication
+   bottlenecks in an application, given a specific hardware
+   configuration and problem size.
+ * The experimental design is well formulated and accounts for the main
+   factors one would consider when analyzing halo exchanges.
+ * The heatmap in Figure 6 is a good use of visualization to integrate
+   application-dependent parameters (such as problem size and
+   parallelization) with hardware characteristics (such as network
+   capability and processing performance) for analyzing performance
+   behavior.
+
+Weaknesses
+
+ * The description of the modeled clusters is too concise. It is not
+   clear if in those clusters, especially the GPU ones (tupi, poti),
+   there are multiple GPUs per node and what the network topology is.
+
+ #+begin_comment
+Tentar deixar mais claro isso.
+ #+end_comment
+ 
+ * In section 3.2 the authors make the argument that their tests on
+   tsubasa agree with what they see in cei. However, the data is not
+   really shown to the reader so it is not possible to corroborate
+   this. Data should be shown to support their claim.
+
+ #+begin_comment
+Talvez tirar a argumentação sobre a tsubasa.
+ #+end_comment
+ 
+ * The paper needs some rephrasing, as some sections require several
+   re-reads to grasp the intended meaning. In particular, the section
+   where Masking Effectiveness is presented could benefit from
+   mathematical notation to establish the metric.
+
+Questions to authors
+
+  * From my understanding, on the modeled GPU machines, you assume all
+   neighbor communication occurs over the network. In realistic HPC
+   scenarios, one would assume GPU nodes contain multiple accelerators
+   interconnected with NVLink. What would the implications be in the
+   masking experiments when one considers intranode exchanges?
+
+  #+begin_comment
+Communication heterogeneity não foi considerada. Implificações seriam
+diversas mas não estudamos isso. Não precisamos fazer nada.
+  #+end_comment
+  
+ * Could the authors provide a little more explanation of Figure 2?
+    From a time-trace perspective, it is not entirely clear to me what
+   the "height" of each rank bar represents. In particular, on the
+   right side plot, does the height of the blue filling represent
+   anything? Why do ranks 0-3 and 12-15 seem to have higher blue
+   regions than the middle ranks?
+
+ #+begin_comment
+Ótima questão por que não sabemos a resposta para a pergunta "Why do
+ranks 0-3 and 12-15 seem to have higher blue regions than the middle
+ranks?". Então acho que aqui tu poderia esclarecer o que significa a
+altura das barrinhas. Fazer este item a respeito da Figura 2.
+ #+end_comment
+ 
+ * The right-hand-side plot shows that ranks 0-3 and 12-15 appear to
+   spend more time in MPI_Waitall than ranks 4-11. Could you briefly
+   describe why this is?
+
+ #+begin_comment
+Good question. Verificar então a hipótese do desbalanceamento de
+carga, contando quantas células cada trabalhador tem e ver se esses
+números se relacionam com os ranks [4-11] ou com os ranks
+[0-3,12-15].
+
+Outra hipótese, é que tenha a ver com a quantidade de vizinhos. Então,
+contar quantos vizinhos um determinado rank de [0-15] tem [contar
+também o volume de comunicação entre esses vizinhos]. Verificar se
+essas contagens se correlacionam com esses grupos visuais (os ranks
+[4-11] ou com os ranks [0-3,12-15])
+ #+end_comment
+ 
+ * In Section 3.2, you state: "whenever the network bandwidth is
+   sufficiently low relative to the available compute throughput, we
+   obtain communication masking trivially."
+     o When you say compute throughput, do you mean arithmetic
+       intensity or compute load? Higher compute throughput (larger
+       FLOPS) would mean less time in computation, so less chance to
+       hide communication, which is contrary to what you state.
+
+ #+begin_comment
+Melhorar o fraseamento. Quanto mais carga de trabalho, mais chance de mascarar.
+ #+end_comment
+ 
+ * In general, the paper would benefit from a stronger formulation of
+   takeaways for other stencil codes where optimizing
+   communication-computation overlap is important.
+
+ #+begin_comment
+Não tem como fazer pois envolve "other stencil codes".
+ #+end_comment
+ 
+Minor comments
+
+ * This sentence in section 3.1 needs some rework as it is currently
+   confusing:
+     o "We employ this metric in our results interpretation, as it
+       clearly reflects how much communicating hides a particular
+       configuration (problem size, number of workers, and network
+       capacity) delivers in terms of behavior."
+ * In Section 2.3 there is a badly formatted latex expression: $≈$1,GB,
+
+ #+begin_comment
+I think we should do this minor comments.
+ #+end_comment
+   
+Overall recommendation
+
+Weak Accept
+
+** TODO Review 4 (Acceptance)
+
+Paper Summary:
+This paper presents three main contributions. First, it proposes the design and implementation of a distributed MPI-based application for solving pseudo-acoustic wave equations for seismic imaging in anisotropic media, employing a 3D block decomposition and asynchronous ghost-cell communication. Second, it provides an implementation of this application using the SimGrid/SMPI simulation framework. Finally, it presents an evaluation using SimGrid to characterize the effectiveness of ghost-cell communication masking under several workloads and host configurations, ranging from CPU-only to GPU-equipped clusters. The results show that CPU-only systems can achieve near-perfect communication overlap, whereas GPU-accelerated clusters require network interconnects of at least 10–25 Gbps to avoid becoming network-bound.
+Strengths:
+
+ * A wide range of experiments.
+ * Interesting performance results.
+
+Weaknesses
+
+ * There is no related work on simulation frameworks or benchmarks that
+   use the ghost cells strategy.
+
+ #+begin_comment
+Já eraz... vamos deixar como está.
+ #+end_comment
+ 
+ * The contributions of this paper are not very significant, and there
+   is no clear future direction that justifies this evaluation.
+
+ #+begin_comment
+Talvez colocar uma palavra para ajudar a esclarecer a parte "and there
+   is no clear future direction that justifies this evaluation".
+ #+end_comment
+ 
+
+Detailed comments
+
+ * Redundant information within the same paragraph: in 'Evaluation
+   Methodology and Masking Effectiveness Metric', the variations in
+   network configurations, nodes, and workload are repeated
+   consecutively.
+
+ #+begin_comment
+Remover a redundância.
+ #+end_comment
+
 * Figures                                                          :noexport:
 *** Comm. Cost vs. Partitioning Strategy
 #+begin_src R :results output :session *R* :exports both :noweb yes :colnames yes :eval no

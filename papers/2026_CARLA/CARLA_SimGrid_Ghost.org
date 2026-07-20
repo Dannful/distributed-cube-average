@@ -699,7 +699,7 @@ masking is 0.792.
 #+begin_export latex
 \begin{figure}[!htb]
 \includegraphics[width=\linewidth]{./img/masking-example.png}
-\caption{The Masking Effectiveness rationale from a space/time view of the MPI Application behavior, where the behavior of every MPI Rank (Y-axis) appears along time (X-axis). Colors represent the MPI state (blue) and time spent doing calculations (yellow). On the left, a communication-bound \texttt{tupi} case with 16 nodes with a 1 Gbps network bandwidth depicting a very poor Masking Effectiveness of 0.0819. On the right, a compute-bound case with a 100 Gbps network bandwidth, with a much better Masking Effectiveness of 0.792.}
+\caption{The Masking Effectiveness rationale from a space/time view of the MPI Application behavior, where the load of each operation of every rank (Y-axis), represented by the height of the bars, denotes the amount of MPI communication (blue) or computation (yellow) being done at a specific point of time (X-axis). On the left, a communication-bound \texttt{tupi} case with 16 nodes with a 1 Gbps network bandwidth depicting a very poor Masking Effectiveness of 0.0819. On the right, a compute-bound case with a 100 Gbps network bandwidth, with a much better Masking Effectiveness of 0.792.}
 \label{fig:masking-example}
 \end{figure}
 #+end_export
@@ -715,9 +715,9 @@ manipulation of the events and the computation of our metric.
 
 Figure \ref{fig:cei-masking} illustrates the results for the =cei=
 machine (a CPU-only host equipped with dual Xeon Silver 4116
-processors), revealing a striking pattern: whenever the network
-bandwidth is sufficiently low relative to the available compute
-throughput, we obtain communication masking trivially. Across all
+processors), revealing a striking pattern: whenever the available compute
+throughput is sufficiently low relative to the size of the problem domain,
+we obtain communication masking trivially. Across all
 problem sizes (64³ to 512³) and host counts (8 to 64), Masking
 Effectiveness remains below 0.30 for bandwidths at or below 100 Mbps,
 reflecting configurations in which communication dominates and there

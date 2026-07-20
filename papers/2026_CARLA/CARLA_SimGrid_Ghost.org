@@ -925,6 +925,9 @@ All experiments in this work used the PCAD platform,
 http://pcad.inf.ufrgs.br, at INF/UFRGS. This work was partially
 supported by Petrobras through an agreement with UFRGS under 2.20.2205
 (361), SAP 23078.450001/2022-17, and SIC 2020/00182-5.
+This study was financed in part by the ``Coordenação de
+Aperfeiçoamento de Pessoal de Nível Superior'' Brasil (CAPES) --
+Finance Code 001.
 
 * References                                                        :ignore:
 

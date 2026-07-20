@@ -611,7 +611,7 @@ thresholds, bandwidth, and latency from a systematic suite of
 microbenchmarks. We adopt these calibrated values throughout the
 simulations. Our post-calibration validation shows that the platform
 description reproduces the real cluster's behavior within a 15% error
-margin for message sizes up to $\approx$1,GB, which we consider acceptable
+margin for message sizes up to $\approx$1~GB, which we consider acceptable
 since application behavior, both compute and communication, remains
 very homogeneous throughout execution, indicating that trends stay
 sufficiently faithful to evaluate communication masking effectiveness.
@@ -690,9 +690,8 @@ Communication ratio, representing the fraction of execution time
 during which communication overlaps with computation: the closer to 1,
 the more effectively the application masks its communication
 overhead. We employ this metric in our results interpretation, as it
-clearly reflects how much communicating hides a particular
-configuration (problem size, number of workers, and network capacity)
-delivers in terms of behavior. Figure \ref{fig:masking-example} shows
+clearly indicates whether the MPI operations are the current bottleneck or not.
+Figure \ref{fig:masking-example} shows
 exactly this perception: on the left, a very communication-bound run
 with masking of only 0.0819; on the right, a very good example where
 masking is 0.792.

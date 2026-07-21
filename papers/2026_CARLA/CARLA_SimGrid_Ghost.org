@@ -199,7 +199,7 @@ Questions to authors
    masking experiments when one considers intranode exchanges?
 
   #+begin_comment
-Communication heterogeneity não foi considerada. Implificações seriam
+Communication heterogeneity não foi considerada. Implicações seriam
 diversas mas não estudamos isso. Não precisamos fazer nada.
   #+end_comment
   

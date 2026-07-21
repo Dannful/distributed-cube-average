@@ -1061,7 +1061,7 @@ infrastructure.
 
 ** Acknowledgments                                                  :ignore:
 
-#+LATEX:\section*{Acknowledgements}
+#+LATEX: \section*{Acknowledgements}
 
 All experiments in this work used the PCAD platform,
 http://pcad.inf.ufrgs.br, at INF/UFRGS. This work was partially

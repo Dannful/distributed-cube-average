@@ -249,7 +249,7 @@ essas contagens se correlacionam com esses grupos visuais (os ranks
        hide communication, which is contrary to what you state.
 
  #+begin_comment
-TODO -> 2702e69
+TODO ->
  
 Melhorar o fraseamento. Quanto mais carga de trabalho, mais chance de mascarar.
  #+end_comment
@@ -850,10 +850,12 @@ manipulation of the events and the computation of our metric.
 
 Figure \ref{fig:cei-masking} illustrates the results for the =cei=
 machine (a CPU-only host equipped with dual Xeon Silver 4116
-processors), revealing a striking pattern: whenever the available compute
-throughput is sufficiently low relative to the size of the problem domain,
-we obtain communication masking trivially. Across all
-problem sizes (64³ to 512³) and host counts (8 to 64), Masking
+processors), revealing a striking pattern: whenever the per-step
+compute time is sufficiently large relative to the communication
+time - e.g., because compute throughput is low or the workload's
+arithmetic intensity is high - communication is trivially masked,
+since it can be fully overlapped with the (longer) computation.
+Across all problem sizes (64³ to 512³) and host counts (8 to 64), Masking
 Effectiveness remains below 0.30 for bandwidths at or below 100 Mbps,
 reflecting configurations in which communication dominates and there
 is little computation to hide it behind. However, as soon as bandwidth

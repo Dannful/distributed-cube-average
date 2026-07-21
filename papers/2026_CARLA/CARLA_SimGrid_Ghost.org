@@ -909,7 +909,7 @@ higher bandwidth to recover meaningful overlap due to their less
 favorable communication-to-computation ratio. The poti data thus
 reveal that to escape the network-bottleneck regime on our =poti= GPU
 cluster requires at least a 10 Gbps or 25 Gbps interconnect, and even
-then only under favorable problem-size and node-count conditions.a
+then only under favorable problem-size and node-count conditions.
 
 #+begin_export latex
 \begin{figure}[!htb]

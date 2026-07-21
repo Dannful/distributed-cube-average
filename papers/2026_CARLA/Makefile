@@ -15,7 +15,7 @@ EMACS_SETUP = \
       (\"\\\\paragraph{%s}\" . \"\\\\paragraph*{%s}\") \
       (\"\\\\subparagraph{%s}\" . \"\\\\subparagraph*{%s}\")))"
 
-.PHONY: all clean distclean
+.PHONY: all clean distclean camera-ready
 
 all: $(NAME).pdf
 
@@ -33,3 +33,10 @@ clean:
 
 distclean: clean
 	rm -f $(NAME).pdf
+	rm -rf camera-ready
+
+camera-ready: $(NAME).tex
+	mkdir -p camera-ready/img
+	cp $(NAME).tex camera-ready/
+	cp biblio.bib camera-ready/
+	cp img/* camera-ready/img/

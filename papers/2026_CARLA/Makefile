@@ -40,3 +40,10 @@ camera-ready: $(NAME).tex
 	cp $(NAME).tex camera-ready/
 	cp biblio.bib camera-ready/
 	cp img/* camera-ready/img/
+	pdflatex $(NAME).tex
+	bibtex $(NAME)
+	pdflatex $(NAME).tex
+	pdflatex $(NAME).tex
+	cp $(NAME).pdf camera-ready/
+	rm -f $(NAME).aux $(NAME).bbl $(NAME).blg $(NAME).log $(NAME).out $(NAME).tex *~
+	tar czf $(NAME)-camera-ready.tgz camera-ready/

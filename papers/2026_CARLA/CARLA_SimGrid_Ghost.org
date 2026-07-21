@@ -319,7 +319,7 @@ Detailed comments
    consecutively.
 
  #+begin_comment
-TODO -> ???
+TODO -> 89668a4
  
 Remover a redundância.
  #+end_comment

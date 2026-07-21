@@ -27,6 +27,127 @@
 * Reviews                                                          :noexport:
 ** Deadline for changes Camera-Ready Version Due: July 27th, 2026 GMT
 https://carlaconference.org/
+** DONE Review 1 (Acceptance)
+
+On the manuscript: Well written, applied best practices for latency
+hiding for stencil codes, chose plausible execution platforms, results
+consistent to what is expected from the literature. Clean design of
+experiment, clean presentation of results. Very good computer science
+and HPC methodology. More than deserving of publication.
+
+Not an impediment for current publication, but, I would like to make
+some comments that might be useful for future work by the authors,
+which are mostly focused on the user/geophysical point of view:
+
+1) The domain sizes are artificially low for the kind of experiments
+   the authors seek to investigate, from a geophysicist point of
+   view. Most workloads are defined by the smallest unit where the
+   system state can be hosted (i.e. domain with all fields), and for
+   the biggest size domain, 512^3, this is still a couple GBs, no more
+   than 10 GB.
+
+From just a pratical point of view, it would not make sense to split
+such small domain among either nodes or devices, since one could
+simply take a bit longer on a per-shot basis and get perfect linear
+scaling, by distributing one shot per node. This is even more true for
+the smaller-sized grids.
+
+This is specially noticeable on the GPU-accelerated cases, since
+moving data and communicating through the PCI-e bus is a huge penalty,
+which normally is avoided at all costs on production codes. Most
+geophysical workflows (not simulations) are throughput-bound, not
+latency bound.
+
+It would be very interesting to see authors explore these kind of
+analysis for high-resolution elastic simulations, which require much
+finer grids and a larger number of fields per grid-point. These
+usually do not fit the memory of a single GPU, even datacenter GPUs,
+for reasonable frequency ranges, thus inter-accelerator or inter-node
+communication becomes an actual necessity, and low network speed
+quickly becomes a very real problem, specially for legacy
+infrastructure.
+
+#+begin_comment
+Future work.
+#+end_comment
+
+
+2) Again, I don't understand why such large number of domain splits,
+   at least for geophysical workflows. Assuming 64 RTX 4090 GPUs,
+   split among 16 nodes, having one MPI rank per GPU, and exchanging
+   halos accordingly, the reasonable grid size to justify that many
+   nodes for one single domain would be around 3400^3 (= 64 x 24 GB /
+   5 fields / 8 bytes ) for the fletcher acoustic wave equation.
+
+This is way bigger than both: 1) The largest domain size investigated
+by the authors; 2) Almost any simulation for wave propagation which is
+not fully elastic, given frequency content limitation and the minimum
+speed of sound in realistic scenarios. This creates a scenario of
+unrealistic network pressure, and could paint a unnecessarily
+pessimistic view of the system.
+
+#+begin_comment
+Não temos o HW para isso. Future Work.
+#+end_comment
+
+3) I don't understand why the authors chose to investigate network
+   bandwidths as low as 10 Mbps (Fig. 3), specially in the context of
+   HPC systems. Such slow networks can barely be bought for consumer
+   settings, the bare minimum being usually around 100/1000 Mbps
+   nowadays. It would be useful to understand this choice beyond "it
+   is a possible network speed value".
+
+#+begin_comment
+É o que temos. Não vamos mudar nada aqui.
+#+end_comment
+
+4) It would be interesting, on a future work, for the authors to
+   explicitly account for PCI-e bus latency when discussing the
+   effects of network on GPU nodes, because there is significant
+   penalty in moving data from two gpus inside the same node, just
+   from the PCI-e latency. This limitation should provide different
+   threshold values than from the network alone.
+
+#+begin_comment
+Realmente future work.
+#+end_comment
+
+** DONE Review 2 (Revision)
+
+The manuscript addresses runtime optimization in distributed
+simulation applications by analyzing the ghost cell asynchronous
+communication technique to overlap computation and
+communication. Although the work demonstrates the effectiveness of the
+algorithm in a specific case study, the problem statement lacks the
+specificity necessary to clearly establish the context of the research
+and the restrictions under which the proposed solution operates;
+
+It is essential that the environmental conditions and characteristics
+of the hardware infrastructure where the algorithm is applicable are
+explicitly defined to substantiate the relevance of the study.
+
+Likewise, there is an ambiguity in the methodological approach
+derived from the wording of the introduction, which wrongly suggests a
+multi-objective combinatorial approach based on variables such as the
+size of the problem, the architecture and the bandwidth, for which a
+balance is sought that is ultimately not addressed from that
+perspective nor does it delve into the details of the specific
+algorithm used.
+
+Therefore, it is necessary to define whether the design corresponds to
+an experimental research, which would require the formal definition of
+a function or goal objective, or to an exploratory study, in which
+case the exploration strategy, the observation framework and the
+systematic analysis of the results must be made explicit.
+
+In its current state, the narrative adopts the procedural structure of
+a technical development report instead of a scientific research
+article aimed at solving a generic problem in the area, so reorienting
+the document towards standard methodological rigor and a solid
+theoretical justification will allow raising the quality of the
+manuscript, ensuring its replicability and facilitating its
+understanding for the scientific community.
+
 ** TODO Review 3 (Acceptance)
 
 This paper discusses the use of SimGrid simulations as a medium to quantify and analyze the effectiveness of computation and communication overlap in halo exchanges present in MPI parallel applications. The authors focus on a particular seismic simulation (Fletcher RTM) to analyze how masking effectiveness is influenced by the number of processing units (CPU or GPUs), problem size, and available interconnect bandwidth.

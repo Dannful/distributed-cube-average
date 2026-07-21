@@ -626,12 +626,11 @@ decreases as problem size grows, provided the decomposition remains
 cubic. The ~MPI_Dims_create~ and ~MPI_Cart_create~ functions create a 3D
 partitioning that automatically distributes the process count across
 the three axes and establishes a Cartesian communicator. A known
-pitfall arises with prime process counts: since one cannot use primes
-to factor into a balanced cube. We need to pay attention to avoid
-using prime numbers for rank counts, as ~MPI_Dims_create~ degenerates to
-a $\{P,1,1\}$ slices decomposition, negating the surface-area
-advantage of block partitioning.
-
+pitfall arises with prime process counts: since one cannot
+factor a prime number into a balanced cube, ~MPI_Dims_create~ degenerates
+to a $\{P,1,1\}$ slices decomposition if the rank count is prime.
+We therefore avoid using prime numbers for rank counts, which would
+negate the surface-area advantage of block partitioning.
 #+begin_export latex
 \begin{figure}[!htb]
 \includegraphics[width=\linewidth]{./img/comm_cost.png}

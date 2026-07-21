@@ -1029,7 +1029,7 @@ clusters. The joint heatmap of Masking Effectiveness across all
 immediately readable map of the transition boundary between
 network-bound and compute-bound regimes, a kind of capacity-planning
 chart for practitioners deciding whether a network upgrade is
-worthwhile for a given workload. This action is precisely where
+worthwhile for a given workload. This is precisely where
 SimGrid/SMPI's value is most visible: by emulating computations
 between MPI calls on real hardware while simulating the communication
 layer with freely configurable parameters, it navigates the full

@@ -173,6 +173,8 @@ Weaknesses
    there are multiple GPUs per node and what the network topology is.
 
  #+begin_comment
+TODO -> DONE 3ac3b4b
+ 
 Tentar deixar mais claro isso.
  #+end_comment
  
@@ -182,6 +184,8 @@ Tentar deixar mais claro isso.
    this. Data should be shown to support their claim.
 
  #+begin_comment
+TODO -> DONE 3602d46
+ 
 Talvez tirar a argumentação sobre a tsubasa.
  #+end_comment
  
@@ -211,7 +215,7 @@ diversas mas não estudamos isso. Não precisamos fazer nada.
    regions than the middle ranks?
 
  #+begin_comment
-TODO
+TODO ->  2702e69
  
 Ótima questão por que não sabemos a resposta para a pergunta "Why do
 ranks 0-3 and 12-15 seem to have higher blue regions than the middle
@@ -245,7 +249,7 @@ essas contagens se correlacionam com esses grupos visuais (os ranks
        hide communication, which is contrary to what you state.
 
  #+begin_comment
-TODO
+TODO -> 2702e69
  
 Melhorar o fraseamento. Quanto mais carga de trabalho, mais chance de mascarar.
  #+end_comment
@@ -269,7 +273,7 @@ Minor comments
  * In Section 2.3 there is a badly formatted latex expression: $≈$1,GB,
 
  #+begin_comment
-TODO
+TODO -> DONE 9c66d0b
  
 I think we should do this minor comments.
  #+end_comment

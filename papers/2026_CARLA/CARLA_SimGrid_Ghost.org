@@ -507,7 +507,7 @@ parameters originate from a systematic platform calibration procedure
 \cite{simgrid_calibration}. SimGrid's goal is to enable the study of
 existing MPI applications within the comfort of the simulator
 \cite{simgrid_lower_barriers}. SimGrid's performance prediction
-capabilities already exist on communication-intensive benchmarks, most
+capabilities have already been demonstrated for communication-intensive benchmarks, most
 prominently HPL \cite{hpl_emulation} \cite{hpl_prediction}.
 
 Despite this breadth, published SimGrid use cases tend to focus on

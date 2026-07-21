@@ -249,7 +249,7 @@ essas contagens se correlacionam com esses grupos visuais (os ranks
        hide communication, which is contrary to what you state.
 
  #+begin_comment
-TODO ->
+TODO -> 3ed6baf
  
 Melhorar o fraseamento. Quanto mais carga de trabalho, mais chance de mascarar.
  #+end_comment

@@ -143,58 +143,61 @@
 }
 
 % rw/smpi_article.pdf
-@article{simgrid_smpi,
-  author        = {Clauss, Pierre-Nicolas and Stillwell, Mark and Genaud, St\'{e}phane and Suter, Fr\'{e}d\'{e}ric and Casanova, Henri and Quinson, Martin},
-  title         = {Single Node On-Line Simulation of {MPI} Applications with {SMPI}},
-  journal       = {Concurrency and Computation: Practice and Experience},
-  year          = {2011},
-  volume        = {23},
-  number        = {5},
-  pages         = {485--495},
-  doi           = {10.1002/cpe.1666}
-}
+@INPROCEEDINGS{simgrid_smpi,
+  author={Clauss, Pierre-Nicolas and Stillwell, Mark and Genaud, Stephane and Suter, Frederic and Casanova, Henri and Quinson, Martin},
+  booktitle={2011 IEEE International Parallel \& Distributed Processing Symposium}, 
+  title={Single Node On-Line Simulation of MPI Applications with SMPI}, 
+  year={2011},
+  volume={},
+  number={},
+  pages={664-675},
+  keywords={Computational modeling;Analytical models;Delay;Data models;Random access memory;Scalability;Kernel},
+  doi={10.1109/IPDPS.2011.69}}
 
 % rw/1-s2.0-S0167819125000018-main.pdf
 @article{simgrid_lower_barriers,
-  author        = {Bedaride, Paul and Degomme, Augustin and Genaud, St\'{e}phane and Legrand, Arnaud and Markomanolis, Georgios S. and Quinson, Martin and Stillwell, Mark and Suter, Fr\'{e}d\'{e}ric and Videau, Brice},
-  title         = {Lowering Entry Barriers to Developing Custom Simulators of Distributed Applications and Platforms with {SimGrid}},
-  journal       = {Parallel Computing},
-  year          = {2025},
-  volume        = {123},
-  pages         = {103--117},
-  doi           = {10.1016/j.parco.2025.103117}
+  title={Lowering entry barriers to developing custom simulators of distributed applications and platforms with SimGrid},
+  author={Casanova, Henri and Giersch, Arnaud and Legrand, Arnaud and Quinson, Martin and Suter, Fr{\'e}d{\'e}ric},
+  journal={Parallel Computing},
+  volume={123},
+  pages={103125},
+  year={2025},
+  publisher={Elsevier}
 }
 
 % rw/paper-3.pdf
-@inproceedings{hpl_emulation,
-  author        = {Degomme, Augustin and Legrand, Arnaud and Markomanolis, Georgios S. and Quinson, Martin and Stillwell, Mark and Suter, Fr\'{e}d\'{e}ric},
-  title         = {Emulating High Performance Linpack on a Commodity Server at the Scale of a Supercomputer},
-  booktitle     = {Proceedings of the 6th ACM/SPEC International Conference on Performance Engineering (ICPE)},
-  year          = {2015},
-  pages         = {205--216},
-  doi           = {10.1145/2668930.2688051}
+@unpublished{hpl_emulation,
+  TITLE = {{Emulating High Performance Linpack on a Commodity Server at the Scale of a Supercomputer}},
+  AUTHOR = {Cornebize, Tom and Heinrich, Franz C and Legrand, Arnaud and Vienne, J{\'e}r{\^o}me},
+  URL = {https://inria.hal.science/hal-01654804},
+  NOTE = {working paper or preprint},
+  YEAR = {2017},
+  MONTH = Dec,
+  PDF = {https://inria.hal.science/hal-01654804v1/file/paper.pdf},
+  HAL_ID = {hal-01654804},
+  HAL_VERSION = {v1},
 }
 
 % rw/paper-4.pdf
 @inproceedings{hpl_prediction,
-  author        = {Cornebize, Tom and Legrand, Arnaud and Suter, Fr\'{e}d\'{e}ric},
-  title         = {Fast and Faithful Performance Prediction of {MPI} Applications: The {HPL} Case Study},
-  booktitle     = {IEEE International Conference on Cluster Computing (CLUSTER)},
-  year          = {2022},
-  pages         = {1--12},
-  doi           = {10.1109/CLUSTER51413.2022.00044}
+  title={Fast and faithful performance prediction of MPI applications: the HPL case study},
+  author={Cornebize, Tom and Legrand, Arnaud and Heinrich, Franz C},
+  booktitle={2019 IEEE International Conference on Cluster Computing (CLUSTER)},
+  pages={1--11},
+  year={2019},
+  organization={IEEE}
 }
 
 % rw/gmd-11-3409-2018.pdf
-@article{gmd_halo,
-  author        = {van den Berg, Babette and van Meijgaard, Erik and van Ulft, Bert},
-  title         = {Simulation of the Performance and Scalability of {MPI} Communications of Atmospheric Models Running on Exascale Supercomputers},
-  journal       = {Geoscientific Model Development},
-  year          = {2018},
-  volume        = {11},
-  number        = {8},
-  pages         = {3409--3426},
-  doi           = {10.5194/gmd-11-3409-2018}
+@Article{gmd_halo,
+AUTHOR = {Zheng, Y. and Marguinaud, P.},
+TITLE = {Simulation of the performance and scalability of message passing interface (MPI) communications of atmospheric models running   on exascale supercomputers},
+JOURNAL = {Geoscientific Model Development},
+VOLUME = {11},
+YEAR = {2018},
+NUMBER = {8},
+PAGES = {3409--3426},
+DOI = {10.5194/gmd-11-3409-2018}
 }
 
 % rw/article-3.pdf
@@ -204,7 +207,6 @@ title = {Process affinity, metrics and impact on performance: an empirical study
 year = {2018},
 isbn = {9781538658154},
 publisher = {IEEE Press},
-url = {https://doi.org/10.1109/CCGRID.2018.00079},
 doi = {10.1109/CCGRID.2018.00079},
 booktitle = {Proceedings of the 18th IEEE/ACM International Symposium on Cluster, Cloud and Grid Computing},
 pages = {523–532},

@@ -304,7 +304,7 @@ Já eraz... vamos deixar como está.
    is no clear future direction that justifies this evaluation.
 
  #+begin_comment
-TODO
+TODO -> ???
  
 Talvez colocar uma palavra para ajudar a esclarecer a parte "and there
    is no clear future direction that justifies this evaluation".
@@ -319,7 +319,7 @@ Detailed comments
    consecutively.
 
  #+begin_comment
-TODO
+TODO -> ???
  
 Remover a redundância.
  #+end_comment

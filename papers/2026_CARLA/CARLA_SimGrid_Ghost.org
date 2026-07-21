@@ -567,7 +567,11 @@ natural consequence of arithmetic intensity, while GPU-accelerated
 clusters demand at least 10--25 Gbps interconnects to escape a
 network-bound regime, and that partitioning topology, specifically the
 avoidance of prime process counts, is as decisive as bandwidth for
-achieving scalable overlap.
+achieving scalable overlap. Collectively, these contributions open a
+practical simulation-based methodology for capacity planning in
+distributed stencil applications that use halo exchange, bridging
+the gap between costly real-cluster experimentation and abstract
+analytical models.
 
 *** Paper structure                                                :ignore:
 
@@ -1052,7 +1056,12 @@ Future work includes experiments on the Santos Dumont supercomputer to
 evaluate the application on a production platform with a high-speed
 interconnect, detailed SimGrid modeling of the Santos Dumont network
 topology, and integration of HIP kernels to evaluate AMD GPU
-architectures within the same simulation framework.
+architectures within the same simulation framework. We also intend to
+extend this framework to a broader class of stencil-based applications,
+establishing a reusable capacity-planning tool that allows practitioners
+to simulate ghost cell communication patterns and guide hardware
+procurement decisions without requiring access to production-scale
+infrastructure.
 
 ** Acknowledgments                                                  :ignore:
 

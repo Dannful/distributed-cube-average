@@ -447,7 +447,7 @@ cell communication, together with a calibrated SimGrid/SMPI simulation
 framework that enables the exploration of network configurations
 beyond those physically available.
 #+latex: %
-Experiments across four host configurations reveal two contrasting
+Experiments across three host configurations reveal two contrasting
 regimes: CPU-only machines naturally achieve near-perfect
 communication hiding due to modest floating-point throughput, while
 GPU-equipped clusters invert the bottleneck entirely, with accelerator
@@ -560,7 +560,7 @@ communication, numerically validated against single-node reference
 results; *(ii)* a calibrated SimGrid/SMPI simulation framework for that
 application, validated against real cluster executions within a 15%
 error margin; and *(iii)* an evaluation that employs SimGrid to
-characterize ghost cell masking effectiveness across four host
+characterize ghost cell masking effectiveness across three host
 configurations spanning CPU-only and GPU-equipped clusters, revealing
 that CPU-only machines achieve near-perfect communication hiding as a
 natural consequence of arithmetic intensity, while GPU-accelerated
@@ -1008,7 +1008,7 @@ This paper presented a distributed MPI implementation of the Fletcher
 RTM application with 3D block decomposition and asynchronous ghost
 cell communication, alongside a calibrated SimGrid/SMPI simulation
 framework for exploring network configurations beyond those physically
-available. Experiments across four host configurations (cei, poti, and tupi) spanning both CPU-only and GPU-equipped clusters
+available. Experiments across three host configurations (cei, poti, and tupi) spanning both CPU-only and GPU-equipped clusters
 exposed two sharply contrasting regimes. On CPU-only machines, modest
 floating-point throughput naturally yields near-perfect communication
 hiding across most network conditions: the cei cluster reaches

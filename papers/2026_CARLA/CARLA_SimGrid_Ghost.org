@@ -542,7 +542,7 @@ addresses.
 We selected the Fletcher RTM application as the vehicle to make the
 evaluation concrete and non-trivial. Fletcher solves pseudo-acoustic
 wave equations for seismic imaging in anisotropic media
-\cite{fletcher} \cite{fletcher_modeling}, applying an eighth-order
+\cite{fletcher}, applying an eighth-order
 finite-difference stencil over a discretized 3D grid at each time
 step. The application is computationally intensive and memory-bound
 per iteration, and benefits strongly from GPU acceleration
@@ -683,7 +683,7 @@ $q$ through:
 where $v_{pz}$, $v_{pn}$, $v_{px}$ are derived P-wave velocities, $v_{sx}$ is the
 shear velocity, and $H_1$, $H_2$ are differential operators encoding,
 respectively, the anisotropic and isotropic components of the stencil
-\cite{fletcher_modeling}. The parameter $\alpha$ is set to 1 following
+\cite{fletcher}. The parameter $\alpha$ is set to 1 following
 Fletcher's recommendation. The stencil applies this update at every
 grid point using an eighth-order finite-difference scheme, advancing
 both $p$ and $q$ by one time step $\Delta t$.

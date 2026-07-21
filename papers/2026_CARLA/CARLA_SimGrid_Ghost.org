@@ -781,17 +781,13 @@ hosts*, spans five levels (4, 8, 16, 27, and 64), ranging from a small
 cluster (4 nodes) to a larger deployment (64 nodes). The choice of
 these levels aligns with the 3D partitioning. The third factor, *(3)
 network bandwidth*, takes six levels (1, 2.5, 10, 25, 50, and 100
-Gbps), spanning three orders of magnitude from low-speed to high-speed
-interconnects. If the host machine has only CPU cores, the CPU DoE
-differs due to lower compute power. It also follows a full factorial
-structure, crossing the same three factors to produce 128 unique
-experimental conditions. The problem size factor contains four levels
-(64, 128, 256, and 512). The number of host factors spans four levels
-(8, 16, 32, and 64). Finally, the network bandwidth factor takes eight
-levels (10, 25, 40, and 50 Mbps, followed by 1, 2.5, 10, and 100
 Gbps), covering an exceptionally wide range spanning four orders of
 magnitude, from slow interconnects typical of commodity or congested
-networks up to high-speed links found in modern HPC environments. In
+networks up to high-speed links found in modern HPC environments.
+If the host machine has only CPU cores, the CPU DoE
+differs due to lower compute power. It also follows a full factorial
+structure, crossing the same three factors to produce 128 unique
+experimental conditions. In
 both DoE projects, the application executes 1000 iterations, the
 network latency remains fixed at 22\micro seconds (taken from our real
 network measurements), and each combination appears exactly once, with

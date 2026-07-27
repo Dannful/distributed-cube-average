@@ -1595,10 +1595,12 @@ Tangle this file with C-c C-v t
   note          = {Accessed: 2026-03-18}
 }
 
-@article{ghost_cells,
-  author        = {Snir, Marc and Berg Kjolstad, Fredrik},
-  title         = {Ghost Cell Pattern},
-  year          = {2010}
+@inproceedings{ghost_cells,
+  title={Ghost cell pattern},
+  author={Kjolstad, Fredrik Berg and Snir, Marc},
+  booktitle={Proceedings of the 2010 Workshop on Parallel Programming Patterns},
+  pages={1--9},
+  year={2010}
 }
 
 @article{rtm,

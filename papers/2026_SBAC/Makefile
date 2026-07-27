@@ -1,31 +1,45 @@
-NAME=SBAC_Fletcher_MPI
-ARCHIVE=replicable
-# ARCHIVE_FILES=$(shell git ls-tree -r master --name-only | grep -v -e '$(NAME).pdf')
-ARCHIVE_FILES=$(NAME).org refs.bib Makefile figures/*
+NAME = SBAC_Fletcher_MPI
+ARCHIVE = replicable
+ARCHIVE_FILES = $(NAME).org refs.bib Makefile img/*
+
+EMACS_SETUP = \
+  --eval "(require 'ox-latex)" \
+  --eval "(require 'ox-extra)" \
+  --eval "(ox-extras-activate '(ignore-headlines))" \
+  --eval "(setq org-export-babel-evaluate nil)" \
+  --eval "(setq org-confirm-babel-evaluate nil)" \
+  --eval "(add-to-list 'org-latex-classes \
+    '(\"IEEEtran\" \
+      \"\\\\documentclass{IEEEtran}\" \
+      (\"\\\\section{%s}\" . \"\\\\section*{%s}\") \
+      (\"\\\\subsection{%s}\" . \"\\\\subsection*{%s}\") \
+      (\"\\\\subsubsection{%s}\" . \"\\\\subsubsection*{%s}\") \
+      (\"\\\\paragraph{%s}\" . \"\\\\paragraph*{%s}\") \
+      (\"\\\\subparagraph{%s}\" . \"\\\\subparagraph*{%s}\")))"
+
+.PHONY: all clean distclean
 
 all: $(NAME).pdf
 
-# If you have good Emacs and Org-mode installed by default, delete "-l ~/.emacs.d/init.el"
-%.tex: %.org
-	emacs -batch -l ~/.emacs.d/init.el $^  --funcall org-babel-tangle
-	emacs -batch -l ~/.emacs.d/init.el --eval "(setq enable-local-eval t)" --eval "(setq enable-local-variables t)" \
-	--eval "(setq org-export-babel-evaluate t)" $^  --funcall org-latex-export-to-latex
+refs.bib: $(NAME).org
+	emacs -batch \
+	  --eval "(setq org-confirm-babel-evaluate nil)" \
+	  $< --funcall org-babel-tangle
 
-%.pdf: %.tex
-	pdflatex $^
-	bibtex `basename $^ .tex`
-	pdflatex $^
-	pdflatex $^
+$(NAME).tex: $(NAME).org refs.bib
+	emacs -batch $(EMACS_SETUP) $< --funcall org-latex-export-to-latex
 
-%.html: %.org
-	emacs -batch -l ~/.emacs.d/init.el --eval "(setq enable-local-eval t)" --eval "(setq enable-local-variables t)" \
-	   --eval "(setq org-export-babel-evaluate t)" $^  --funcall org-html-export-to-html
+$(NAME).pdf: $(NAME).tex refs.bib $(wildcard img/*)
+	pdflatex $(NAME).tex
+	bibtex $(NAME)
+	pdflatex $(NAME).tex
+	pdflatex $(NAME).tex
 
 $(ARCHIVE).tgz: $(ARCHIVE_FILES)
 	tar --xform "s|^|$(ARCHIVE)/|" -zcf $@ $^
 
 clean:
-	rm -f $(NAME).aux $(NAME).bbl $(NAME).blg $(NAME).log $(NAME).out *~
+	rm -f $(NAME).aux $(NAME).bbl $(NAME).blg $(NAME).log $(NAME).out $(NAME).tex refs.bib *~
 
 distclean: clean
-	rm -f $(NAME).html $(NAME).tex $(NAME).pdf
+	rm -f $(NAME).pdf

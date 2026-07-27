@@ -32,7 +32,7 @@
         ];
       };
 
-      name = "CARLA_SimGrid_Ghost";
+      name = "SBAC_Fletcher_MPI";
 
       pdf = pkgs.stdenv.mkDerivation {
         inherit name;
@@ -41,14 +41,17 @@
         buildPhase = ''
           export HOME=$(mktemp -d)
           emacs -batch \
+            --eval "(setq org-confirm-babel-evaluate nil)" \
+            ${name}.org --funcall org-babel-tangle
+          emacs -batch \
             --eval "(require 'ox-latex)" \
             --eval "(require 'ox-extra)" \
             --eval "(ox-extras-activate '(ignore-headlines))" \
             --eval "(setq org-export-babel-evaluate nil)" \
             --eval "(setq org-confirm-babel-evaluate nil)" \
             --eval "(add-to-list 'org-latex-classes \
-              '(\"LLNCS\" \
-                \"\\\\documentclass[runningheads]{llncs}\\n [NO-DEFAULT-PACKAGES]\\n [EXTRA]\\n\" \
+              '(\"IEEEtran\" \
+                \"\\\\documentclass{IEEEtran}\" \
                 (\"\\\\section{%s}\" . \"\\\\section*{%s}\") \
                 (\"\\\\subsection{%s}\" . \"\\\\subsection*{%s}\") \
                 (\"\\\\subsubsection{%s}\" . \"\\\\subsubsection*{%s}\") \

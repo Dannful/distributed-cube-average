@@ -2,7 +2,7 @@ Review 1:
 The points made for there to be a unified "Discussion" section are valid, but that would arguably only lead to a refactor of the paper as it currently stands, which could very well be interpreted as a personal opinion rather than an objective read on the paper's structure.
 The main findings are well documented under "III. Results", so there should be no need to solely nest it under a separate section.
 The comparison to the literature is mentioned in the introduction (page two, second paragraph), indicating concisely how the paper's implementation stands out from the other existing two. This is referenced again in the results section with figure 10, which points out the throughput differences between the implementations.
-The strengths and limitations, as per my understanding, are sequentially built throughout the results, culminating in the conclusion: the network bottleneck appearing in the GPU executions, only to be mitigated through simulating more powerful bandwidths.
+The strengths and limitations, as per our understanding, are sequentially built throughout the results, culminating in the conclusion: the network bottleneck appearing in the GPU executions, only to be mitigated through simulating more powerful bandwidths.
 Lastly, the practical implications could indeed be explored further, as there is no mention of the Fletcher's method's application in petroleum exploration mentioned in the introduction.
 Most of what has been mentioned is well documented in the paper, leading to the comments being suggestions based on structural preferences rather than objective lack of information.
 

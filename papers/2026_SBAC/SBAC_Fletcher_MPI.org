@@ -543,7 +543,7 @@ networks, computation can fully hide the transfers
 of configurations, the benefits of halo exchange are undeniable.
 
 The Fletcher method solves pseudo-acoustic wave equations for seismic
-imaging in anisotropic media \cite{fletcher, fletcher_modeling},
+imaging in anisotropic media \cite{fletcher},
 applying an eighth-order finite-difference stencil over a discretized
 3D grid at each time step.  The application is computationally
 intensive and memory-bound per iteration, and benefits strongly from
@@ -704,7 +704,7 @@ field $p$ with an auxiliary field $q$ through:
 where $v_{pz}$, $v_{pn}$, $v_{px}$ are derived P-wave velocities, $v_{sx}$ is the
 shear velocity, and $H_1$, $H_2$ are differential operators encoding
 the anisotropic and isotropic stencil components, respectively
-\cite{fletcher_modeling}. The parameter $\alpha$ is set to 1 following
+\cite{fletcher}. The parameter $\alpha$ is set to 1 following
 Fletcher's recommendation. At every grid point, an eighth-order
 finite-difference scheme advances both $p$ and $q$ by a time step $\Delta
 t$.

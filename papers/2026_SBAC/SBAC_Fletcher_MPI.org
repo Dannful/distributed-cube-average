@@ -1710,16 +1710,18 @@ Tangle this file with C-c C-v t
   year          = {2009}
 }
 
-@article{gmd_halo,
-  author        = {van den Berg, Babette and van Meijgaard, Erik and van Ulft, Bert},
-  title         = {Simulation of the Performance and Scalability of {MPI} Communications of Atmospheric Models Running on Exascale Supercomputers},
-  journal       = {Geoscientific Model Development},
-  year          = {2018},
-  volume        = {11},
-  number        = {8},
-  pages         = {3409--3426},
-  doi           = {10.5194/gmd-11-3409-2018}
+@Article{gmd_halo,
+AUTHOR = {Zheng, Y. and Marguinaud, P.},
+TITLE = {Simulation of the performance and scalability of message passing interface (MPI) communications of atmospheric models running   on exascale supercomputers},
+JOURNAL = {Geoscientific Model Development},
+VOLUME = {11},
+YEAR = {2018},
+NUMBER = {8},
+PAGES = {3409--3426},
+URL = {https://gmd.copernicus.org/articles/11/3409/2018/},
+DOI = {10.5194/gmd-11-3409-2018}
 }
+
 
 @article{simdag_affinity,
   author        = {Mercier, Guillaume and Jeannot, Emmanuel},

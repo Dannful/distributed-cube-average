@@ -1564,15 +1564,13 @@ Tangle this file with C-c C-v t
 
 #+begin_src bib :tangle refs.bib
 @article{Cornebize2022VariabilityMatters,
-  title   = {Simulation-based Optimization and Sensibility Analysis of MPI Applications: Variability Matters},
-  author  = {Cornebize, Tom and Legrand, Arnaud},
-  journal = {Parallel Computing},
-  volume   = {115},
-  pages    = {102946},
-  year     = {2022},
-  issn     = {0167-8191},
-  doi      = {10.1016/j.parco.2022.102946},
-  publisher = {Elsevier}
+  title={Simulation-based optimization and sensibility analysis of MPI applications: Variability matters},
+  author={Cornebize, Tom and Legrand, Arnaud},
+  journal={Journal of Parallel and Distributed Computing},
+  volume={166},
+  pages={111--125},
+  year={2022},
+  publisher={Elsevier}
 }
 
 @article{degomme2017simulating,

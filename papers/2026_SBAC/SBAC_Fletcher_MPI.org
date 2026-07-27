@@ -1738,16 +1738,16 @@ DOI = {10.5194/gmd-11-3409-2018}
   year          = {2011}
 }
 
+
 @article{blocking_nonblocking_halo,
-  author        = {Wittmann, Markus and Hager, Georg and Zeiser, Thomas and Treibig, Jan and Wellein, Gerhard},
-  title         = {Comparison of Different Propagation Steps for Lattice {Boltzmann} Methods},
-  journal       = {Computers \& Mathematics with Applications},
-  year          = {2013},
-  volume        = {65},
-  number        = {6},
-  pages         = {924--931},
-  doi           = {10.1016/j.camwa.2012.05.002},
-  note          = {Includes blocking vs.\ non-blocking halo exchange analysis}
+  title={Comparison of different propagation steps for lattice Boltzmann methods},
+  author={Wittmann, Markus and Zeiser, Thomas and Hager, Georg and Wellein, Gerhard},
+  journal={Computers \& Mathematics with Applications},
+  volume={65},
+  number={6},
+  pages={924--935},
+  year={2013},
+  publisher={Elsevier}
 }
 
 @inproceedings{pavan2018wperf,

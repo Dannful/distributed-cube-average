@@ -15,6 +15,7 @@
 #+LATEX_CLASS: IEEEtran
 #+LATEX_CLASS_OPTIONS: [conference,letter,10pt,final]
 #+LATEX_HEADER: \usepackage{censor}
+#+LATEX_HEADER: \StopCensoring
 #+LATEX_HEADER: \usepackage{subcaption}
 #+LATEX_HEADER: \usepackage{listings}
 

@@ -1632,12 +1632,14 @@ Tangle this file with C-c C-v t
 }
 
 @article{anisotropy,
-  title         = {Weak elastic anisotropy},
-  author        = {Leon, Thomsen},
-  year          = {1986},
-  month         = {Oct},
-  volume        = {51},
-  number        = {10}
+  title={Weak elastic anisotropy},
+  author={Thomsen, Leon},
+  journal={Geophysics},
+  volume={51},
+  number={10},
+  pages={1954--1966},
+  year={1986},
+  publisher={Society of Exploration Geophysicists}
 }
 
 @article{multi-gpu,

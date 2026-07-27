@@ -567,8 +567,10 @@ peak performance. In comparison, OpenACC provides a portable
 alternative with less than 10--20% degradation \cite{serpa2019wscad}
 \cite{serpa2021ccpe}. At the multi-GPU level, Rigon et al. overlapped
 inter-device border-region communication with computation, reducing
-the energy-delay product by up to 40% \cite{rigon2024erad}. In
-comparison, Schussler et al. proposed a genetic-algorithm-driven
+the energy-delay product by up to 40% \cite{rigon2024erad}. Another
+multi-GPU work do exists \cite{LI201768}, but the results
+include only a single-node analysis with two K10 GPU cards.
+In comparison, Schussler et al. proposed a genetic-algorithm-driven
 autotuner (BTO) for CUDA thread-block configurations that achieves up
 to 83.8% EDP improvement over default execution on both AMD and NVIDIA
 GPUs \cite{schussler2024pdp}. Portability to novel architectures has
@@ -1564,6 +1566,20 @@ supported by the \censor{Coordenação de Aperfeiçoamento de Pessoal}
 Tangle this file with C-c C-v t
 
 #+begin_src bib :tangle refs.bib
+@article{LI201768,
+title = {A practical implementation of 3D TTI reverse time migration with multi-GPUs},
+journal = {Computers & Geosciences},
+volume = {102},
+pages = {68-78},
+year = {2017},
+issn = {0098-3004},
+doi = {https://doi.org/10.1016/j.cageo.2017.02.011},
+url = {https://www.sciencedirect.com/science/article/pii/S0098300417301759},
+author = {Chun Li and Guofeng Liu and Yihang Li},
+keywords = {TTI RTM, GPU, Random boundary, Asynchronous streams, Shared memory},
+abstract = {Tilted transversely isotropic (TTI) media are typical earth anisotropy media from practical observational studies. Accurate anisotropic imaging is recognized as a breakthrough in areas with complex anisotropic structures. TTI reverse time migration (RTM) is an important method for these areas. However, P and SV waves are coupled together in the pseudo-acoustic wave equation. The SV wave is regarded as an artifact for RTM of the P wave. We adopt matching of the anisotropy parameters to suppress the SV artifacts. Another problem in the implementation of TTI RTM is instability of the numerical solution for a variably oriented axis of symmetry. We adopt Fletcher's equation by setting a small amount of SV velocity without an acoustic approximation to stabilize the wavefield propagation. To improve calculation efficiency, we use NVIDIA graphic processing unit (GPU) with compute unified device architecture instead of traditional CPU architecture. To accomplish this, we introduced a random velocity boundary and an extended homogeneous anisotropic boundary for the remaining four anisotropic parameters in the source propagation. This process avoids large storage memory and IO requirements, which is important when using a GPU with limited bandwidth of PCI-E. Furthermore, we extend the single GPU code to multi-GPUs and present a corresponding high concurrent strategy with multiple asynchronous streams, which closely achieved an ideal speedup ratio of 2:1 when compared with a single GPU. Synthetic tests validate the correctness and effectiveness of our multi-GPUs-based TTI RTM method.}
+}
+
 @article{Cornebize2022VariabilityMatters,
   title={Simulation-based optimization and sensibility analysis of MPI applications: Variability matters},
   author={Cornebize, Tom and Legrand, Arnaud},

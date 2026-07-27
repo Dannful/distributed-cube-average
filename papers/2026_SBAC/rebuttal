@@ -22,4 +22,4 @@ When it comes to the impracticalities of the increase of the block size, that re
 In relation to figure 10, the difference being mentioned is the one between "Simulation - 100Gbps 8 workers" and "Simulation - 10Gbps 5 workers". The discrepancy is indeed striking, as the former scales much more intensely than the latter. The discussion on deriving the minimal number of workers is an interesting future work, indeed.
 
 Review 4:
-The research begins as a distributed implementation following well-known practices on a popular application within seismic propagation, but evolves into a performance analysis with calibrated simulation, shifting its potential from simply distributing the Fletcher method. As noted, further investigation of this trend could represent an interesting topic for future work.
+We indeed do not claim novelty with regards of the well-known halo exchange. We agree with the reviewer that our main contribution lies in begin the first to distribute the Fletcher method specifically across multiple cluster nodes via MPI and studying the resulting behavior with emulation.

@@ -1641,9 +1641,12 @@ Tangle this file with C-c C-v t
 }
 
 @article{multi-gpu,
-  title         = {Towards a Multi-GPU Implementation of a Seismic Application},
-  author        = {Pedro H. C. Rigon and Brenda S. Schussler and Edson L. Padoin and Arthur F. Lorenzon and Alexandre Carissimi and Philippe O. A. Navaux},
-  year          = {2023},
+  title={Towards a multi-GPU implementation of a seismic application},
+  author={Rigon, Pedro HC and Schussler, Brenda S and Padoin, Edson L and Lorenzon, Arthur F and Carissimi, Alexandre and Navaux, Philippe OA},
+  booktitle={Latin American High Performance Computing Conference},
+  pages={146--159},
+  year={2023},
+  organization={Springer}
 }
 
 @inproceedings{stencil_supercomputers,

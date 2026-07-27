@@ -1621,9 +1621,14 @@ Tangle this file with C-c C-v t
 }
 
 @article{fletcher,
-  title         = {Reverse time migration in tilted transversely isotropic (TTI) media},
-  author        = {Robin P. Fletcher and Xiang Du and Paul J. Fowler},
-  year          = {2018}
+  title={Reverse time migration in tilted transversely isotropic (TTI) media},
+  author={Fletcher, Robin P and Du, Xiang and Fowler, Paul J},
+  journal={Geophysics},
+  volume={74},
+  number={6},
+  pages={WCA179--WCA187},
+  year={2009},
+  publisher={Society of Exploration Geophysicists}
 }
 
 @article{anisotropy,

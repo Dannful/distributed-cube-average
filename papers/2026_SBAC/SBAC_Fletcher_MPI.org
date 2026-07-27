@@ -21,6 +21,281 @@
 # You need at least Org 9 and Emacs 24 to make this work.
 # If you do, just type make (thanks Luka Stanisic for this).
 
+* Reviews                                                          :noexport:
+** Introduction
+
+Thank you for your submission to SBAC-PAD 2026. The SBAC-PAD 2026
+rebuttal period will be between July 24th and July 29th.
+
+During this time, you will have access to the current state of your
+reviews and have the opportunity to submit a response. Please keep in
+mind the following during this process:
+
+- The response must focus on any factual errors in the reviews and any
+  questions posed by the reviewers. It must not provide new research
+  results or reformulate the presentation. Try to be as concise and to
+  the point as possible.
+- The reviews are as submitted by the PC members, without any
+  coordination between them. Thus, there may be
+  inconsistencies. Furthermore, these are not the final versions of
+  the reviews. The reviews can later be updated to take into account
+  the discussions at the program committee meeting, and we may find it
+  necessary to solicit other outside reviews after the rebuttal
+  period.
+- The program committee will read your responses carefully and take
+  this information into account during the discussions. On the other
+  hand, the program committee will not directly respond to your
+  responses, either before the program committee meeting or in the
+  final versions of the reviews.
+- Your response will be seen by all PC members who have access to the
+  discussion of your paper, so please try to be polite and
+  constructive.
+
+The reviews on your paper are attached to this letter. To submit your
+response you should log on the EasyChair Web page for SBAC-PAD 2026
+and select your submission on the menu.
+
+** ----------------------- REVIEW 1 ---------------------
+*** ----------- Overall evaluation -----------
+SCORE: 1 (weak accept)
+*** ----- TEXT:
+
+This paper introduces a distributed MPI implementation of the Fletcher
+RTM seismic code, based on a 3D block domain decomposition and
+asynchronous ghost-cell exchanges, and accelerated on GPUs using
+CUDA. Experiments on real HPC systems expose two strongly contrasting
+performance regimes: on CPU-only nodes, relatively low floating-point
+performance enables nearly ideal overlap of communication with
+computation (75–87% compute load), whereas on GPU-enabled clusters,
+the situation is reversed. There, the RTX4070 accelerator is fast
+enough to saturate a 1 Gbps network link, capping the effective
+compute load at around 20% across all tested problem sizes. Calibrated
+SimGrid SMPI simulations then reveal a continuous, bandwidth-governed
+shift from communication-bound to compute-bound execution, with the
+GPU’s compute share increasing from ≈20% at 1 Gbps to ≈75–80% at 10
+Gbps and ≈85–90% at 100 Gbps. The process topology proves to be as
+critical as raw bandwidth: prime numbers of ranks enforce slice-like
+decompositions that can degrade performance below the single-node
+case, with a 5-worker layout underperforming the 3870 MSamples/s
+baseline, while an 8-worker layout reaches 8309 MSamples/s at 10 Gbps
+and 9374 MSamples/s at 100 Gbps. Collectively, these findings show
+that both interconnect bandwidth and partitioning topology jointly
+determine how effectively ghost-cell communication can be hidden in
+distributed stencil workloads.
+
+Apparently, the distribution of the Fletcher method implementation
+across multiple cluster nodes via MPI, with ghost-cell halo exchange
+to manage subdomain boundary data, has not been explored; hence, an
+endogenous experimental work, we mean, a comparison among the
+presented algorithms and not among SATO algorithms. The paper
+introduces 4 contributions, and among them, an evaluation through
+emulation.
+
+From my point of view, the most interesting part of the work is the
+section 'Transition from Communication to Computation-Bound'. The good
+idea is there, and well motivated by the previous sections.
+
+All the arguments put forward in this part are consistent with each
+other; there is nothing to say on that side. The point that deserves
+to be pointed out, from my point of view, is the absence of a section
+'Discussion'. A typical discussion section consists of: main findings,
+comparison of findings with those reported in the literature,
+strengths and limitations, and implications for clinical practice
+and/or research. If the paper is accepted, I suggest working on these
+different levels, more precisely, to ventilate many arguments of the
+Conclusion section in this discussion section, and to shorten the
+Conclusion section to focus on perspectives only.
+
+** ----------------------- REVIEW 2 ---------------------
+*** ----------- Overall evaluation -----------
+SCORE: 2 (accept)
+*** ----- TEXT:
+
+This manuscript presents MPI+OpenMP and MPI+CUDA implementations of
+the Fletcher RTM seismic application. The description of these
+implementations is, in my opinion, detailed enough, and the authors
+justify the decisions that they make. Regarding the experimental
+evaluation, I like that they do not limit to provide results and
+comment them, but they also try to find answers to the questions that
+arise from the results and even simulate what would happen with
+hardware different that they have.
+
+I consider that this paper deserves publication, but I want to make
+the following suggestions:
+
+- The Introduction is too dense. I would separate it into two
+  sections: I) Introduction; II) Related work. I would move the
+  paragraphs clearly focused on related work to the second section and
+  I would leave the Introduction only for the motivation,
+  contributions and the structure of the manuscript.
+- The numerical validation should be a different subsection.
+- I miss a comparison with the state of the art. I know that this is
+  the first implementation that can be used in several nodes, but you
+  mention that there exist multi-GPU approaches for shared-memory
+  systems. It would be great to find one of these systems and compare
+  the performance using several GPUs of your MPI+CUDA and the previous
+  one. If you don't have access to these systems maybe you could, at
+  least, provide a theoretical comparison of speedups based on the
+  results provided by the authors of the previous tools.
+  
+** ----------------------- REVIEW 3 ---------------------
+*** ----------- Overall evaluation -----------
+SCORE: 1 (weak accept)
+*** ----- TEXT:
+Summary
+
+The authors propose a multiple node MPI and also GPU Cuda
+implementations of the so-called Fletcher method with 3D block
+decomposition and asynchronous ghost cell communication. The authors
+advocate that multiple node MPI implementations have not been explored
+yet.
+
+Strengths 
+
+- The specification of the MPI distributed Fletcher RTM implementation;
+- the discussion about the different partitioning shape; 
+- the detailed evaluation of the proposed aspects. 
+
+Weaknesses 
+ 
+- Although you nicely pointed out the need for simulation using the
+  SimGrid SMPI, this is not a solution for those users with
+  environments with similar characteristics as the one described in
+  the paper.
+
+In relation to your references, what about the following work?
+
+@article{LI201768,
+title = {A practical implementation of 3D TTI reverse time migration with multi-GPUs},
+journal = {Computers & Geosciences},
+volume = {102},
+pages = {68-78},
+year = {2017},
+issn = {0098-3004},
+doi = {https://doi.org/10.1016/j.cageo.2017.02.011},
+url = {https://www.sciencedirect.com/science/article/pii/S0098300417301759},
+author = {Chun Li and Guofeng Liu and Yihang Li},
+keywords = {TTI RTM, GPU, Random boundary, Asynchronous streams, Shared memory},
+}
+
+
+Comments 
+
+In relation to the partitioning shape, it is well known that block
+partitioning provides the best results, as you have already
+mentioned. You mention that static partitioning is
+sufficient. However, this is true in case that the cluster is composed
+of homogeneous nodes. And if this is not the case?  (For example, you
+could either partition in accordance with the nodes heterogeneity, or
+partition in homogeneous blocks and schedule more than one block per
+node depending on the computational power of that node).
+
+In 2 A III) Ghost Cells, you say that “the extra cells are never
+updated by the stencil”
+
+--->isn’t the data receiving an update?
+
+In 2 B. you describe the steps of your MPI implementation, with
+practically the same information as described previously in A. Maybe
+here you could provide some more information in a pseudocode style (or
+in a list of items), stressing that the computation processed locally
+(in a node) is either in CUDA (if there are GPUs) or OpenMP (in the
+case of CPU cores only).
+
+In III. RESULTS, you mention the insertion of a synthetic task to
+record the events. Do you create a thread to record the event’s
+moments? Clarify the need for this synthetic task.
+
+In both Figure 2 and 3 b (and 6 as well) computation time for rank 2
+and 3 seems to differ from the other ranks. Discuss about this.
+
+You discuss the impracticalities on the increase of the block size on
+the GPUs since the network becomes a bottleneck. You say that “The
+path forward is therefore not to enlarge the problem, but to improve
+the interconnection network”
+
+---> but this would be unfeasible in a real cluster - the user might not have a way to improve its network. 
+---> Do you wish to show via your simulation when it is worthwhile executing on a cluster of GPU’s?  
+
+In relation to Figure 10, you say:  "The most striking observation is
+the dramatic gap between 5-worker and 8-worker configurations."
+
+---> the green colours for 10 and 100 Gbps are practically the same.  
+---> Supposedly, you might wish to say that the problem is scalable considering the architectural characteristics and the input data dimension. It would be interesting to discuss how to derive the minimal number of workers so that it is worth distributing to more than one node. 
+
+Furthermore, could you please fix the information in your references?
+For example:
+
+@article{fletcher2009reverse,
+  title={Reverse time migration in tilted transversely isotropic (TTI) media},
+  author={Fletcher, Robin P and Du, Xiang and Fowler, Paul J},
+  journal={Geophysics},
+  volume={74},
+  number={6},
+  pages={WCA179--WCA187},
+  year={2009},
+  publisher={Society of Exploration Geophysicists}
+}
+
+The reference:
+
+J. Panetta, “Sobre a modelagem fletcher,” vol. 74, no. 6, 2009 
+could not be found!
+
+Where was the following one published?
+
+P. H. C. Rigon, B. S. Schussler, E. L. Padoin, A. F. Lorenzon,
+A. Carissimi, and P. O. A. Navaux, “Towards a multi-gpu implementation
+of a seismic application,” 2023.
+
+@inproceedings{rigon2023towards,
+  title={Towards a multi-GPU implementation of a seismic application},
+  author={Rigon, Pedro HC and Schussler, Brenda S and Padoin, Edson L and Lorenzon, Arthur F and Carissimi, Alexandre and Navaux, Philippe OA},
+  booktitle={Latin American High Performance Computing Conference},
+  pages={146--159},
+  year={2023},
+  organization={Springer}
+}
+
+** ----------------------- REVIEW 4 ---------------------
+*** ----------- Overall evaluation -----------
+SCORE: 1 (weak accept)
+*** ----- TEXT:
+This paper studies a GPU-accelerated implementations of the Fletcher
+pseudo-acoustic RTM stencil have so far been confined to a single
+compute node (shared memory or peer-to-peer GPU links), which caps
+both computational throughput and GPU memory as problem sizes grow. No
+prior work distributes this specific application across multiple
+cluster nodes.
+
+The paper proposes a distributed MPI implementation of Fletcher RTM
+using 3D block domain decomposition and asynchronous ghost-cell halo
+exchange, with CUDA acceleration (and an OpenMP CPU backend),
+numerically validated against the single-node reference and evaluated
+on two real HPC clusters plus calibrated SimGrid SMPI simulation.
+
+I have a stong concerns about the novelty on the hallo exchnage
+part. The core techniques are not new: 3D block decomposition to
+minimize surface-to-volume communication, asynchronous ghost-cell
+overlap, and the SimGrid calibration methodology are all adopted from
+prior work (Pearson et al., Cornebize et al.). The paper's actual
+novelty is narrower and should be framed as such — it is the first to
+distribute the Fletcher method specifically across multiple cluster
+nodes via MPI, applying known distributed-stencil techniques to a new
+application context, rather than proposing new ones.
+
+However I liked the SMPI transition study which is the strongest part
+of the paper IMHO. The calibrated bandwidth sweep in Section III-C is
+the paper's best contribution. By validating SimGrid against the real
+poti cluster and then extrapolating from the physical 1Gbps
+interconnect to 10Gbps and 100Gbps while preserving faithful GPU
+kernel timing, the authors convincingly demonstrate a smooth
+transition from communication-bound (~20% compute load) to
+computation-bound (~85-90%) behavior, directly explaining the CPU/GPU
+inversion observed on real hardware. This turns a single,
+hardware-limited data point into a genuine trend, and is the paper's
+most valuable result.
+
 * Lisp                                                             :noexport:
 
 #+begin_src emacs-lisp

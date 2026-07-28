@@ -1,3 +1,100 @@
+* v2
+
+We thank all reviewers for their fruitful feedback.  We took a careful
+look at all comments and will improve the text with the fundamental
+and key adjustments reviewers indicated.
+
+We sincerely thank reviewers #1 and #2 for their thoughtful and
+constructive suggestions regarding the paper's structure, including
+the proposal of a dedicated "Discussion" section, splitting the
+Introduction into a separate "Related Work" section, and presenting
+the numerical validation as its own subsection. We recognize that
+these are well-established conventions in some fields and appreciate
+the rationale behind each suggestion. While we believe the current
+structure already conveys this content in a coherent and readable
+manner, consistent with the conventions of our field, we will
+nonetheless revise the presentation to more clearly highlight where
+the related work and discussion points are addressed throughout the
+manuscript in the paper structure paragraph by the end of the
+introduction.
+
+Reviewer #3
+
+In the work of Li et al. (entitle "A practical implementation of 3D
+TTI reverse time migration with multi-GPUs"), they have validated
+their code against two GPUs in a single-node. We have updated the text
+to cite this work in the context of existing works approaching
+multi-GPU but with single-node configurations. Thanks for the
+suggestion.
+
+The mathematical operations executed by the Fletcher application are
+homogeneous and simple across the domain. In this case, the
+computational gain from dynamic partitioning in heterogeneous nodes
+would be mitigated by the simplicity of the operations when compared
+to their computational cost for the GPU. However, nodes with extreme
+heterogeneity could still be highly affected by simple static
+partitioning indeed.
+
+In regards to "the extra cells are never updated by the stencil”: the
+domain is always extended with the worker's immediate neighbours'
+halos, which are updated at each time step. These extra cells are not,
+however, updated through computation (they are not part of the
+worker's workload, thus, they are "ghost" cells).
+
+In 2B, there could be some code blocks indeed to make this section
+more "code-oriented". However, it is arguable whether it has
+practically the same information as A: this section describes the
+application flow, including its initialization and core computation
+loop (stencil), highlighting the advantages of the distributed
+implementation. All the information present in B is from the point of
+view of the implementation, closely addressing MPI concepts. Section
+A, although it briefly mentions MPI, it focuses on core HPC theory:
+fletcher modeling and partitioning. It is indeed arguable if the
+sentence "In practice, this 3D partition..." belongs to the
+theoretical background, though.
+
+In III. Results, the "synthetic task" refers to the fact that the
+program has an MPI tracing library attached to it, meaning that a
+clear record of all communications/MPI calls is available for every
+run. These events, however, do not accomodate "computation", since
+they are MPI-only. Thus, computation times are inferred based on the
+application flow - computation always happens right after an MPI_Isend
+call. Bearing this in mind, it is possible to create a "synthetic
+task" for computation by following the aforementioned logic.
+
+In regards to the differences noted in computation time for rank 2 and
+3, it is believed that this occurs due to the partitioning: with 6 ranks,
+MPI would split the domain in $2 \times 3 \times 1$, leaving some workers
+with significantly more communication surfaces than others. It is expected
+that a perfect cubic partitioning, such as $2^3$, $3^3$, or $4^3$, would greatly
+mitigate the observed phenomenon.
+
+When it comes to the impracticalities of the increase of the block
+size, that refers specifically to the environment the experiments ran
+in: the available bandwidth constraints restricted experimentation,
+thus the path to investigate the application's characteristics further
+was not to enlarge the domain. In this scenario, the simulation tool
+acts as a mean to find the ideal cluster characteristics for the
+program to run in, which, in our context, meant improving the network
+capabilities. It is noteworthy, however, that as a distributed
+application, overheads are always introduced, so an analysis on
+whether it would be computationally worth it to scale the application
+on a specific cluster is always warranted.
+
+In relation to figure 10, the difference being mentioned is the one
+between "Simulation - 100Gbps 8 workers" and "Simulation - 10Gbps 5
+workers". The discrepancy is indeed striking, as the former scales
+much more intensely than the latter. The discussion on deriving the
+minimal number of workers is an interesting future work, indeed.
+
+Reviewer #4:
+
+We indeed do not claim novelty with regards of the well-known halo
+exchange. We agree with the reviewer that our main contribution lies
+in begin the first to distribute the Fletcher method specifically
+across multiple cluster nodes via MPI and studying the resulting
+behavior with emulation.
+
 * v1
 
 We thank all reviewers for their fruitful feedback.  We took a careful

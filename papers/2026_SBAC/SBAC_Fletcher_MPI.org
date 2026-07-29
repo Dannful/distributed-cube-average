@@ -56,10 +56,7 @@ The reviews on your paper are attached to this letter. To submit your
 response you should log on the EasyChair Web page for SBAC-PAD 2026
 and select your submission on the menu.
 
-** ----------------------- REVIEW 1 ---------------------
-*** ----------- Overall evaluation -----------
-SCORE: 1 (weak accept)
-*** ----- TEXT:
+** ----------------------- REVIEW 1 SCORE: 1 (weak accept)
 
 This paper introduces a distributed MPI implementation of the Fletcher
 RTM seismic code, based on a 3D block domain decomposition and
@@ -107,10 +104,7 @@ different levels, more precisely, to ventilate many arguments of the
 Conclusion section in this discussion section, and to shorten the
 Conclusion section to focus on perspectives only.
 
-** ----------------------- REVIEW 2 ---------------------
-*** ----------- Overall evaluation -----------
-SCORE: 2 (accept)
-*** ----- TEXT:
+** ----------------------- REVIEW 2 SCORE: 2 (accept)
 
 This manuscript presents MPI+OpenMP and MPI+CUDA implementations of
 the Fletcher RTM seismic application. The description of these
@@ -139,129 +133,9 @@ the following suggestions:
   least, provide a theoretical comparison of speedups based on the
   results provided by the authors of the previous tools.
   
-** ----------------------- REVIEW 3 ---------------------
-*** ----------- Overall evaluation -----------
-SCORE: 1 (weak accept)
-*** ----- TEXT:
-Summary
+** ----------------------- REVIEW 3 SCORE: 1 (weak accept)
+** ----------------------- REVIEW 4 SCORE: 1 (weak accept)
 
-The authors propose a multiple node MPI and also GPU Cuda
-implementations of the so-called Fletcher method with 3D block
-decomposition and asynchronous ghost cell communication. The authors
-advocate that multiple node MPI implementations have not been explored
-yet.
-
-Strengths 
-
-- The specification of the MPI distributed Fletcher RTM implementation;
-- the discussion about the different partitioning shape; 
-- the detailed evaluation of the proposed aspects. 
-
-Weaknesses 
- 
-- Although you nicely pointed out the need for simulation using the
-  SimGrid SMPI, this is not a solution for those users with
-  environments with similar characteristics as the one described in
-  the paper.
-
-In relation to your references, what about the following work?
-
-@article{LI201768,
-title = {A practical implementation of 3D TTI reverse time migration with multi-GPUs},
-journal = {Computers & Geosciences},
-volume = {102},
-pages = {68-78},
-year = {2017},
-issn = {0098-3004},
-doi = {https://doi.org/10.1016/j.cageo.2017.02.011},
-url = {https://www.sciencedirect.com/science/article/pii/S0098300417301759},
-author = {Chun Li and Guofeng Liu and Yihang Li},
-keywords = {TTI RTM, GPU, Random boundary, Asynchronous streams, Shared memory},
-}
-
-
-Comments 
-
-In relation to the partitioning shape, it is well known that block
-partitioning provides the best results, as you have already
-mentioned. You mention that static partitioning is
-sufficient. However, this is true in case that the cluster is composed
-of homogeneous nodes. And if this is not the case?  (For example, you
-could either partition in accordance with the nodes heterogeneity, or
-partition in homogeneous blocks and schedule more than one block per
-node depending on the computational power of that node).
-
-In 2 A III) Ghost Cells, you say that “the extra cells are never
-updated by the stencil”
-
---->isn’t the data receiving an update?
-
-In 2 B. you describe the steps of your MPI implementation, with
-practically the same information as described previously in A. Maybe
-here you could provide some more information in a pseudocode style (or
-in a list of items), stressing that the computation processed locally
-(in a node) is either in CUDA (if there are GPUs) or OpenMP (in the
-case of CPU cores only).
-
-In III. RESULTS, you mention the insertion of a synthetic task to
-record the events. Do you create a thread to record the event’s
-moments? Clarify the need for this synthetic task.
-
-In both Figure 2 and 3 b (and 6 as well) computation time for rank 2
-and 3 seems to differ from the other ranks. Discuss about this.
-
-You discuss the impracticalities on the increase of the block size on
-the GPUs since the network becomes a bottleneck. You say that “The
-path forward is therefore not to enlarge the problem, but to improve
-the interconnection network”
-
----> but this would be unfeasible in a real cluster - the user might not have a way to improve its network. 
----> Do you wish to show via your simulation when it is worthwhile executing on a cluster of GPU’s?  
-
-In relation to Figure 10, you say:  "The most striking observation is
-the dramatic gap between 5-worker and 8-worker configurations."
-
----> the green colours for 10 and 100 Gbps are practically the same.  
----> Supposedly, you might wish to say that the problem is scalable considering the architectural characteristics and the input data dimension. It would be interesting to discuss how to derive the minimal number of workers so that it is worth distributing to more than one node. 
-
-Furthermore, could you please fix the information in your references?
-For example:
-
-@article{fletcher2009reverse,
-  title={Reverse time migration in tilted transversely isotropic (TTI) media},
-  author={Fletcher, Robin P and Du, Xiang and Fowler, Paul J},
-  journal={Geophysics},
-  volume={74},
-  number={6},
-  pages={WCA179--WCA187},
-  year={2009},
-  publisher={Society of Exploration Geophysicists}
-}
-
-The reference:
-
-J. Panetta, “Sobre a modelagem fletcher,” vol. 74, no. 6, 2009 
-could not be found!
-
-Where was the following one published?
-
-P. H. C. Rigon, B. S. Schussler, E. L. Padoin, A. F. Lorenzon,
-A. Carissimi, and P. O. A. Navaux, “Towards a multi-gpu implementation
-of a seismic application,” 2023.
-
-@inproceedings{rigon2023towards,
-  title={Towards a multi-GPU implementation of a seismic application},
-  author={Rigon, Pedro HC and Schussler, Brenda S and Padoin, Edson L and Lorenzon, Arthur F and Carissimi, Alexandre and Navaux, Philippe OA},
-  booktitle={Latin American High Performance Computing Conference},
-  pages={146--159},
-  year={2023},
-  organization={Springer}
-}
-
-** ----------------------- REVIEW 4 ---------------------
-*** ----------- Overall evaluation -----------
-SCORE: 1 (weak accept)
-*** ----- TEXT:
 This paper studies a GPU-accelerated implementations of the Fletcher
 pseudo-acoustic RTM stencil have so far been confined to a single
 compute node (shared memory or peer-to-peer GPU links), which caps

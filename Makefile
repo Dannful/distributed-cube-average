@@ -13,7 +13,7 @@ CFLAGS   = -I$(INCDIR) -Wall -O3 -g
 LDFLAGS  = -lm
 
 CUDA_CFLAGS    = -I$(INCDIR) -g -gencode arch=compute_$(subst sm_,,$(ARCH)),code=$(ARCH) -allow-unsupported-compiler
-CUDA_LINK_LIBS = -L/usr/local/cuda/lib64 -lcudart
+CUDA_LINK_LIBS = -L$(CUDA_HOME)/lib64 -lcudart
 
 SOURCES_C_COMMON = $(filter-out $(wildcard $(SRCDIR)/*_propagate.c) $(SRCDIR)/device_data.c $(SRCDIR)/derivatives.c $(SRCDIR)/sample.c, $(wildcard $(SRCDIR)/*.c))
 

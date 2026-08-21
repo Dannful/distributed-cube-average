@@ -1,0 +1,12 @@
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+*.vrb
+*~
+slides.tex
+slides.pdf
+result
+.direnv/

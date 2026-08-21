@@ -1,0 +1,237 @@
+# -*- coding: utf-8 -*-
+# -*- mode: org -*-
+
+#+TITLE: SimGrid to Evaluate Ghost Cells Effectiveness in High-Performance Computing Applications
+#+AUTHOR: Vinícius Daniel Spadotto, Lucas Mello Schnorr
+#+DATE: CARLA 2026
+
+#+STARTUP: overview indent
+#+LANGUAGE: en
+#+OPTIONS: H:2 toc:nil num:t ^:nil title:nil date:nil timestamp:nil
+
+#+LATEX_CLASS: beamer
+#+LATEX_CLASS_OPTIONS: [aspectratio=43,10pt]
+#+BEAMER_THEME: Inf
+#+COLUMNS: %45ITEM %10BEAMER_env(Env) %10BEAMER_act(Act) %4BEAMER_col(Col)
+
+#+BEAMER_HEADER: \institute{Institute of Informatics --- UFRGS, Porto Alegre, Brazil}
+#+BEAMER_HEADER: \subtitle{CARLA 2026}
+#+BEAMER_HEADER: \AtBeginSection[]{\begin{frame}[plain]\sectionpage\end{frame}}
+
+# Title frame using the Inf theme layout.
+#+BEGIN_EXPORT latex
+\InfTitlePage
+#+END_EXPORT
+
+* Agenda                                                              :ignore:
+#+BEGIN_EXPORT latex
+\begin{frame}{Agenda}
+  \tableofcontents
+\end{frame}
+#+END_EXPORT
+
+* Motivation & Contributions
+** Halo Exchange & the Masking Problem
+- *Halo exchange*: canonical way to distribute iterative stencil
+  computations across HPC nodes.
+- Each MPI process keeps a /ghost-cell/ layer and *overlaps* halo
+  transfers with interior computation.
+- Effective *masking* depends on the interplay of:
+  - problem size,
+  - partitioning topology,
+  - interconnection bandwidth.
+- Characterizing this balance requires sweeping those parameters
+  across *diverse hardware* --- which is rarely available.
+
+** The Cost of Real Hardware
+- Real HPC infrastructure is *expensive*, *time-limited*, and uses
+  *fixed* configurations.
+- "Would 100Gbps InfiniBand change masking?" is unanswerable on a
+  1Gbps cluster.
+- Topology studies (e.g. 64 nodes) are impossible with only 5 nodes.
+- Alternatives:
+  - *analytical modeling* --- misses cache, PCIe, OS noise;
+  - *simulation* --- our choice.
+
+** SimGrid / SMPI
+- Intercepts MPI calls and simulates them on a *configurable virtual
+  platform*.
+- Computation runs *natively* on the host --- a /calibrated emulation/
+  (online simulation), not abstract modeling.
+- Compute timings observed /in situ/; network parameters from
+  systematic *calibration*.
+- Proven for communication-intensive benchmarks (e.g. HPL).
+- Published uses focus on collectives, scheduling, load balancing ---
+  *not* ghost cell masking.
+
+** Gap & Contributions
+- *Gap*: to our knowledge, SimGrid/SMPI has never been used to evaluate
+  *ghost cell masking effectiveness* in MPI stencil applications.
+- Vehicle: the *Fletcher RTM* seismic application (realistic, GPU-heavy,
+  bandwidth-sensitive).
+- *Contributions*:
+  1. A distributed MPI Fletcher (3D block decomposition, async ghost
+     cells), numerically validated.
+  2. A *calibrated SimGrid/SMPI framework* for it, within a 15% error
+     margin.
+  3. An evaluation of masking across *three host configurations*
+     (CPU-only + two GPU clusters).
+
+* Methods & Materials
+** Static Domain Partitioning
+#+ATTR_LATEX: :center t :width 0.72\linewidth
+[[file:../img/comm_cost.png]]
+
+- Uniform stencil work $\Rightarrow$ balanced load $\Rightarrow$ *static*
+  decomposition suffices.
+- *Blocks* minimize the surface-to-volume ratio: slices grow as
+  $2(P-1)L^2$, blocks only as $6(\sqrt[3]{P}-1)L^2$.
+- Built with =MPI_Dims_create= + =MPI_Cart_create=.
+- *Caveat*: prime $P$ degenerates to a $\{P,1,1\}$ slice layout ---
+  avoid prime rank counts.
+
+** Ghost Cells: The Five-Step Overlap
+Within each time step:
+1. Post non-blocking receives (=MPI_Irecv=) for incoming halos.
+2. Compute the *boundary strips* (previous-iteration data).
+3. Dispatch them asynchronously (=MPI_Isend=).
+4. Compute the *interior* while halos are in transit.
+5. =MPI_Waitall=, insert halos, swap wavefield buffers.
+
+#+BEGIN_EXPORT latex
+\vspace{0.4em}
+#+END_EXPORT
+*Masking works only when interior computation outlasts the halo
+transfer.* Otherwise step 5 stalls and communication dominates.
+
+** The Fletcher RTM Application
+- *RTM*: reconstructs subsurface images by cross-correlating forward-
+  and backward-propagated wavefields.
+- *Fletcher's method*: pseudo-acoustic wave equations for *anisotropic*
+  (TTI) media.
+- Couples pressure $p$ and auxiliary field $q$ via an eighth-order
+  finite-difference stencil each step.
+- Computationally intensive, memory-bound, *GPU-friendly* --- ideal to
+  stress ghost cell masking.
+
+** Distributed Design & Validation
+- *Coordinator--worker* model on a 3D Cartesian topology.
+- Coordinator sends *compact metadata* only; each worker allocates its
+  own sub-volume $\Rightarrow$ no rank-0 memory bottleneck.
+- *CUDA backend*: wavefields stay in device memory; only halo buffers
+  cross the PCIe bus via 3D strided copies.
+- *Numerical validation* vs. single-node reference:
+  - OpenMP: =SHA-256= bitwise-identical (30 configs, \(32^3\)--\(512^3\));
+  - CUDA: per-element delta \(<\) $10^{-15}$.
+
+** Simulation with SimGrid
+- Virtual platform parameterized by *host speed* (GFlops) and *network
+  bandwidth* (Gbps).
+- Compute kernel runs *in full* (warm-up), then stable timing samples
+  are injected --- captures cache, PCIe, memory copies.
+- Network values from a *systematic calibration* procedure
+  (protocol thresholds, bandwidth, latency).
+- *Validated* within a *15% error margin* for messages up to
+  \(\approx\)1GB.
+
+* Results
+** Masking Effectiveness Metric
+#+ATTR_LATEX: :center t :width \linewidth
+[[file:../img/masking-example.png]]
+
+- From MPI traces: isolate the core window, infer a *Compute* state
+  from gaps between MPI events.
+- *Communication ratio* = aggregate comm. time / aggregate makespan.
+- *Masking Effectiveness* $= 1 -$ comm. ratio (closer to 1 = better
+  hiding).
+- Left: communication-bound (0.08); right: well-masked (0.79).
+
+** Design of Experiments
+- *Full factorial* sweep over three factors:
+  - *problem size*: $64^3$, $128^3$, $256^3$, $512^3$;
+  - *number of hosts*: 4, 8, 16, 27, 64;
+  - *network bandwidth*: 1, 2.5, 10, 25, 50, 100 Gbps.
+- 1000 iterations per run; fixed \(22\,\mu\mathrm{s}\) latency; no
+  replication.
+- Three host models (single node each, calibrated on =poti=):
+  - =cei=: 2$\times$ Xeon Silver 4116 (CPU-only);
+  - =poti=: RTX 4070; =tupi=: RTX 4090.
+
+** CPU Cluster =cei=: Masking Comes for Free
+#+ATTR_LATEX: :center t :width 0.95\linewidth
+[[file:../img/cei-masking.png]]
+
+- Below 100Mbps: masking \(<\) 0.30 (communication-bound).
+- Past *1Gbps* it jumps: \(512^3\)/8 hosts \(\approx\) *0.94*;
+  \(256^3\)/8 hosts \(>\) 0.89.
+- Modest Xeon FP throughput lets computation fill the gaps ---
+  *near-perfect masking, essentially free*.
+
+** GPU Cluster =poti=: The Network Bottleneck
+#+ATTR_LATEX: :center t :width 0.95\linewidth
+[[file:../img/poti-masking.png]]
+
+- At *1Gbps*: masking stalls near *0.25*, independent of problem size.
+- The RTX 4070 outruns the Gigabit link; =MPI_Waitall= dominates every
+  iteration.
+- Recovery begins at *10Gbps* (\(512^3\)/4 hosts reaches 0.97); smaller
+  problems / more hosts need even more bandwidth.
+
+** GPU Cluster =tupi=: A Scaling Anomaly
+#+ATTR_LATEX: :center t :width 0.95\linewidth
+[[file:../img/tupi-masking.png]]
+
+- Same regime as =poti=, but shifted higher --- the RTX 4090 is faster
+  still.
+- *Anomaly*: from $256^3$ to $512^3$, masking improves *only* with many
+  hosts (27, 64); few hosts (4--16) get *worse*.
+- Volume/surface dynamics: small subdomains are surface-dominated at
+  $256^3$ and only amortize communication at $512^3$.
+
+** Heatmap: Finding Optimal Configurations
+#+BEGIN_columns
+#+ATTR_LATEX: :options {0.56\textwidth}
+#+BEGIN_column
+#+ATTR_LATEX: :width \linewidth
+[[file:../img/masking_heatmap_gpu.pdf]]
+#+END_column
+
+#+ATTR_LATEX: :options {0.42\textwidth}
+#+BEGIN_column
+- Joint view of both GPU hosts: bandwidth (X), hosts (Y), problem size
+  (facets).
+- *Dark* (low bandwidth, many hosts) = network-bound.
+- *Bright* (large domains, few hosts, high bandwidth) = well-masked.
+- The calibrated simulator maps the *transition boundary* without
+  exhaustive real-cluster runs.
+#+END_column
+#+END_columns
+
+* Conclusion
+** Conclusion
+- Two sharply contrasting regimes:
+  - *CPU* (=cei=): modest FP throughput $\Rightarrow$ near-perfect masking
+    at realistic bandwidths.
+  - *GPU* (=poti=, =tupi=): accelerator outruns the network $\Rightarrow$
+    stuck near 20% at 1Gbps.
+- Bandwidth sweep shows a *smooth transition* to compute-bound, passing
+  90% masking at 100Gbps.
+- The *heatmap* is a ready-to-use capacity-planning chart.
+- SimGrid/SMPI is a *practical, credible alternative* to exhaustive
+  real-hardware experimentation.
+
+** Future Work
+- Experiments on the *Santos Dumont* supercomputer (high-speed
+  interconnect).
+- Detailed SimGrid modeling of its network topology.
+- Integration of *HIP kernels* for AMD GPUs within the same framework.
+- Extend the framework to a *broader class of stencil applications* as
+  a reusable capacity-planning tool.
+
+** Thank You!                                                        :ignore:
+#+BEGIN_EXPORT latex
+\begin{frame}[plain]
+  \frametitle{Thank you!}
+  \InfContacts
+\end{frame}
+#+END_EXPORT

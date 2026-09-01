@@ -1661,9 +1661,9 @@ DOI = {10.5194/gmd-11-3409-2018}
 @inproceedings{pavan2018wscad,
   author    = {Pablo J. Pavan and
                Matheus S. Serpa and
+               Edson L. Padoin and
                Lucas M. Schnorr and
                Philippe O. A. Navaux and
-               Edson L. Padoin and
                Jairo Panetta},
   title     = {Improving {I/O} Performance of {RTM} Algorithm for Oil
                and Gas Simulation},
@@ -1676,9 +1676,9 @@ DOI = {10.5194/gmd-11-3409-2018}
 
 @inproceedings{serpa2018wscad,
   author    = {Matheus S. Serpa and
-               Philippe O. A. Navaux and
                Eduardo H. M. Cruz and
-               Jairo Panetta},
+               Jairo Panetta and
+               Philippe O. A. Navaux},
   title     = {Optimizing Geophysics Models Using Thread and Data
                Mapping},
   booktitle = {Anais do XIX Simp{\'o}sio em Sistemas Computacionais de

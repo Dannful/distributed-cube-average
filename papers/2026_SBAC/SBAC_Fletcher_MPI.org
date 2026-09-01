@@ -470,7 +470,7 @@ accelerate seismic wave propagation on multi-GPU clusters with domain
 decomposition and ghost-point exchanges, observing that communication
 overhead scales as $N^{2/3}$ with the number of GPUs and that small
 domains suffer severely from network latency, motivating the need for
-large problem sizes. Van den Berg et al. \cite{gmd_halo} study MPI
+large problem sizes. Zheng and Marguinaud \cite{gmd_halo} study MPI
 halo exchange patterns for atmospheric models using SST/macro and
 SimGrid, but with a focus on the scalability of collective patterns
 rather than computation-communication overlap in stencil

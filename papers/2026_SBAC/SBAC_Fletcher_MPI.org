@@ -1443,7 +1443,7 @@ Tangle this file with C-c C-v t
 #+begin_src bib :tangle refs.bib
 @article{LI201768,
 title = {A practical implementation of 3D TTI reverse time migration with multi-GPUs},
-journal = {Computers & Geosciences},
+journal = {Computers \& Geosciences},
 volume = {102},
 pages = {68-78},
 year = {2017},
@@ -1534,7 +1534,7 @@ abstract = {Tilted transversely isotropic (TTI) media are typical earth anisotro
   publisher={Society of Exploration Geophysicists}
 }
 
-@article{multi-gpu,
+@inproceedings{multi-gpu,
   title={Towards a multi-GPU implementation of a seismic application},
   author={Rigon, Pedro HC and Schussler, Brenda S and Padoin, Edson L and Lorenzon, Arthur F and Carissimi, Alexandre and Navaux, Philippe OA},
   booktitle={Latin American High Performance Computing Conference},
@@ -1575,7 +1575,6 @@ abstract = {Tilted transversely isotropic (TTI) media are typical earth anisotro
   author        = {\censor{Schnorr, Lucas Mello}},
   title         = {\censor{akypuera: MPI tracing library}},
   year          = {2025},
-%  url           = {https://github.com/schnorr/akypuera},
   note          = {Accessed: 2026-04-27}
 }
 
@@ -1583,7 +1582,6 @@ abstract = {Tilted transversely isotropic (TTI) media are typical earth anisotro
   author        = {\censor{Schnorr, Lucas Mello}},
   title         = {\censor{PajeNG: Paj\'{e} Next Generation}},
   year          = {2025},
-%  url           = {https://github.com/schnorr/pajeng},
   note          = {Accessed: 2026-04-27}
 }
 

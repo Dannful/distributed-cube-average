@@ -442,7 +442,7 @@ alternative with less than 10--20% degradation \cite{serpa2019wscad}
 \cite{serpa2021ccpe}. At the multi-GPU level, Rigon et al. overlapped
 inter-device border-region communication with computation, reducing
 the energy-delay product by up to 40% \cite{rigon2024erad}. Another
-multi-GPU work do exists \cite{LI201768}, but the results
+multi-GPU work does exist \cite{LI201768}, but the results
 include only a single-node analysis with two K10 GPU cards.
 In comparison, Schussler et al. proposed a genetic-algorithm-driven
 autotuner (BTO) for CUDA thread-block configurations that achieves up

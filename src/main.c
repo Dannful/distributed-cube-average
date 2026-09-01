@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
     dc_determine_source(sx, sy, sz, &source_x, &source_y, &source_z);
     if (source_x < mpi_process.sizes[0] && source_y < mpi_process.sizes[1] &&
         source_z < mpi_process.sizes[2]) {
-      mpi_process.source_index = (int)dc_get_index_for_coordinates(
+      mpi_process.source_index = (ptrdiff_t)dc_get_index_for_coordinates(
           source_x, source_y, source_z, mpi_process.sizes[0],
           mpi_process.sizes[1], mpi_process.sizes[2]);
     } else {

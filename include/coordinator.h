@@ -25,7 +25,7 @@ typedef struct {
   size_t start_coords[DIMENSIONS];
   size_t problem_sizes[DIMENSIONS];
   unsigned int iterations;
-  int source_index;
+  ptrdiff_t source_index;
   size_t absorption_size;
 } dc_partition_info_t;
 

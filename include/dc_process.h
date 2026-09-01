@@ -10,7 +10,7 @@ typedef struct {
   int neighbours[NEIGHBOURHOOD];
   int topology[DIMENSIONS];
   unsigned int iterations;
-  int source_index;
+  ptrdiff_t source_index;
   float dx, dy, dz, dt;
   size_t sizes[DIMENSIONS];
   dc_anisotropy_t anisotropy_vars;

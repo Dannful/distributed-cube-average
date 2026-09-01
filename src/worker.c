@@ -464,7 +464,7 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
   double average = -1;
 
   for (unsigned int i = 0; i < process->iterations; i++) {
-    if (process->source_index != -1) {
+    if (process->source_index >= 0) {
       float source = dc_calculate_source(process->dt, i);
       dc_device_add_source(data, process->source_index, source);
     }

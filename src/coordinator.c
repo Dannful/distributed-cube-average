@@ -74,18 +74,18 @@ void dc_distribute_partition_info(MPI_Comm comm, unsigned int *topology,
         size_t start_y = worker_y * partition_size_y;
         size_t start_z = worker_z * partition_size_z;
 
-        int source_index = -1;
+        ptrdiff_t source_index = -1;
         if (source_x >= start_x && source_x < start_x + local_size_x &&
             source_y >= start_y && source_y < start_y + local_size_y &&
             source_z >= start_z && source_z < start_z + local_size_z) {
           size_t local_source_x = source_x - start_x;
           size_t local_source_y = source_y - start_y;
           size_t local_source_z = source_z - start_z;
-          source_index = (int)dc_get_index_for_coordinates(
+          source_index = (ptrdiff_t)dc_get_index_for_coordinates(
               local_source_x, local_source_y, local_source_z, local_size_x,
               local_size_y, local_size_z);
           dc_log_info(COORDINATOR,
-                      "Worker %d will handle source at local index %d", worker,
+                      "Worker %d will handle source at local index %td", worker,
                       source_index);
         }
 

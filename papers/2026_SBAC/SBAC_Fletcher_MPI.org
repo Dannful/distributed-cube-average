@@ -474,9 +474,10 @@ large problem sizes. Zheng and Marguinaud \cite{gmd_halo} study MPI
 halo exchange patterns for atmospheric models using SST/macro and
 SimGrid, but with a focus on the scalability of collective patterns
 rather than computation-communication overlap in stencil
-kernels. Mercier and Jeannot \cite{simdag_affinity} evaluate process
-placement for MPI applications with halo-exchange communication,
-centering on topology-aware optimization of process affinity. Wittmann
+kernels. Related work also addresses process placement for MPI
+applications with halo-exchange communication, centering on
+topology-aware optimization of process affinity
+\cite{simdag_affinity, topology_aware}. Wittmann
 et al. \cite{blocking_nonblocking_halo} benchmark blocking versus
 non-blocking halo exchange for Lattice Boltzmann methods on real
 supercomputers, confirming that overlap is achievable but inherently

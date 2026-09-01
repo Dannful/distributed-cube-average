@@ -814,7 +814,7 @@ whether CPU- or GPU-based, executes without SMPI sampling, capturing
 the full GPU or CPU behavior, including compute artifacts absent with
 the sampling option. To ensure that simulated results faithfully
 reproduce the behavior observed on the real /poti/ cluster, we follow
-the calibration methodology described by Cornebize
+the calibration methodology described by Cornebize et al.
 \cite{Cornebize2022VariabilityMatters}, which provides a systematic
 approach for extracting and modeling the characteristics of the MPI
 runtime backend and the underlying network into accurate SimGrid

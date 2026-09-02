@@ -1422,13 +1422,12 @@ ghost cells.
 
 #+LATEX:\section*{Acknowledgements}
 
-All experiments in this work used the \censor{PCAD platform},
-\censor{http://pcad.inf.ufrgs.br, at INF/UFRGS}. This work was
-partially supported by \censor{Petrobras} through an agreement with
-\censor{UFRGS} under project \censor{SIC 2020/00182-5}.  This study
-was supported by the \censor{Coordenação de Aperfeiçoamento de
-Pessoal} \censor{de Nível Superior (CAPES), Brazil -- Finance Code
-001}.
+All experiments in this work used the PCAD platform,
+http://pcad.inf.ufrgs.br, at INF/UFRGS. This work was
+partially supported by Petrobras through an agreement with
+UFRGS under project 2020/00182-5.  This study
+was supported by the Coordenação de Aperfeiçoamento de
+Pessoal de Nível Superior (CAPES), Brazil -- Finance Code 001.
 
 ** References                                                       :ignore:
 

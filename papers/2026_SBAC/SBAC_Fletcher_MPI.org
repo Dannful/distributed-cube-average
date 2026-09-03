@@ -797,9 +797,7 @@ backends and problem sizes, enabling comparison of distributed
 performance with a single-node baseline. Finally, we note that the
 physical /poti/ cluster's GPU VRAM (12GB) imposes a practical ceiling
 on the maximum solvable domain per worker, a constraint that directly
-influences the range of problem sizes evaluated in our GPU experiments
-and motivates the use of simulation to explore configurations beyond
-a physical hardware setup.
+influences the range of problem sizes evaluated in our GPU experiments.
 
 SimGrid SMPI \cite{degomme2017simulating} is employed for two
 complementary reasons. First, the physical clusters have limited

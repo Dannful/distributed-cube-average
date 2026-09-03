@@ -1334,7 +1334,7 @@ bandwidth on masking effectiveness.
 \centering
 \caption{Summary of approximate compute load across all
 experimental scenarios with larger values representing better
-communication masking. (/poti/, $5$ workers)}
+communication masking (\texttt{poti}, with 5 workers).}
 \label{tab:results_summary}
 \begin{tabular}{llll}
 \hline

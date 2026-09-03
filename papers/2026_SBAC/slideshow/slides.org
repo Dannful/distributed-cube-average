@@ -15,7 +15,7 @@
 #+COLUMNS: %45ITEM %10BEAMER_env(Env) %10BEAMER_act(Act) %4BEAMER_col(Col)
 
 #+BEAMER_HEADER: \institute{Institute of Informatics --- UFRGS, Porto Alegre, Brazil}
-#+BEAMER_HEADER: \subtitle{SBAC-PAD 2026}
+#+BEAMER_HEADER: \subtitle{SBAC-PAD 2026 @ Session \#7 2026-10-15 -- Madrid, Spain, }
 #+BEAMER_HEADER: \AtBeginSection[]{\begin{frame}[plain]\sectionpage\end{frame}}
 
 # Title frame using the Inf theme layout.
@@ -369,6 +369,21 @@ GPU (CUDA)   & $512^3$ & 100Gbps (simulated) & $>$90\% \\
 #+BEGIN_EXPORT latex
 \begin{frame}[plain]
   \frametitle{Thank you!}
+
+  \footnotesize
+  \textbf{Acknowledgments:} All experiments in this work used the PCAD
+  platform (\url{http://pcad.inf.ufrgs.br}) at INF/UFRGS. This work was
+  partially supported by Petrobras through an agreement with UFRGS
+  under project 2020/00182-5, and by the Coordenação de
+  Aperfeiçoamento de Pessoal de Nível Superior (CAPES), Brazil ---
+  Finance Code 001.
+
+  \vspace{0.6em}
+  \textit{Special thanks to Marcio Castro (UFSC) for kindly presenting
+  this work on our behalf.}
+
+  \vspace{1em}
+  \normalsize
   \InfContacts
 \end{frame}
 #+END_EXPORT

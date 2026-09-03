@@ -364,7 +364,7 @@ Submission must be done using EasyChair:
 #+BEGIN_EXPORT latex
 \title{MPI-Based 3D Anisotropic RTM with Fletcher's Method and Ghost Cell Halo Exchange}
 \author{\IEEEauthorblockN{\censor{Vinícius Daniel Spadotto, Lucas Mello Schnorr}}
-\IEEEauthorblockA{\censor{Institute of Informatics, Porto Alegre, Brazil}}}
+\IEEEauthorblockA{\censor{Institute of Informatics, UFRGS, Porto Alegre, Brazil}}}
 #+END_EXPORT
 
 #+LaTeX: \maketitle

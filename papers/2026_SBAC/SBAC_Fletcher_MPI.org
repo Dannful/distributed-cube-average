@@ -442,7 +442,7 @@ alternative with less than 10--20% degradation \cite{serpa2019wscad}
 \cite{serpa2021ccpe}. At the multi-GPU level, Rigon et al. overlapped
 inter-device border-region communication with computation, reducing
 the energy-delay product by up to 40% \cite{rigon2024erad}. Another
-multi-GPU work does exist \cite{LI201768}, but the results
+multi-GPU work exists \cite{LI201768}, but the results
 include only a single-node analysis with two K10 GPU cards.
 In comparison, Schussler et al. proposed a genetic-algorithm-driven
 autotuner (BTO) for CUDA thread-block configurations that achieves up
@@ -490,7 +490,7 @@ synchronization overhead.
 
 Despite this extensive body of work, all existing multi-GPU Fletcher
 implementations \cite{multi-gpu, okamoto2010} are limited to a single
-computational node, operating either within a single compute node or
+computational node
 within a multi-GPU server that relies on shared memory or peer-to-peer
 GPU links. This single-node limitation imposes immediate scalability
 constraints in both computational throughput and GPU memory. The
@@ -707,7 +707,7 @@ the overlap strategy is effective, the time spent in ~MPI_Waitall~
 remains negligible across all ranks, since interior computation fully
 hides communication latency. Once all iterations are complete, each
 non-coordinator process sends its final $p_{curr}$ and $q_{curr}$ fields
-back to the coordinator via ~MPI_Send~, which gathers and writes to
+back to the coordinator via ~MPI_Send~, which gathers them and writes to
 output files.
 
 At the heart of each time step, every thread (CUDA block thread or
@@ -742,7 +742,7 @@ delta checks are performed with a tolerance of $10^{-15}$, confirming
 near-bitwise agreement that reflects the expected accumulation of
 floating-point rounding differences between CPU and GPU execution
 paths. We therefore validate the numerical results of our
-implementation against those of the reference single-node implementations.
+implementation against those of the single-node reference implementation.
 
 *** Evaluation Methodology
 
@@ -799,13 +799,13 @@ physical /poti/ cluster's GPU VRAM (12 GB) imposes a practical ceiling
 on the maximum solvable domain per worker, a constraint that directly
 influences the range of problem sizes evaluated in our GPU experiments
 and motivates the use of simulation to explore configurations beyond
-what the physical hardware can accommodate.
+a physical hardware setup.
 
 SimGrid SMPI \cite{degomme2017simulating} is employed for two
 complementary reasons. First, the physical clusters have limited
 interconnect bandwidth, preventing direct evaluation of high-speed
-network configurations. Second, the GPU VRAM limitation described
-below restricts the maximum problem sizes achievable on real
+network configurations. Second, the GPU VRAM limitation previously described
+restricts the maximum problem sizes achievable on real
 hardware. Together, these constraints motivate the use of simulation
 to explore configurations beyond the physical platforms' capacity. To
 this end, we define the SimGrid platform model with either 10 Gbps or
@@ -881,8 +881,8 @@ the $256^3$ problem size execution, showing the behavior of each rank
 operations performed and their durations. The first 3 seconds
 illustrate the overall behavior across iterations. Although the chart
 contains three distinct MPI operations (\texttt{Irecv},
-\texttt{Isend}, and \texttt{Waitall}), the latter is the most present
-in time, since the other two are practically instantaneous. The most
+\texttt{Isend}, and \texttt{Waitall}), the latter occupies the most
+time, since the other two are practically instantaneous. The most
 relevant observation is the predominance of computation over
 communication time, as quantified in Figure
 \ref{fig:real_cpu_load_256}: the aggregate compute load is
@@ -1055,7 +1055,7 @@ Gantt chart shows wider compute blocks than the previous sizes, yet
 \ref{tab:frontier_volume} predicts a decreasing boundary-to-volume
 ratio with larger blocks, the load chart reveals that the compute
 fraction remains at approximately 20%, virtually unchanged from
-$128^3$ and $256^3$. This lack of improvements indicates that, despite
+$128^3$ and $256^3$. This lack of improvement indicates that, despite
 the volume growing cubically, the RTX4070 processes even the larger
 domain so quickly that the Gigabit network remains the overwhelming
 bottleneck. Increasing problem size alone is therefore insufficient to
@@ -1414,8 +1414,7 @@ topology to enable capacity-planning studies, integration of HIP
 kernels for AMD GPU architectures, and a more thorough throughput
 characterization across the full range of problem sizes and network
 configurations that balance accelerator and network capacity. We also
-intend to explore comparisons between CUDA- and HIP-aware
-implementations of the MPI specification to evaluate how these compare
+intend to explore how CUDA- and HIP-aware MPI implementations compare
 against typical non-RDMA MPI implementations from the perspective of
 ghost cells.
 

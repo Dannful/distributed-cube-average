@@ -411,7 +411,7 @@ stencil computations across HPC nodes. Each MPI process maintains a
 data, and asynchronously overlaps these transfers with interior
 computation. Whether this overlap achieves genuine communication
 masking depends on the interplay of problem size, partitioning
-topology, and interconnection bandwidth: with small domains or slow
+topology, and interconnect bandwidth: with small domains or slow
 networks, communication dominates; with large domains and fast
 networks, computation can fully hide the transfers
 \cite{stencil_supercomputers}. When correctly tailored to the variety
@@ -643,7 +643,7 @@ block decomposition.
 :END:
 
 Each process augments its local grid with a thin shell of ghost cells
-holding boundary data exchanged with neighbours processes
+holding boundary data exchanged with neighboring processes
 \cite{ghost_cells}. These extra cells are never updated by the
 stencil, but the memory cost is offset by the ability to prefetch halo
 data ahead of when it is needed. Within each time step, communication
@@ -1063,7 +1063,7 @@ achieve masking on this platform. Further increasing the block size is
 impractical: the RTX4070's 12GB VRAM easily becomes a resource
 bottleneck, and experiments still show communication-dominated
 behavior on the Gigabit network. The path forward is therefore not to
-enlarge the problem, but to improve the interconnection network, a
+enlarge the problem, but to improve the interconnect network, a
 change infeasible on the physical /poti/ cluster but readily explorable
 through simulation.
 
@@ -1185,7 +1185,7 @@ for $512^3$, with \texttt{Waitall} reduced to a negligible
 fraction. The asynchronous ghost cell exchanges are effectively masked
 by the interior computation, confirming that the MPI overlap strategy
 implemented in this work achieves its goal if equipped with an
-adequate interconnection network.
+adequate interconnect network.
 
 #+begin_export latex
 \begin{figure}[!htb]
@@ -1246,7 +1246,7 @@ Simulated GPU execution of a $512^3$ problem size with five nodes in the
 #+end_export
 
 These experiments confirm that the masking strategies implemented in
-the program are effective when the balance between the interconnection
+the program are effective when the balance between the interconnect
 network capacity and the computational capacity of the accelerators is
 adequate. The progression from 1Gbps (real) to 10Gbps, then to 100Gbps
 (simulated) demonstrates a clear, gradual shift from

@@ -505,9 +505,10 @@ jointly determine communication-overlap effectiveness at large-scale
 cluster deployments for this application. Although implementing the
 halo exchange remains relatively easy, the challenge lies in
 leveraging it in realistic scenarios. For example, when paired with a
-slow network, it creates precisely the bandwidth asymmetry that
-makes the method most challenging to achieve. GPUs 
-finish local stencil computation far faster than the network can
+slow network, communication hiding becomes harder precisely
+because of the different bandwidth requirements of each domain
+partition.
+GPUs finish local stencil computation far faster than the network can
 deliver boundary data. It is therefore necessary not only to design
 the halo exchange but also to conduct a thorough performance analysis
 to address these challenges.

@@ -396,7 +396,7 @@ negative speedup relative to the single-node baseline, with a 5-worker
 configuration falling below the 3870 MSamples/s baseline while an
 8-worker configuration reaches 8309 MSamples/s (10Gbps) and 9374
 MSamples/s (100Gbps). Together, these results establish that
-interconnection bandwidth and the partitioning topology are
+interconnect bandwidth and the partitioning topology are
 co-determining factors for ghost cell masking effectiveness in
 distributed stencil applications.
 
@@ -496,7 +496,7 @@ GPU links. This single-node limitation imposes immediate scalability
 constraints in both computational throughput and GPU memory. The
 natural path to resolving this bottleneck is to distribute computation
 across multiple nodes via proper domain partitioning and inter-node
-asynchronous communication. As far as we know, the distribution of the
+asynchronous communication. To the best of our knowledge, the distribution of the
 Fletcher method implementation across multiple cluster nodes via MPI,
 with ghost-cell halo exchange to manage subdomain boundary data, has
 not been explored. There is a clear gap in the literature, leaving
@@ -643,7 +643,7 @@ block decomposition.
 :END:
 
 Each process augments its local grid with a thin shell of ghost cells
-holding boundary data exchanged with neighbouring processes
+holding boundary data exchanged with neighbours processes
 \cite{ghost_cells}. These extra cells are never updated by the
 stencil, but the memory cost is offset by the ability to prefetch halo
 data ahead of when it is needed. Within each time step, communication
@@ -717,8 +717,8 @@ finite-difference scheme. For each grid point, second-order
 derivatives are evaluated in all three principal directions (xx, yy,
 zz) as well as three mixed directions (xy, yz, xz), producing six
 second-derivative terms per variable. These are then combined through
-a coordinate transformation parameterized by anisotropy angles (theta
-and phi) to form two auxiliary operators, which capture the
+a coordinate transformation parameterized by anisotropy angles (\theta
+and \phi) to form two auxiliary operators, which capture the
 directional dependence of wave propagation in
 tilted-transverse-isotropic (TTI) media. The right-hand sides of the
 Fletcher equations are assembled as weighted sums, where the weights
@@ -754,9 +754,9 @@ compute-to-communication regimes.
 
 We conduct CPU experiments on the /cei/ cluster of the \censor{PCAD} platform at
 \censor{INF/UFRGS}. The cluster consists of six Supermicro X11DPU systems,
-functioning as computational nodes, connected by a 10Gbit
+connected by a 10Gbps
 network. Each node is equipped with 2\times Intel Xeon Silver 4116
-processors at 2.1 GHz, offering 24 cores and 48 threads with 96GB DDR4
+processors at 2.1GHz, offering 24 cores and 48 threads with 96GB DDR4
 RAM. Experiments use OpenMP to leverage each node's parallelism. We
 trace every execution with \censor{akypuera} \cite{akypuera}, providing low
 observation overhead to record every MPI operation performed by each
@@ -770,8 +770,8 @@ We conduct GPU experiments on the /poti/ cluster of the \censor{PCAD}
 platform. The cluster consists of five computational nodes, each
 equipped with an Intel Core i7-14700KF processor at 3.4GHz (20 cores,
 28 threads), 96GB of DDR5 RAM, an NVIDIA GeForce RTX 4070 GPU with
-12GB of VRAM, and a 1Gbps Gigabit network interconnect. Experiments
-use all five nodes with only RTX4070 accelerators, running the
+12GB of VRAM, and a 1Gbps network interconnect. Experiments
+use all five nodes using only the RTX4070 accelerators, running the
 optimized CUDA propagation kernel. The same tracing and analysis
 toolchain used in the CPU experiments applies here, recording MPI
 events at per-rank granularity to measure compute-load fractions
@@ -795,7 +795,7 @@ for the analysis of the reference Fletcher code base
 \cite{serpa2018wscad, serpa2021ccpe}. This metric normalizes across
 backends and problem sizes, enabling comparison of distributed
 performance with a single-node baseline. Finally, we note that the
-physical /poti/ cluster's GPU VRAM (12 GB) imposes a practical ceiling
+physical /poti/ cluster's GPU VRAM (12GB) imposes a practical ceiling
 on the maximum solvable domain per worker, a constraint that directly
 influences the range of problem sizes evaluated in our GPU experiments
 and motivates the use of simulation to explore configurations beyond
@@ -888,7 +888,7 @@ communication time, as quantified in Figure
 \ref{fig:real_cpu_load_256}: the aggregate compute load is
 approximately 75% across all quantiles, indicating that a $256^3$
 problem size requires more compute time than the data can be
-transferred over a 10Gbit network.
+transferred over a 10Gbps network.
 
 #+begin_export latex
 \begin{figure}[!htb]
@@ -921,11 +921,11 @@ longer compute events than MPI events. Figure
 compute alone, indicating that as problem sizes grow, computation
 costs increase at a faster rate than communication costs, as predicted
 in the theoretical background (see Section [[#sec.partitioning]]). The
-reasoning is immediate: block faces grow more slowly, as
+reasoning is clear: block faces grow more slowly, as
 $6(\sqrt[3]{P} - 1)L^2$, compared to the volume of the cube as
 $L^3$. While processing capacity grows cubically, the communication
 requirement (boundary) grows only quadratically. Table
-\ref{tab:frontier_volume} presents different boundary-to-volume ratios
+\ref{tab:frontier_volume} presents different surface-to-volume ratios
 for a fixed number of processors $P = 64$. Increasing the problem size
 tenfold increases the volume (useful work) 1000 times, while the
 boundary (communication cost) increases only 100 times. This
@@ -937,12 +937,12 @@ communication-to-computation ratio tends to zero as the problem grows.
 #+begin_export latex
 \begin{table}[!htb]
 \centering
-\caption{Boundary-to-volume ratio for different block widths $L$
+\caption{Surface-to-volume ratio for different block widths $L$
 with $P = 64$ processors.}
 \label{tab:frontier_volume}
 \begin{tabular}{lccc}
 \hline
-$L$ (Width) & Volume ($L^3$) & Boundary ($18L^2$) & Ratio \\
+$L$ (Width) & Volume ($L^3$) & Surface ($18L^2$) & Ratio \\
 \hline
 10 & 1~000 & 1~800 & 1.80 \\
 100 & 1~000~000 & 180~000 & 0.18 \\
@@ -1052,7 +1052,7 @@ that the network remains the bottleneck.
 Figure \ref{fig:real_gpu_gantt_512} presents the $512^3$ case. The
 Gantt chart shows wider compute blocks than the previous sizes, yet
 \texttt{Waitall} still prevails. Although Table
-\ref{tab:frontier_volume} predicts a decreasing boundary-to-volume
+\ref{tab:frontier_volume} predicts a decreasing surface-to-volume
 ratio with larger blocks, the load chart reveals that the compute
 fraction remains at approximately 20%, virtually unchanged from
 $128^3$ and $256^3$. This lack of improvement indicates that, despite
@@ -1326,7 +1326,7 @@ over the 1001 iterations of the simulation.
 
 Table \ref{tab:results_summary} consolidates the approximate compute
 load observed across all experimental scenarios, allowing a direct
-comparison of the influence of backend, problem size and network
+comparison of the influence of backend, problem size, and network
 bandwidth on masking effectiveness.
 
 #+begin_export latex
@@ -1380,7 +1380,7 @@ load from \approx20% to \approx75--80%, and to \approx85--90% at 100Gbps, confir
 that the asynchronous ghost cell masking strategy is effective when
 provided with adequate network capacity.
 
-The boundary-to-volume analysis confirms the root cause: as problem
+The surface-to-volume analysis confirms the root cause: as problem
 size grows, the stencil volume increases as $O(n^3)$ while the halo
 surface grows only as $O(n^2)$, so a larger local domain should
 improve masking. On GPU clusters, however, the accelerator processes

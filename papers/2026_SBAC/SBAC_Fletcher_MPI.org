@@ -22,6 +22,20 @@
 # You need at least Org 9 and Emacs 24 to make this work.
 # If you do, just type make (thanks Luka Stanisic for this).
 
+* Camera-Ready Info from EasyChair                                 :noexport:
+
+Paper Information
+Title:	MPI-Based 3D Anisotropic RTM with Fletcher's Method and Ghost Cell Halo Exchange
+Paper:	paper_61.pdf
+Pages:	10
+Address:	
+Time (UTC):	2026-09-03 02:03
+IEEE copyright signed:	yes
+Signed by:	Lucas Mello Schnorr
+IEEE eCF paper id:	780398
+Status:	this paper can be modified by the authors
+Checked:	this paper was not yet checked by editors
+
 * Reviews                                                          :noexport:
 ** Introduction
 

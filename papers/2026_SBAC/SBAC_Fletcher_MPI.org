@@ -887,8 +887,8 @@ relevant observation is the predominance of computation over
 communication time, as quantified in Figure
 \ref{fig:real_cpu_load_256}: the aggregate compute load is
 approximately 75% across all quantiles, indicating that a $256^3$
-problem size requires more time than an Intel Xeon can deliver over a
-10Gbit network.
+problem size requires more compute time than the data can be
+transferred over a 10Gbit network.
 
 #+begin_export latex
 \begin{figure}[!htb]

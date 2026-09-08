@@ -57,36 +57,3 @@ void dc_device_add_source(dc_device_data *data, size_t index, float source) {
   data->pc[index] += source;
   data->qc[index] += source;
 }
-
-void dc_device_extract_halo_face(dc_device_data *data, float *buffer,
-                                 const size_t start_coords[DIMENSIONS],
-                                 const size_t end_coords[DIMENSIONS],
-                                 const size_t sizes[DIMENSIONS],
-                                 const float *from_array) {
-  size_t data_index = 0;
-  for (size_t z = start_coords[2]; z < end_coords[2]; z++) {
-    for (size_t y = start_coords[1]; y < end_coords[1]; y++) {
-      for (size_t x = start_coords[0]; x < end_coords[0]; x++) {
-        size_t from_idx =
-            dc_get_index_for_coordinates(x, y, z, sizes[0], sizes[1], sizes[2]);
-        buffer[data_index++] = from_array[from_idx];
-      }
-    }
-  }
-}
-
-void dc_device_insert_halo_face(dc_device_data *data, const float *buffer,
-                                const size_t start_coords[DIMENSIONS],
-                                const size_t end_coords[DIMENSIONS],
-                                const size_t sizes[DIMENSIONS],
-                                float *to_array) {
-  size_t data_index = 0;
-  for (size_t z = start_coords[2]; z < end_coords[2]; z++) {
-    for (size_t y = start_coords[1]; y < end_coords[1]; y++) {
-      for (size_t x = start_coords[0]; x < end_coords[0]; x++) {
-        to_array[dc_get_index_for_coordinates(x, y, z, sizes[0], sizes[1],
-                                              sizes[2])] = buffer[data_index++];
-      }
-    }
-  }
-}

@@ -24,18 +24,6 @@ void dc_device_swap_arrays(dc_device_data *data);
 
 void dc_device_add_source(dc_device_data *data, size_t index, float source);
 
-void dc_device_extract_halo_face(dc_device_data *data, float *buffer,
-                                 const size_t start_coords[DIMENSIONS],
-                                 const size_t end_coords[DIMENSIONS],
-                                 const size_t sizes[DIMENSIONS],
-                                 const float *from_array);
-
-void dc_device_insert_halo_face(dc_device_data *data, const float *buffer,
-                                const size_t start_coords[DIMENSIONS],
-                                const size_t end_coords[DIMENSIONS],
-                                const size_t sizes[DIMENSIONS],
-                                float *to_array);
-
 #ifdef __cplusplus
 }
 #endif

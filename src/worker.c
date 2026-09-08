@@ -157,165 +157,117 @@ void dc_worker_init_from_partition_info(dc_process_t *process, MPI_Comm comm) {
   dc_log_info(process->rank, "Local initialization complete");
 }
 
-void dc_send_halo_to_neighbours(dc_process_t process, MPI_Comm comm, int tag,
-                                dc_device_data *data, float *from,
-                                worker_requests_t *requests) {
-  worker_requests_t reqs;
-  size_t radius = STENCIL;
-
-  reqs.count = 0;
-  reqs.requests = malloc(NEIGHBOURHOOD * sizeof(MPI_Request));
-  if (reqs.requests == NULL) {
-    dc_log_error(process.rank,
-                 "OOM: could not allocate memory for reqs.requests in "
-                 "dc_send_halo_to_neighbours");
-    MPI_Finalize();
-    exit(1);
+// Computes the [start, start+subsize) extent of one dimension for a given
+// exchange face. `direction` is the displacement (-1/0/+1) along that axis.
+// Send ranges cover the owned boundary cells; recv ranges cover the outer halo.
+static void dc_face_range(int direction, size_t size, size_t radius,
+                          int is_send, int *start, int *subsize) {
+  if (direction < 0) {
+    *start = is_send ? (int)radius : 0;
+    *subsize = (int)radius;
+  } else if (direction > 0) {
+    *start = is_send ? (int)(size - 2 * radius) : (int)(size - radius);
+    *subsize = (int)radius;
+  } else {
+    *start = (int)radius;
+    *subsize = (int)(size - 2 * radius);
   }
-  reqs.buffers_to_free = malloc(NEIGHBOURHOOD * sizeof(void *));
-  if (reqs.buffers_to_free == NULL) {
-    dc_log_error(process.rank,
-                 "OOM: could not allocate memory for reqs.buffers_to_free in "
-                 "dc_send_halo_to_neighbours");
-    MPI_Finalize();
-    exit(1);
-  }
-
-  for (size_t face_index = 0; face_index < NEIGHBOURHOOD; face_index++) {
-    int neighbour_rank = process.neighbours[face_index];
-    if (neighbour_rank == MPI_PROC_NULL)
-      continue;
-    int dz = face_index / 9;
-    int dy = (face_index % 9) / 3;
-    int dx = face_index % 3;
-
-    dx -= 1;
-    dy -= 1;
-    dz -= 1;
-
-    size_t send_starts[3], send_ends[3];
-    if (dx == -1) {
-      send_starts[0] = radius;
-      send_ends[0] = 2 * radius;
-    } else if (dx == 1) {
-      send_starts[0] = process.sizes[0] - 2 * radius;
-      send_ends[0] = process.sizes[0] - radius;
-    } else {
-      send_starts[0] = radius;
-      send_ends[0] = process.sizes[0] - radius;
-    }
-
-    if (dy == -1) {
-      send_starts[1] = radius;
-      send_ends[1] = 2 * radius;
-    } else if (dy == 1) {
-      send_starts[1] = process.sizes[1] - 2 * radius;
-      send_ends[1] = process.sizes[1] - radius;
-    } else {
-      send_starts[1] = radius;
-      send_ends[1] = process.sizes[1] - radius;
-    }
-
-    if (dz == -1) {
-      send_starts[2] = radius;
-      send_ends[2] = 2 * radius;
-    } else if (dz == 1) {
-      send_starts[2] = process.sizes[2] - 2 * radius;
-      send_ends[2] = process.sizes[2] - radius;
-    } else {
-      send_starts[2] = radius;
-      send_ends[2] = process.sizes[2] - radius;
-    }
-
-    size_t data_size = (send_ends[0] - send_starts[0]) *
-                       (send_ends[1] - send_starts[1]) *
-                       (send_ends[2] - send_starts[2]);
-
-    float *send_buffer = malloc(data_size * sizeof(float));
-    if (send_buffer == NULL) {
-      dc_log_error(process.rank,
-                   "OOM: could not allocate memory for send_buffer in "
-                   "dc_send_halo_to_neighbours");
-      MPI_Finalize();
-      exit(1);
-    }
-    dc_device_extract_halo_face(data, send_buffer, send_starts, send_ends,
-                                process.sizes, from);
-    reqs.buffers_to_free[reqs.count] = send_buffer;
-    MPI_Isend(send_buffer, data_size, MPI_FLOAT, neighbour_rank, tag, comm,
-              &reqs.requests[reqs.count]);
-    reqs.count++;
-  }
-  dc_concatenate_worker_requests(process.rank, requests, &reqs);
 }
 
-worker_halos_t dc_receive_halos(dc_process_t process, MPI_Comm comm, int tag) {
-  worker_halos_t result;
-  size_t radius = STENCIL;
-  result.halo_count = 0;
-
-  result.requests.count = 0;
-  result.requests.requests = malloc(NEIGHBOURHOOD * sizeof(MPI_Request));
-  if (result.requests.requests == NULL) {
-    dc_log_error(
-        process.rank,
-        "OOM: could not allocate memory for requests in dc_receive_halos");
-    MPI_Finalize();
-    exit(1);
-  }
-  result.requests.buffers_to_free = NULL;
-
-  result.halo_sizes = calloc(NEIGHBOURHOOD, sizeof(size_t));
-  if (result.halo_sizes == NULL) {
-    dc_log_error(
-        process.rank,
-        "OOM: could not allocate memory for halo_sizes in dc_receive_halos");
-    MPI_Finalize();
-    exit(1);
-  }
-  result.halo_data = calloc(NEIGHBOURHOOD, sizeof(float *));
-  if (result.halo_data == NULL) {
-    dc_log_error(
-        process.rank,
-        "OOM: could not allocate memory for halo_data in dc_receive_halos");
-    MPI_Finalize();
-    exit(1);
-  }
+void dc_halo_exchange_init(const dc_process_t *process,
+                           dc_halo_exchange_t *exchange) {
+  const size_t radius = STENCIL;
+  // Field arrays are laid out with x fastest, z slowest (see indexing.h), which
+  // matches MPI_ORDER_C over dimensions {z, y, x}.
+  const int array_sizes[DIMENSIONS] = {
+      (int)process->sizes[2], (int)process->sizes[1], (int)process->sizes[0]};
+  exchange->neighbour_count = 0;
 
   for (size_t face_index = 0; face_index < NEIGHBOURHOOD; face_index++) {
-    int neighbour_rank = process.neighbours[face_index];
-    if (neighbour_rank == MPI_PROC_NULL)
+    exchange->send_types[face_index] = MPI_DATATYPE_NULL;
+    exchange->recv_types[face_index] = MPI_DATATYPE_NULL;
+
+    if (process->neighbours[face_index] == MPI_PROC_NULL) {
       continue;
-    int dz = face_index / 9;
-    int dy = (face_index % 9) / 3;
-    int dx = face_index % 3;
-    int displacement[DIMENSIONS] = {dx - 1, dy - 1, dz - 1};
-
-    size_t recv_data_size = 1;
-    for (unsigned int i = 0; i < DIMENSIONS; i++) {
-      if (displacement[i] == 0) {
-        recv_data_size *= process.sizes[i] - 2 * radius;
-      } else {
-        recv_data_size *= radius;
-      }
-    }
-    result.halo_sizes[face_index] = recv_data_size;
-    result.halo_data[face_index] = malloc(recv_data_size * sizeof(float));
-    if (result.halo_data[face_index] == NULL) {
-      dc_log_error(process.rank, "OOM: could not allocate memory for "
-                                 "halo_data[face_index] in dc_receive_halos");
-      MPI_Finalize();
-      exit(1);
     }
 
-    MPI_Irecv(result.halo_data[face_index], recv_data_size, MPI_FLOAT,
-              neighbour_rank, tag, comm,
-              &result.requests.requests[result.requests.count]);
+    const int displacement[DIMENSIONS] = {
+        (int)(face_index % 3) - 1,
+        (int)((face_index % 9) / 3) - 1,
+        (int)(face_index / 9) - 1,
+    };
 
-    result.halo_count++;
-    result.requests.count++;
+    int send_start[DIMENSIONS], send_subsize[DIMENSIONS];
+    int recv_start[DIMENSIONS], recv_subsize[DIMENSIONS];
+    for (unsigned int d = 0; d < DIMENSIONS; d++) {
+      dc_face_range(displacement[d], process->sizes[d], radius, 1,
+                    &send_start[d], &send_subsize[d]);
+      dc_face_range(displacement[d], process->sizes[d], radius, 0,
+                    &recv_start[d], &recv_subsize[d]);
+    }
+
+    // Reorder to the {z, y, x} axis order expected by MPI_ORDER_C.
+    const int send_subsize_c[DIMENSIONS] = {send_subsize[2], send_subsize[1],
+                                            send_subsize[0]};
+    const int send_start_c[DIMENSIONS] = {send_start[2], send_start[1],
+                                          send_start[0]};
+    const int recv_subsize_c[DIMENSIONS] = {recv_subsize[2], recv_subsize[1],
+                                            recv_subsize[0]};
+    const int recv_start_c[DIMENSIONS] = {recv_start[2], recv_start[1],
+                                          recv_start[0]};
+
+    MPI_Type_create_subarray(DIMENSIONS, array_sizes, send_subsize_c,
+                             send_start_c, MPI_ORDER_C, MPI_FLOAT,
+                             &exchange->send_types[face_index]);
+    MPI_Type_commit(&exchange->send_types[face_index]);
+
+    MPI_Type_create_subarray(DIMENSIONS, array_sizes, recv_subsize_c,
+                             recv_start_c, MPI_ORDER_C, MPI_FLOAT,
+                             &exchange->recv_types[face_index]);
+    MPI_Type_commit(&exchange->recv_types[face_index]);
+
+    exchange->neighbour_count++;
   }
-  return result;
+}
+
+void dc_halo_exchange_free(dc_halo_exchange_t *exchange) {
+  for (size_t face_index = 0; face_index < NEIGHBOURHOOD; face_index++) {
+    if (exchange->send_types[face_index] != MPI_DATATYPE_NULL) {
+      MPI_Type_free(&exchange->send_types[face_index]);
+    }
+    if (exchange->recv_types[face_index] != MPI_DATATYPE_NULL) {
+      MPI_Type_free(&exchange->recv_types[face_index]);
+    }
+  }
+  exchange->neighbour_count = 0;
+}
+
+void dc_post_halo_recvs(const dc_process_t *process,
+                        const dc_halo_exchange_t *exchange, MPI_Comm comm,
+                        int tag, float *array, MPI_Request *requests,
+                        size_t *count) {
+  for (size_t face_index = 0; face_index < NEIGHBOURHOOD; face_index++) {
+    const int neighbour_rank = process->neighbours[face_index];
+    if (neighbour_rank == MPI_PROC_NULL) {
+      continue;
+    }
+    MPI_Irecv(array, 1, exchange->recv_types[face_index], neighbour_rank, tag,
+              comm, &requests[(*count)++]);
+  }
+}
+
+void dc_post_halo_sends(const dc_process_t *process,
+                        const dc_halo_exchange_t *exchange, MPI_Comm comm,
+                        int tag, float *array, MPI_Request *requests,
+                        size_t *count) {
+  for (size_t face_index = 0; face_index < NEIGHBOURHOOD; face_index++) {
+    const int neighbour_rank = process->neighbours[face_index];
+    if (neighbour_rank == MPI_PROC_NULL) {
+      continue;
+    }
+    MPI_Isend(array, 1, exchange->send_types[face_index], neighbour_rank, tag,
+              comm, &requests[(*count)++]);
+  }
 }
 
 void dc_compute_boundaries(const dc_process_t *process, dc_device_data *data) {
@@ -455,7 +407,13 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
 
   dc_device_data *data = dc_device_data_init(process);
 
-  worker_requests_t all_send_requests = {0};
+  dc_halo_exchange_t exchange;
+  dc_halo_exchange_init(process, &exchange);
+
+  // pp and qp are exchanged independently, so up to 2 * NEIGHBOURHOOD
+  // outstanding requests per direction.
+  MPI_Request recv_requests[2 * NEIGHBOURHOOD];
+  MPI_Request send_requests[2 * NEIGHBOURHOOD];
 
   double start_time = MPI_Wtime();
 
@@ -469,8 +427,11 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
       dc_device_add_source(data, process->source_index, source);
     }
 
-    worker_halos_t new_pp_halos = dc_receive_halos(*process, comm, PP_TAG);
-    worker_halos_t new_qp_halos = dc_receive_halos(*process, comm, QP_TAG);
+    size_t recv_count = 0;
+    dc_post_halo_recvs(process, &exchange, comm, PP_TAG, data->pp,
+                       recv_requests, &recv_count);
+    dc_post_halo_recvs(process, &exchange, comm, QP_TAG, data->qp,
+                       recv_requests, &recv_count);
 
 #ifdef SIMGRID
     sampled_computation(&average, &count, &stopped, process, data,
@@ -479,10 +440,11 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
     dc_compute_boundaries(process, data);
 #endif
 
-    dc_send_halo_to_neighbours(*process, comm, PP_TAG, data, data->pp,
-                               &all_send_requests);
-    dc_send_halo_to_neighbours(*process, comm, QP_TAG, data, data->qp,
-                               &all_send_requests);
+    size_t send_count = 0;
+    dc_post_halo_sends(process, &exchange, comm, PP_TAG, data->pp,
+                       send_requests, &send_count);
+    dc_post_halo_sends(process, &exchange, comm, QP_TAG, data->qp,
+                       send_requests, &send_count);
 
 #ifdef SIMGRID
     sampled_computation(&average, &count, &stopped, process, data,
@@ -491,27 +453,16 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
     dc_compute_interior(process, data);
 #endif
 
-    dc_concatenate_worker_requests(process->rank, &new_pp_halos.requests,
-                                   &new_qp_halos.requests);
-
-    MPI_Waitall(new_pp_halos.requests.count, new_pp_halos.requests.requests,
-                MPI_STATUSES_IGNORE);
-
-    dc_worker_insert_halos(process, &new_pp_halos, data, data->pp);
-    dc_worker_insert_halos(process, &new_qp_halos, data, data->qp);
-
-    dc_free_worker_halos(&new_pp_halos);
-    dc_free_worker_halos(&new_qp_halos);
+    MPI_Waitall(recv_count, recv_requests, MPI_STATUSES_IGNORE);
 
     dc_device_swap_arrays(data);
 
-    MPI_Waitall(all_send_requests.count, all_send_requests.requests,
-                MPI_STATUSES_IGNORE);
-    dc_free_worker_requests(&all_send_requests);
+    MPI_Waitall(send_count, send_requests, MPI_STATUSES_IGNORE);
   }
 
   dc_device_data_get_results(process, data);
   dc_device_data_free(data);
+  dc_halo_exchange_free(&exchange);
 
   double end_time = MPI_Wtime();
   double elapsed = end_time - start_time;
@@ -524,41 +475,6 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
   return msamples / elapsed;
 }
 
-void dc_free_worker_requests(worker_requests_t *requests) {
-  if (requests->buffers_to_free != NULL) {
-    for (size_t i = 0; i < requests->count; i++) {
-      if (requests->buffers_to_free[i] != NULL) {
-        free(requests->buffers_to_free[i]);
-      }
-    }
-    free(requests->buffers_to_free);
-  }
-  if (requests->requests != NULL) {
-    free(requests->requests);
-  }
-  requests->requests = NULL;
-  requests->buffers_to_free = NULL;
-  requests->count = 0;
-}
-
-void dc_free_worker_halos(worker_halos_t *halos) {
-  if (halos->halo_data != NULL) {
-    for (size_t i = 0; i < NEIGHBOURHOOD; i++) {
-      if (halos->halo_data[i] != NULL) {
-        free(halos->halo_data[i]);
-      }
-    }
-    free(halos->halo_data);
-  }
-  if (halos->halo_sizes != NULL) {
-    free(halos->halo_sizes);
-  }
-  dc_free_worker_requests(&halos->requests);
-  halos->halo_data = NULL;
-  halos->halo_sizes = NULL;
-  halos->halo_count = 0;
-}
-
 void dc_worker_free(dc_process_t process) {
   free(process.pp);
   free(process.pc);
@@ -567,79 +483,6 @@ void dc_worker_free(dc_process_t process) {
 
   free(process.hostnames);
   process.hostnames = NULL;
-}
-
-void dc_concatenate_worker_requests(int rank, worker_requests_t *target,
-                                    worker_requests_t *source) {
-  if (source == NULL)
-    return;
-  if (source->count == 0) {
-    if (source->requests != NULL) {
-      free(source->requests);
-      source->requests = NULL;
-    }
-    if (source->buffers_to_free != NULL) {
-      free(source->buffers_to_free);
-      source->buffers_to_free = NULL;
-    }
-    return;
-  }
-  size_t original_target_count = target->count;
-  size_t new_count = original_target_count + source->count;
-  target->requests = realloc(target->requests, new_count * sizeof(MPI_Request));
-  if (target->requests == NULL) {
-    dc_log_error(rank, "OOM: could not allocate memory for target->requests in "
-                       "dc_concatenate_worker_requests");
-    MPI_Finalize();
-    exit(1);
-  }
-  memcpy(target->requests + original_target_count, source->requests,
-         source->count * sizeof(MPI_Request));
-  if (source->buffers_to_free != NULL) {
-    if (target->buffers_to_free == NULL) {
-      target->buffers_to_free = malloc(new_count * sizeof(void *));
-      if (target->buffers_to_free == NULL) {
-        dc_log_error(
-            rank, "OOM: could not allocate memory for target->buffers_to_free "
-                  "in dc_concatenate_worker_requests");
-        MPI_Finalize();
-        exit(1);
-      }
-      memset(target->buffers_to_free, 0,
-             original_target_count * sizeof(void *));
-    } else {
-      target->buffers_to_free =
-          realloc(target->buffers_to_free, new_count * sizeof(void *));
-      if (target->buffers_to_free == NULL) {
-        dc_log_error(rank, "OOM: could not re-allocate memory for "
-                           "target->buffers_to_free in "
-                           "dc_concatenate_worker_requests");
-        MPI_Finalize();
-        exit(1);
-      }
-    }
-    memcpy(target->buffers_to_free + original_target_count,
-           source->buffers_to_free, source->count * sizeof(void *));
-  } else if (target->buffers_to_free != NULL) {
-    target->buffers_to_free =
-        realloc(target->buffers_to_free, new_count * sizeof(void *));
-    if (target->buffers_to_free == NULL) {
-      dc_log_error(rank, "OOM: could not re-allocate memory for "
-                         "target->buffers_to_free in "
-                         "dc_concatenate_worker_requests");
-      MPI_Finalize();
-      exit(1);
-    }
-    memset(target->buffers_to_free + original_target_count, 0,
-           source->count * sizeof(void *));
-  }
-  target->count = new_count;
-
-  free(source->requests);
-  free(source->buffers_to_free);
-  source->requests = NULL;
-  source->buffers_to_free = NULL;
-  source->count = 0;
 }
 
 void dc_worker_swap_arrays(dc_process_t *process) {
@@ -652,67 +495,4 @@ void dc_worker_swap_arrays(dc_process_t *process) {
   temp = process->qp;
   process->qp = process->qc;
   process->qc = temp;
-}
-
-void dc_worker_insert_halos(const dc_process_t *process,
-                            const worker_halos_t *halos, dc_device_data *data,
-                            float *to_array) {
-  const size_t radius = STENCIL;
-
-  for (int dx = -1; dx <= 1; dx++) {
-    for (int dy = -1; dy <= 1; dy++) {
-      for (int dz = -1; dz <= 1; dz++) {
-        if (dx == 0 && dy == 0 && dz == 0) {
-          continue;
-        }
-
-        size_t face_index = 9 * (dz + 1) + 3 * (dy + 1) + dx + 1;
-        if (process->neighbours[face_index] == MPI_PROC_NULL) {
-          continue;
-        }
-        float *halo_buffer = halos->halo_data[face_index];
-
-        if (halo_buffer == NULL) {
-          continue;
-        }
-
-        size_t recv_starts[3], recv_ends[3];
-        if (dx == -1) {
-          recv_starts[0] = 0;
-          recv_ends[0] = radius;
-        } else if (dx == 1) {
-          recv_starts[0] = process->sizes[0] - radius;
-          recv_ends[0] = process->sizes[0];
-        } else {
-          recv_starts[0] = radius;
-          recv_ends[0] = process->sizes[0] - radius;
-        }
-
-        if (dy == -1) {
-          recv_starts[1] = 0;
-          recv_ends[1] = radius;
-        } else if (dy == 1) {
-          recv_starts[1] = process->sizes[1] - radius;
-          recv_ends[1] = process->sizes[1];
-        } else {
-          recv_starts[1] = radius;
-          recv_ends[1] = process->sizes[1] - radius;
-        }
-
-        if (dz == -1) {
-          recv_starts[2] = 0;
-          recv_ends[2] = radius;
-        } else if (dz == 1) {
-          recv_starts[2] = process->sizes[2] - radius;
-          recv_ends[2] = process->sizes[2];
-        } else {
-          recv_starts[2] = radius;
-          recv_ends[2] = process->sizes[2] - radius;
-        }
-
-        dc_device_insert_halo_face(data, halo_buffer, recv_starts, recv_ends,
-                                   process->sizes, to_array);
-      }
-    }
-  }
 }

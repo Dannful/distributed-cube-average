@@ -157,119 +157,6 @@ void dc_worker_init_from_partition_info(dc_process_t *process, MPI_Comm comm) {
   dc_log_info(process->rank, "Local initialization complete");
 }
 
-// Computes the [start, start+subsize) extent of one dimension for a given
-// exchange face. `direction` is the displacement (-1/0/+1) along that axis.
-// Send ranges cover the owned boundary cells; recv ranges cover the outer halo.
-static void dc_face_range(int direction, size_t size, size_t radius,
-                          int is_send, int *start, int *subsize) {
-  if (direction < 0) {
-    *start = is_send ? (int)radius : 0;
-    *subsize = (int)radius;
-  } else if (direction > 0) {
-    *start = is_send ? (int)(size - 2 * radius) : (int)(size - radius);
-    *subsize = (int)radius;
-  } else {
-    *start = (int)radius;
-    *subsize = (int)(size - 2 * radius);
-  }
-}
-
-void dc_halo_exchange_init(const dc_process_t *process,
-                           dc_halo_exchange_t *exchange) {
-  const size_t radius = STENCIL;
-  // Field arrays are laid out with x fastest, z slowest (see indexing.h), which
-  // matches MPI_ORDER_C over dimensions {z, y, x}.
-  const int array_sizes[DIMENSIONS] = {
-      (int)process->sizes[2], (int)process->sizes[1], (int)process->sizes[0]};
-  exchange->neighbour_count = 0;
-
-  for (size_t face_index = 0; face_index < NEIGHBOURHOOD; face_index++) {
-    exchange->send_types[face_index] = MPI_DATATYPE_NULL;
-    exchange->recv_types[face_index] = MPI_DATATYPE_NULL;
-
-    if (process->neighbours[face_index] == MPI_PROC_NULL) {
-      continue;
-    }
-
-    const int displacement[DIMENSIONS] = {
-        (int)(face_index % 3) - 1,
-        (int)((face_index % 9) / 3) - 1,
-        (int)(face_index / 9) - 1,
-    };
-
-    int send_start[DIMENSIONS], send_subsize[DIMENSIONS];
-    int recv_start[DIMENSIONS], recv_subsize[DIMENSIONS];
-    for (unsigned int d = 0; d < DIMENSIONS; d++) {
-      dc_face_range(displacement[d], process->sizes[d], radius, 1,
-                    &send_start[d], &send_subsize[d]);
-      dc_face_range(displacement[d], process->sizes[d], radius, 0,
-                    &recv_start[d], &recv_subsize[d]);
-    }
-
-    // Reorder to the {z, y, x} axis order expected by MPI_ORDER_C.
-    const int send_subsize_c[DIMENSIONS] = {send_subsize[2], send_subsize[1],
-                                            send_subsize[0]};
-    const int send_start_c[DIMENSIONS] = {send_start[2], send_start[1],
-                                          send_start[0]};
-    const int recv_subsize_c[DIMENSIONS] = {recv_subsize[2], recv_subsize[1],
-                                            recv_subsize[0]};
-    const int recv_start_c[DIMENSIONS] = {recv_start[2], recv_start[1],
-                                          recv_start[0]};
-
-    MPI_Type_create_subarray(DIMENSIONS, array_sizes, send_subsize_c,
-                             send_start_c, MPI_ORDER_C, MPI_FLOAT,
-                             &exchange->send_types[face_index]);
-    MPI_Type_commit(&exchange->send_types[face_index]);
-
-    MPI_Type_create_subarray(DIMENSIONS, array_sizes, recv_subsize_c,
-                             recv_start_c, MPI_ORDER_C, MPI_FLOAT,
-                             &exchange->recv_types[face_index]);
-    MPI_Type_commit(&exchange->recv_types[face_index]);
-
-    exchange->neighbour_count++;
-  }
-}
-
-void dc_halo_exchange_free(dc_halo_exchange_t *exchange) {
-  for (size_t face_index = 0; face_index < NEIGHBOURHOOD; face_index++) {
-    if (exchange->send_types[face_index] != MPI_DATATYPE_NULL) {
-      MPI_Type_free(&exchange->send_types[face_index]);
-    }
-    if (exchange->recv_types[face_index] != MPI_DATATYPE_NULL) {
-      MPI_Type_free(&exchange->recv_types[face_index]);
-    }
-  }
-  exchange->neighbour_count = 0;
-}
-
-void dc_post_halo_recvs(const dc_process_t *process,
-                        const dc_halo_exchange_t *exchange, MPI_Comm comm,
-                        int tag, float *array, MPI_Request *requests,
-                        size_t *count) {
-  for (size_t face_index = 0; face_index < NEIGHBOURHOOD; face_index++) {
-    const int neighbour_rank = process->neighbours[face_index];
-    if (neighbour_rank == MPI_PROC_NULL) {
-      continue;
-    }
-    MPI_Irecv(array, 1, exchange->recv_types[face_index], neighbour_rank, tag,
-              comm, &requests[(*count)++]);
-  }
-}
-
-void dc_post_halo_sends(const dc_process_t *process,
-                        const dc_halo_exchange_t *exchange, MPI_Comm comm,
-                        int tag, float *array, MPI_Request *requests,
-                        size_t *count) {
-  for (size_t face_index = 0; face_index < NEIGHBOURHOOD; face_index++) {
-    const int neighbour_rank = process->neighbours[face_index];
-    if (neighbour_rank == MPI_PROC_NULL) {
-      continue;
-    }
-    MPI_Isend(array, 1, exchange->send_types[face_index], neighbour_rank, tag,
-              comm, &requests[(*count)++]);
-  }
-}
-
 void dc_compute_boundaries(const dc_process_t *process, dc_device_data *data) {
   const size_t radius = STENCIL;
   const size_t *sizes = process->sizes;
@@ -405,10 +292,12 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
               process->iterations, process->sizes[0], process->sizes[1],
               process->sizes[2]);
 
-  dc_device_data *data = dc_device_data_init(process);
-
+  // Init the exchange first: the CUDA-aware backend aborts here, before any
+  // device memory is touched, if MPI lacks CUDA support.
   dc_halo_exchange_t exchange;
   dc_halo_exchange_init(process, &exchange);
+
+  dc_device_data *data = dc_device_data_init(process);
 
   // pp and qp are exchanged independently, so up to 2 * NEIGHBOURHOOD
   // outstanding requests per direction.
@@ -428,9 +317,9 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
     }
 
     size_t recv_count = 0;
-    dc_post_halo_recvs(process, &exchange, comm, PP_TAG, data->pp,
+    dc_post_halo_recvs(process, &exchange, comm, PP_TAG, 0, data->pp,
                        recv_requests, &recv_count);
-    dc_post_halo_recvs(process, &exchange, comm, QP_TAG, data->qp,
+    dc_post_halo_recvs(process, &exchange, comm, QP_TAG, 1, data->qp,
                        recv_requests, &recv_count);
 
 #ifdef SIMGRID
@@ -441,9 +330,9 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
 #endif
 
     size_t send_count = 0;
-    dc_post_halo_sends(process, &exchange, comm, PP_TAG, data->pp,
+    dc_post_halo_sends(process, &exchange, comm, PP_TAG, 0, data, data->pp,
                        send_requests, &send_count);
-    dc_post_halo_sends(process, &exchange, comm, QP_TAG, data->qp,
+    dc_post_halo_sends(process, &exchange, comm, QP_TAG, 1, data, data->qp,
                        send_requests, &send_count);
 
 #ifdef SIMGRID
@@ -454,6 +343,9 @@ double dc_worker_process(dc_process_t *process, MPI_Comm comm) {
 #endif
 
     MPI_Waitall(recv_count, recv_requests, MPI_STATUSES_IGNORE);
+
+    dc_finish_halo_recvs(process, &exchange, 0, data, data->pp);
+    dc_finish_halo_recvs(process, &exchange, 1, data, data->qp);
 
     dc_device_swap_arrays(data);
 

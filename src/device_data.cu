@@ -137,3 +137,47 @@ __global__ void add_source_kernel(float *pc, float *qc, size_t index,
 void dc_device_add_source(dc_device_data *data, size_t index, float source) {
   add_source_kernel<<<1, 1>>>(data->pc, data->qc, index, source);
 }
+
+void dc_device_extract_halo_face(dc_device_data *data, float *buffer,
+                                 const size_t start_coords[DIMENSIONS],
+                                 const size_t end_coords[DIMENSIONS],
+                                 const size_t sizes[DIMENSIONS],
+                                 const float *from_array) {
+  size_t width = end_coords[0] - start_coords[0];
+  size_t height = end_coords[1] - start_coords[1];
+  size_t depth = end_coords[2] - start_coords[2];
+
+  cudaMemcpy3DParms params = {0};
+  params.srcPos = make_cudaPos(start_coords[0] * sizeof(float), start_coords[1],
+                               start_coords[2]);
+  params.dstPos = make_cudaPos(0, 0, 0);
+  params.srcPtr = make_cudaPitchedPtr(
+      (void *)from_array, sizes[0] * sizeof(float), sizes[0], sizes[1]);
+  params.dstPtr =
+      make_cudaPitchedPtr(buffer, width * sizeof(float), width, height);
+  params.extent = make_cudaExtent(width * sizeof(float), height, depth);
+  params.kind = cudaMemcpyDeviceToHost;
+  check_cuda_error(cudaMemcpy3D(&params), 0, "cudaMemcpy3D extract");
+}
+
+void dc_device_insert_halo_face(dc_device_data *data, const float *buffer,
+                                const size_t start_coords[DIMENSIONS],
+                                const size_t end_coords[DIMENSIONS],
+                                const size_t sizes[DIMENSIONS],
+                                float *to_array) {
+  size_t width = end_coords[0] - start_coords[0];
+  size_t height = end_coords[1] - start_coords[1];
+  size_t depth = end_coords[2] - start_coords[2];
+
+  cudaMemcpy3DParms params = {0};
+  params.srcPos = make_cudaPos(0, 0, 0);
+  params.dstPos = make_cudaPos(start_coords[0] * sizeof(float), start_coords[1],
+                               start_coords[2]);
+  params.srcPtr =
+      make_cudaPitchedPtr((void *)buffer, width * sizeof(float), width, height);
+  params.dstPtr = make_cudaPitchedPtr(to_array, sizes[0] * sizeof(float),
+                                      sizes[0], sizes[1]);
+  params.extent = make_cudaExtent(width * sizeof(float), height, depth);
+  params.kind = cudaMemcpyHostToDevice;
+  check_cuda_error(cudaMemcpy3D(&params), 0, "cudaMemcpy3D insert");
+}

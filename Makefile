@@ -15,7 +15,7 @@ LDFLAGS  = -lm
 CUDA_CFLAGS    = -I$(INCDIR) -g -gencode arch=compute_$(subst sm_,,$(ARCH)),code=$(ARCH) -allow-unsupported-compiler
 CUDA_LINK_LIBS = -L$(CUDA_HOME)/lib64 -lcudart
 
-SOURCES_C_COMMON = $(filter-out $(wildcard $(SRCDIR)/*_propagate.c) $(SRCDIR)/device_data.c $(SRCDIR)/derivatives.c $(SRCDIR)/sample.c, $(wildcard $(SRCDIR)/*.c))
+SOURCES_C_COMMON = $(filter-out $(wildcard $(SRCDIR)/*_propagate.c) $(SRCDIR)/device_data.c $(SRCDIR)/derivatives.c $(SRCDIR)/sample.c $(SRCDIR)/halo_inplace.c $(SRCDIR)/halo_staging.c, $(wildcard $(SRCDIR)/*.c))
 
 # Profile configuration
 ifeq ($(PROFILE), mpip)
@@ -25,7 +25,7 @@ else ifeq ($(PROFILE), akypuera)
 endif
 
 ifeq ($(BACKEND), openmp)
-    SOURCES_C    := $(SOURCES_C_COMMON) $(SRCDIR)/openmp_propagate.c $(SRCDIR)/device_data.c
+    SOURCES_C    := $(SOURCES_C_COMMON) $(SRCDIR)/openmp_propagate.c $(SRCDIR)/device_data.c $(SRCDIR)/halo_inplace.c
     SOURCES_CUDA :=
     CFLAGS       += -fopenmp
     LDFLAGS      += -fopenmp
@@ -34,19 +34,25 @@ else ifeq ($(BACKEND), simgrid)
     CC           := smpicc
     CFLAGS       += -DSIMGRID -fopenmp
     LDFLAGS      += -fopenmp
-    SOURCES_C    := $(SOURCES_C_COMMON) $(SRCDIR)/openmp_propagate.c $(SRCDIR)/device_data.c
+    SOURCES_C    := $(SOURCES_C_COMMON) $(SRCDIR)/openmp_propagate.c $(SRCDIR)/device_data.c $(SRCDIR)/halo_inplace.c
     SOURCES_CUDA :=
 
 else ifeq ($(BACKEND), cuda)
-    SOURCES_C    := $(SOURCES_C_COMMON)
+    SOURCES_C    := $(SOURCES_C_COMMON) $(SRCDIR)/halo_staging.c
     SOURCES_CUDA := $(SRCDIR)/cuda_propagate.cu $(SRCDIR)/device_data.cu
+    LDFLAGS      += $(CUDA_LINK_LIBS)
+
+else ifeq ($(BACKEND), cuda_aware)
+    SOURCES_C    := $(SOURCES_C_COMMON) $(SRCDIR)/halo_inplace.c
+    SOURCES_CUDA := $(SRCDIR)/cuda_propagate.cu $(SRCDIR)/device_data.cu
+    CFLAGS       += -DCUDA_AWARE
     LDFLAGS      += $(CUDA_LINK_LIBS)
 
 else ifeq ($(BACKEND), simgrid_cuda)
     CC           := smpicc
-    SOURCES_C    := $(SOURCES_C_COMMON)
+    SOURCES_C    := $(SOURCES_C_COMMON) $(SRCDIR)/halo_staging.c
     SOURCES_CUDA := $(SRCDIR)/cuda_propagate.cu $(SRCDIR)/device_data.cu
-    
+
     CFLAGS       += -DSIMGRID
     CUDA_CFLAGS  += -Xcompiler -fPIC
     CUDA_CFLAGS  += -ccbin g++
@@ -54,7 +60,7 @@ else ifeq ($(BACKEND), simgrid_cuda)
     LDFLAGS      += -L/usr/local/cuda/lib64 -lcudart_static -lstdc++ -lpthread -ldl -lrt
 
 else
-    $(error Unsupported backend: $(BACKEND). Supported: openmp, simgrid, cuda, simgrid_cuda)
+    $(error Unsupported backend: $(BACKEND). Supported: openmp, simgrid, cuda, cuda_aware, simgrid_cuda)
 endif
 
 OBJECTS_C    = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SOURCES_C))

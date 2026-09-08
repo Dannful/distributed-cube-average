@@ -2,6 +2,9 @@
   pkgs,
   akypuera,
 }: let
+  # CUDA-aware OpenMPI, required by the cuda_aware backend.
+  openmpiCuda = pkgs.openmpi.override {cudaSupport = true;};
+
   mkDc = {
     backend,
     profile,
@@ -26,6 +29,7 @@
     backend,
     profile,
     name,
+    mpi ? pkgs.openmpi,
     extraBuildInputs ? [],
     extraNativeBuildInputs ? [],
   }:
@@ -34,7 +38,7 @@
       version = "0.1.0";
       src = ../.;
       nativeBuildInputs = [pkgs.cudatoolkit] ++ extraNativeBuildInputs;
-      buildInputs = [pkgs.openmpi] ++ extraBuildInputs;
+      buildInputs = [mpi] ++ extraBuildInputs;
       buildPhase = "make all BACKEND=${backend} PROFILE=${profile}";
       unpackPhase = ''
         mkdir source
@@ -47,6 +51,9 @@
       '';
     };
 in {
+  # Exposed so run scripts launch the CUDA-aware binary with a matching mpirun.
+  openmpi-cuda = openmpiCuda;
+
   # OpenMP variants
   dc-omp-aky = mkDc {
     name = "dc-omp-aky";
@@ -60,6 +67,15 @@ in {
     name = "dc-cuda-aky";
     backend = "cuda";
     profile = "akypuera";
+    extraBuildInputs = [akypuera];
+  };
+
+  # In-place halo exchange from device memory; aborts if MPI is not CUDA-aware.
+  dc-cuda-aware-aky = mkDcCuda {
+    name = "dc-cuda-aware-aky";
+    backend = "cuda_aware";
+    profile = "akypuera";
+    mpi = openmpiCuda;
     extraBuildInputs = [akypuera];
   };
 

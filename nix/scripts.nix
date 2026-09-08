@@ -12,45 +12,56 @@
     # Default
     if [ -z "$BACKEND" ]; then BACKEND="openmp"; fi
 
+    # mpirun matching the binary's MPI; overridden for the cuda_aware backend.
+    MPIRUN=${pkgs.openmpi}/bin/mpirun
+
+    # Links the host CUDA driver into a sandbox on LD_LIBRARY_PATH so the
+    # Nix-built binary can load it at runtime.
+    setup_cuda_driver() {
+      DRIVER_SANDBOX=$(mktemp -d)
+      trap "rm -rf $DRIVER_SANDBOX" EXIT
+      POSSIBLE_PATHS=(
+        "/usr/lib/x86_64-linux-gnu"
+        "/usr/lib64"
+        "/usr/lib/wsl/lib"
+        "/usr/lib"
+        "/run/opengl-driver/lib"
+      )
+      FOUND_DRIVER=0
+      for libdir in "''${POSSIBLE_PATHS[@]}"; do
+        if [ -e "$libdir/libcuda.so.1" ]; then
+          echo "Found host CUDA driver in: $libdir"
+          ln -sf "$libdir/libcuda.so.1" "$DRIVER_SANDBOX/libcuda.so.1"
+          ln -sf "$libdir/libcuda.so.1" "$DRIVER_SANDBOX/libcuda.so"
+          if [ -e "$libdir/libnvidia-ptxjitcompiler.so.1" ]; then
+              ln -sf "$libdir/libnvidia-ptxjitcompiler.so.1" "$DRIVER_SANDBOX/libnvidia-ptxjitcompiler.so.1"
+          fi
+          FOUND_DRIVER=1
+          break
+        fi
+      done
+      if [ "$FOUND_DRIVER" -eq 1 ]; then
+        export LD_LIBRARY_PATH="$DRIVER_SANDBOX:$LD_LIBRARY_PATH"
+      else
+        echo "WARNING: Could not find host libcuda.so.1."
+      fi
+    }
+
     APP_DIR=""
     if [ "$BACKEND" == "openmp" ]; then
       APP_DIR=${packages.dc-omp-aky}
     elif [ "$BACKEND" == "cuda" ]; then
-       # CUDA Driver Sandbox
-       DRIVER_SANDBOX=$(mktemp -d)
-       trap "rm -rf $DRIVER_SANDBOX" EXIT
-       POSSIBLE_PATHS=(
-         "/usr/lib/x86_64-linux-gnu"
-         "/usr/lib64"
-         "/usr/lib/wsl/lib"
-         "/usr/lib"
-         "/run/opengl-driver/lib"
-       )
-       FOUND_DRIVER=0
-       for libdir in "''${POSSIBLE_PATHS[@]}"; do
-         if [ -e "$libdir/libcuda.so.1" ]; then
-           echo "Found host CUDA driver in: $libdir"
-           ln -sf "$libdir/libcuda.so.1" "$DRIVER_SANDBOX/libcuda.so.1"
-           ln -sf "$libdir/libcuda.so.1" "$DRIVER_SANDBOX/libcuda.so"
-           if [ -e "$libdir/libnvidia-ptxjitcompiler.so.1" ]; then
-               ln -sf "$libdir/libnvidia-ptxjitcompiler.so.1" "$DRIVER_SANDBOX/libnvidia-ptxjitcompiler.so.1"
-           fi
-           FOUND_DRIVER=1
-           break
-         fi
-       done
-       if [ "$FOUND_DRIVER" -eq 1 ]; then
-         export LD_LIBRARY_PATH="$DRIVER_SANDBOX:$LD_LIBRARY_PATH"
-       else
-         echo "WARNING: Could not find host libcuda.so.1."
-       fi
-
+       setup_cuda_driver
        APP_DIR=${packages.dc-cuda-aky}
+    elif [ "$BACKEND" == "cuda_aware" ]; then
+       setup_cuda_driver
+       APP_DIR=${packages.dc-cuda-aware-aky}
+       MPIRUN=${packages.openmpi-cuda}/bin/mpirun
     fi
 
     if [ -z "$APP_DIR" ]; then
       echo "Error: Invalid backend ($BACKEND)"
-      echo "Supported backends: openmp, cuda"
+      echo "Supported backends: openmp, cuda, cuda_aware"
       exit 1
     fi
   '';
@@ -297,7 +308,7 @@ in {
 
     echo "Running $APP_DIR/bin/dc with args: $ARGS"
     export RST_BUFFER_SIZE=1073741824
-    ${pkgs.openmpi}/bin/mpirun -np $np --bind-to none $APP_DIR/bin/dc $ARGS | tee dc.output
+    $MPIRUN -np $np --bind-to none $APP_DIR/bin/dc $ARGS | tee dc.output
 
     ${postProcessLogic}
   '';

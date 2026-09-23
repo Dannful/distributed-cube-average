@@ -1,4 +1,4 @@
-NAME = slides
+NAME = slides-alt
 
 EMACS_SETUP = \
   --eval "(require 'ox-beamer)" \

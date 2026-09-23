@@ -163,48 +163,77 @@ transfer.* Otherwise step 5 stalls and communication dominates.
 Left: communication-bound (0.08);  @@latex: \hfill@@ Right: well-masked (0.79).
 
 ** Design of Experiments
-- *Full factorial* sweep over three factors:
-  - *problem size*: $64^3$, $128^3$, $256^3$, $512^3$;
-  - *number of hosts*: 4, 8, 16, 27, 64;
-  - *network bandwidth*: 1, 2.5, 10, 25, 50, 100 Gbps.
-- 1000 iterations per run; fixed \(22\,\mu\mathrm{s}\) latency; no
-  replication.
-- Three host models (single node each, calibrated on =poti=):
-  - =cei=: 2$\times$ Xeon Silver 4116 (CPU-only);
-  - =poti=: RTX 4070; =tupi=: RTX 4090.
 
-** CPU Cluster =cei=: Masking Comes for Free
-#+ATTR_LATEX: :center t :width 0.95\linewidth
+Full factorial [from Jain 1991] sweep over three factors
+- *problem size*: $64^3$, $128^3$, $256^3$, $512^3$ [facets]
+- *number of hosts*: 4, 8, 16, 27, 64 [colors]
+- *network bandwidth*: 1, 2.5, 10, 25, 50, 100 Gbps [X-axis]
+  - Fixed \(22\,\mu\mathrm{s}\) latency
+  
+The application
+- 1000 iterations per run [main loop]
+- No replication [as emulations are quite stable]
+
+Three host models (single node each, calibrated on =poti=):
+- =cei=: 2\times Xeon Silver 4116 (CPU-only)
+- =poti=: RTX 4070
+- =tupi=: RTX 4090
+
+** CPU Cluster =cei=: Masking is Free
+#+begin_center
+The higher the measurements, the better the masking effectiveness.
+#+end_center
+
+#+ATTR_LATEX: :center t :width \linewidth
 [[file:../img/cei-masking.png]]
 
 - Below 100Mbps: masking \(<\) 0.30 (communication-bound).
 - Past *1Gbps* it jumps: \(512^3\)/8 hosts \(\approx\) *0.94*;
   \(256^3\)/8 hosts \(>\) 0.89.
-- Modest Xeon FP throughput lets computation fill the gaps ---
-  *near-perfect masking, essentially free*.
 
-** GPU Cluster =poti=: The Network Bottleneck
-#+ATTR_LATEX: :center t :width 0.95\linewidth
+#+latex: \vfill\pause
+
+Takeaway
+- Low Xeon FP throughput lets computation fill the gaps
+  - Good masking, essentially free
+
+** GPU Cluster =poti=: The Net Bottleneck
+#+begin_center
+The higher the measurements, the better the masking effectiveness.
+#+end_center
+
+#+ATTR_LATEX: :center t :width \linewidth
 [[file:../img/poti-masking.png]]
 
 - At *1Gbps*: masking stalls near *0.25*, independent of problem size.
-- The RTX 4070 outruns the Gigabit link; =MPI_Waitall= dominates every
-  iteration.
-- Recovery begins at *10Gbps* (\(512^3\)/4 hosts reaches 0.97); smaller
-  problems / more hosts need even more bandwidth.
+  - The RTX 4070 outruns the Gigabit link
+  - =MPI_Waitall= dominates every iteration    
+- Recovery begins at *10Gbps* (\(512^3\)/4 hosts reaches 0.97)
+
+#+latex: \vfill\pause
+
+Takeaway
+- GPU generates a network bottleneck
+  - Must have a network with certain bandwidth
 
 ** GPU Cluster =tupi=: A Scaling Anomaly
+#+begin_center
+The higher the measurements, the better the masking effectiveness.
+#+end_center
+
 #+ATTR_LATEX: :center t :width 0.95\linewidth
 [[file:../img/tupi-masking.png]]
 
-- Same regime as =poti=, but shifted higher --- the RTX 4090 is faster
-  still.
+- As =poti=, but shifted higher \to RTX 4090 is much faster
 - *Anomaly*: from $256^3$ to $512^3$, masking improves *only* with many
   hosts (27, 64); few hosts (4--16) get *worse*.
+
+#+latex: \vfill\pause
+Takeaway
 - Volume/surface dynamics: small subdomains are surface-dominated at
   $256^3$ and only amortize communication at $512^3$.
 
-** Heatmap: Finding Optimal Configurations
+** Heatmap: Finding Optimal Configurations                        :noexport:
 #+BEGIN_columns
 #+ATTR_LATEX: :options {0.56\textwidth}
 #+BEGIN_column
@@ -224,30 +253,51 @@ Left: communication-bound (0.08);  @@latex: \hfill@@ Right: well-masked (0.79).
 #+END_columns
 
 * Conclusion
-** Conclusion
-- Two sharply contrasting regimes:
-  - *CPU* (=cei=): modest FP throughput $\Rightarrow$ near-perfect masking
-    at realistic bandwidths.
-  - *GPU* (=poti=, =tupi=): accelerator outruns the network $\Rightarrow$
-    stuck near 20% at 1Gbps.
-- Bandwidth sweep shows a *smooth transition* to compute-bound, passing
-  90% masking at 100Gbps.
-- The *heatmap* is a ready-to-use capacity-planning chart.
-- SimGrid/SMPI is a *practical, credible alternative* to exhaustive
-  real-hardware experimentation.
+** Conclusion & Future Work
+# - Two sharply distinct regimes
+#   - *CPU* (=cei=): modest FP throughput $\Rightarrow$ near-perfect masking
+#   - *GPU* (=poti=, =tupi=): accelerator outruns the 1Gpbs network
+# - Bandwidth sweep shows a *smooth transition* to compute-bound
+#   - Passing 90% masking at 100Gbps.
+# #+latex: \vfill\pause
 
-** Future Work
-- Experiments on the *Santos Dumont* supercomputer (high-speed
-  interconnect).
-- Detailed SimGrid modeling of its network topology.
-- Integration of *HIP kernels* for AMD GPUs within the same framework.
-- Extend the framework to a *broader class of stencil applications* as
-  a reusable capacity-planning tool.
+*** General conclusion                                            :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+- SimGrid/SMPI is a *practical, credible alternative* to exhaustive
+  real-hardware experimentation \to Capacity planning
+
+#+latex: \vfill\pause    
+
+*** Future Work                                                   :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+- Experiments on the *Santos Dumont* supercomputer
+  - Requires GPU-aware MPI changes [ongoing]
+
+- Integration of *HIP kernels* for AMD GPUs
+  - Are the tradeoffs the same? [seeking student]
+
+- Investigate a *broader class of stencil applications*
+  - Is it a reusable capacity-planning tool? [planned]
 
 ** Thank You!                                                        :ignore:
 #+BEGIN_EXPORT latex
 \begin{frame}[plain]
   \frametitle{Thank you!}
   \InfContacts
+  \vspace{1cm}
+
+All experiments in this work used the PCAD platform,
+http://pcad.inf.ufrgs.br, at INF/UFRGS. This work was partially
+supported by Petrobras through an agreement with UFRGS through project
+2020/00182-5.
+This study was financed in part by the ``Coordenação de
+Aperfeiçoamento de Pessoal de Nível Superior'' Brasil (CAPES) --
+Finance Code 001.
+
+  
 \end{frame}
 #+END_EXPORT

@@ -170,18 +170,22 @@ stalls and communication dominates.
 #+BEGIN_columns
 #+ATTR_LATEX: :options {0.5\textwidth}
 #+BEGIN_column
-#+ATTR_LATEX: :width \linewidth
+$256^3$
+
+#+ATTR_LATEX: :width \linewidth :center nil
 [[file:../img/real_cpu/load_256.pdf]]
 
-#+ATTR_LATEX: :width \linewidth
+$512^3$
+
+#+ATTR_LATEX: :width \linewidth :center nil
 [[file:../img/real_cpu/load_512.pdf]]
 #+END_column
 
 #+ATTR_LATEX: :options {0.48\textwidth}
 #+BEGIN_column
 - These runs use the /cei/ CPU cluster (10Gbit, OpenMP).
-- The compute load is about *75%* at $256^3$ and rises to about *87%*
-  at $512^3$.
+- The compute load is about *75%* at $256^3$ [top] and rises to about
+  *87%* at $512^3$ [bottom].
 - The Xeon's modest floating-point speed means computation naturally
   outlasts communication and hides it.
 - Larger problems mask even better, because volume grows as $O(n^3)$
@@ -217,10 +221,14 @@ $L$ (Width) & Volume ($L^3$) & Boundary ($18L^2$) & Ratio \\
 #+BEGIN_columns
 #+ATTR_LATEX: :options {0.5\textwidth}
 #+BEGIN_column
-#+ATTR_LATEX: :width \linewidth
+$128^3$
+
+#+ATTR_LATEX: :width \linewidth :center nil
 [[file:../img/real_gpu/load_128.pdf]]
 
-#+ATTR_LATEX: :width \linewidth
+$512^3$
+
+#+ATTR_LATEX: :width \linewidth :center nil
 [[file:../img/real_gpu/load_512.pdf]]
 #+END_column
 
@@ -230,7 +238,7 @@ $L$ (Width) & Volume ($L^3$) & Boundary ($18L^2$) & Ratio \\
 - =Waitall= dominates the timeline, and computation appears only as
   thin slivers.
 - The compute load stays near *20%* and does not change from $128^3$
-  to $512^3$.
+  [top] to $512^3$ [bottom].
 - The RTX 4070 finishes faster than the Gigabit link can deliver
   halos, whatever the problem size.
 - Enlarging the domain does not help, and the 12GB of VRAM is itself a
@@ -242,10 +250,14 @@ $L$ (Width) & Volume ($L^3$) & Boundary ($18L^2$) & Ratio \\
 #+BEGIN_columns
 #+ATTR_LATEX: :options {0.5\textwidth}
 #+BEGIN_column
-#+ATTR_LATEX: :width \linewidth
+$256^3$
+
+#+ATTR_LATEX: :width \linewidth :center nil
 [[file:../img/sim_gpu_10Gbps/load_256.pdf]]
 
-#+ATTR_LATEX: :width \linewidth
+$512^3$
+
+#+ATTR_LATEX: :width \linewidth :center nil
 [[file:../img/sim_gpu_10Gbps/load_512.pdf]]
 #+END_column
 
@@ -253,8 +265,8 @@ $L$ (Width) & Volume ($L^3$) & Boundary ($18L^2$) & Ratio \\
 #+BEGIN_column
 - Here we keep the /poti/ model but raise the network to *10Gbps*.
 - The picture *reverses*: computation now dominates each iteration.
-- The compute load reaches about *65--70%* at $256^3$ and *75--80%* at
-  $512^3$.
+- The compute load reaches about *65--70%* at $256^3$ [top] and
+  *75--80%* at $512^3$ [bottom].
 - =Waitall= shrinks to a minor part of the run.
 #+END_column
 #+END_columns
@@ -263,18 +275,22 @@ $L$ (Width) & Volume ($L^3$) & Boundary ($18L^2$) & Ratio \\
 #+BEGIN_columns
 #+ATTR_LATEX: :options {0.5\textwidth}
 #+BEGIN_column
-#+ATTR_LATEX: :width \linewidth
+$256^3$
+
+#+ATTR_LATEX: :width \linewidth :center nil
 [[file:../img/sim_gpu_100Gbps/load_256.pdf]]
 
-#+ATTR_LATEX: :width \linewidth
+$512^3$
+
+#+ATTR_LATEX: :width \linewidth :center nil
 [[file:../img/sim_gpu_100Gbps/load_512.pdf]]
 #+END_column
 
 #+ATTR_LATEX: :options {0.48\textwidth}
 #+BEGIN_column
 - Raising the network to *100Gbps* pushes the balance further still.
-- The compute load reaches about *85--90%* at $256^3$ and *exceeds
-  90%* at $512^3$.
+- The compute load reaches about *85--90%* at $256^3$ [top] and
+  *exceeds 90%* at $512^3$ [bottom].
 - The ghost-cell exchanges are now almost entirely hidden behind
   interior computation.
 - This confirms the overlap strategy works *once the bandwidth is

@@ -299,15 +299,12 @@ $512^3$
 #+END_columns
 
 ** Throughput: Partitioning Topology is Critical
-#+BEGIN_columns
-#+ATTR_LATEX: :options {0.54\textwidth}
-#+BEGIN_column
-#+ATTR_LATEX: :width \linewidth
+#+ATTR_LATEX: :width 0.85\textwidth
 [[file:../img/msamples.pdf]]
-#+END_column
 
-#+ATTR_LATEX: :options {0.44\textwidth}
-#+BEGIN_column
+#+BEGIN_EXPORT latex
+\vspace{-1.2em}\footnotesize\setlength{\itemsep}{0pt}
+#+END_EXPORT
 - There is a *dramatic gap* between the 5-worker and 8-worker
   configurations.
 - At $512^3$, 8 workers reach *8309* MSamples/s (10Gbps) and *9374*
@@ -316,8 +313,6 @@ $512^3$
   baseline of *3870*.
 - With 5 workers, distributing the work actually gives *negative
   speedup*.
-#+END_column
-#+END_columns
 
 ** Why? Prime Process Counts
 - Because 5 is prime, =MPI_Dims_create= is forced into a $\{5,1,1\}$

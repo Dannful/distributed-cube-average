@@ -180,27 +180,28 @@ void dc_receive_and_write_results(dc_process_t coordinator_process,
                    MPI_STATUS_IGNORE);
         }
 
+        // x is the fastest axis both locally and globally, so each x row of
+        // the partition interior is contiguous in memory and in the file.
+        const size_t row_length = worker_sizes[0] - 2 * STENCIL;
+        const size_t global_x = STENCIL + worker_coords[0] * partition_size_x;
         for (size_t z = STENCIL; z < worker_sizes[2] - STENCIL; z++) {
+          const size_t global_z =
+              STENCIL + worker_coords[2] * partition_size_z + (z - STENCIL);
           for (size_t y = STENCIL; y < worker_sizes[1] - STENCIL; y++) {
-            for (size_t x = STENCIL; x < worker_sizes[0] - STENCIL; x++) {
-              size_t local_x = x - STENCIL;
-              size_t local_y = y - STENCIL;
-              size_t local_z = z - STENCIL;
-              size_t worker_index = dc_get_index_for_coordinates(
-                  x, y, z, worker_sizes[0], worker_sizes[1], worker_sizes[2]);
-              size_t global_index = dc_get_index_for_coordinates(
-                  STENCIL + worker_coords[0] * partition_size_x + local_x,
-                  STENCIL + worker_coords[1] * partition_size_y + local_y,
-                  STENCIL + worker_coords[2] * partition_size_z + local_z,
-                  global_sx, global_sy, global_sz);
+            const size_t global_y =
+                STENCIL + worker_coords[1] * partition_size_y + (y - STENCIL);
+            const size_t worker_index =
+                STENCIL + y * worker_sizes[0] +
+                z * worker_sizes[0] * worker_sizes[1];
+            const size_t global_index = global_x + global_y * global_sx +
+                                        global_z * global_sx * global_sy;
 
-              fseek(output, global_index * sizeof(float), SEEK_SET);
-              fwrite(&pc[worker_index], sizeof(float), 1, output);
+            fseek(output, global_index * sizeof(float), SEEK_SET);
+            fwrite(&pc[worker_index], sizeof(float), row_length, output);
 
-              fseek(output, (total_size + global_index) * sizeof(float),
-                    SEEK_SET);
-              fwrite(&qc[worker_index], sizeof(float), 1, output);
-            }
+            fseek(output, (total_size + global_index) * sizeof(float),
+                  SEEK_SET);
+            fwrite(&qc[worker_index], sizeof(float), row_length, output);
           }
         }
 

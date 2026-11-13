@@ -52,7 +52,7 @@ stale objects are not rebuilt.
 
 ### Program arguments
 
-All arguments are mandatory:
+All arguments are mandatory, except `--output-file`:
 
 | Option                         | Meaning                                                   |
 |--------------------------------|-----------------------------------------------------------|
@@ -61,7 +61,7 @@ All arguments are mandatory:
 | `--dt`                         | Time step                                                 |
 | `--time-max`, `-t`             | Simulated time (iterations = `ceil(time-max / dt)`)       |
 | `--absorption`, `-a`           | Width of the absorption zone, in grid points              |
-| `--output-file`, `-o`          | Path of the binary output file                            |
+| `--output-file`, `-o`          | Optional. Path of the binary output file; if omitted, the final volume is neither gathered nor written |
 
 Any number of MPI processes can be used: `MPI_Dims_create` factors them into a 3D topology, and
 rank 0 acts as the coordinator.

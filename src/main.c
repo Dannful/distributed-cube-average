@@ -24,7 +24,8 @@ static struct argp_option options[] = {
     {"time-max", 't', "FLOAT", 0, "Max time"},
     {"absorption", 'a', "INTEGER", 0, "Absorption zone size"},
     {"output-file", 'o', "PATH", 0,
-     "Path to the file to output the results to"},
+     "Path to the file to output the results to (optional; if omitted, "
+     "results are neither gathered nor written)"},
     {0},
 };
 
@@ -65,7 +66,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     if (arguments->size_x == 0 || arguments->size_y == 0 ||
         arguments->size_z == 0 || arguments->dx == 0 || arguments->dy == 0 ||
         arguments->dz == 0 || arguments->time_max == 0 || arguments->dt == 0 ||
-        arguments->absorption_size == 0 || arguments->output_file == NULL) {
+        arguments->absorption_size == 0) {
       argp_usage(state);
     }
     break;
@@ -184,13 +185,15 @@ int main(int argc, char **argv) {
   double msamples_per_s = dc_worker_process(&mpi_process, communicator);
   double end_time = MPI_Wtime();
   double total_time = end_time - start_time;
-  dc_send_data_to_coordinator(mpi_process, communicator);
+  if (arguments.output_file != NULL) {
+    dc_send_data_to_coordinator(mpi_process, communicator);
 #ifndef SIMGRID
-  if (rank == COORDINATOR) {
-    dc_receive_and_write_results(mpi_process, communicator, sx, sy, sz,
-                                 arguments.output_file);
-  }
+    if (rank == COORDINATOR) {
+      dc_receive_and_write_results(mpi_process, communicator, sx, sy, sz,
+                                   arguments.output_file);
+    }
 #endif
+  }
   dc_worker_free(mpi_process);
 
   free(arguments.output_file);

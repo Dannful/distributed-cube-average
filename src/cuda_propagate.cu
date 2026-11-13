@@ -1,11 +1,17 @@
 #include "propagate.h"
 #include "sample_compute.h"
 #include <cuda_runtime.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #define THREADS_PER_BLOCK 16
 
+// The stencil uses 32-bit indices. When the partition has more than INT_MAX
+// points (large_partition), the arrays are offset to the current z plane
+// (64-bit) and the stencil indexes within it. That path is much slower on
+// GPUs, so it is only used when needed.
+template <bool large_partition>
 __global__ void
 propagate_kernel(const size_t start_x, const size_t start_y, const size_t start_z,
                  const size_t end_x, const size_t end_y, const size_t end_z,
@@ -23,9 +29,19 @@ propagate_kernel(const size_t start_x, const size_t start_y, const size_t start_
   }
 
   for (size_t z = start_z; z < end_z; z++) {
-    sample_compute_optimized(x, y, z, size_x, size_y, size_z, process_coord_x,
-                             process_coord_y, process_coord_z, topology_x, topology_y,
-                             topology_z, dx, dy, dz, dt, pc, qc, pp, qp, vpz, vsv);
+    if (large_partition) {
+      const size_t plane = z * size_x * size_y;
+      sample_compute_optimized(x, y, 0, size_x, size_y, size_z, process_coord_x,
+                               process_coord_y, process_coord_z, topology_x,
+                               topology_y, topology_z, dx, dy, dz, dt,
+                               pc + plane, qc + plane, pp + plane, qp + plane,
+                               vpz + plane, vsv + plane);
+    } else {
+      sample_compute_optimized(x, y, z, size_x, size_y, size_z, process_coord_x,
+                               process_coord_y, process_coord_z, topology_x,
+                               topology_y, topology_z, dx, dy, dz, dt, pc, qc,
+                               pp, qp, vpz, vsv);
+    }
   }
 }
 
@@ -51,7 +67,9 @@ extern "C" void dc_propagate(const size_t start_coords[DIMENSIONS],
   const dim3 numBlocks((nx + threadsPerBlock.x - 1) / threadsPerBlock.x,
                        (ny + threadsPerBlock.y - 1) / threadsPerBlock.y);
 
-  propagate_kernel<<<numBlocks, threadsPerBlock>>>(
+  const bool large_partition = sizes[0] * sizes[1] * sizes[2] > INT_MAX;
+  auto kernel = large_partition ? propagate_kernel<true> : propagate_kernel<false>;
+  kernel<<<numBlocks, threadsPerBlock>>>(
       start_coords[0], start_coords[1], start_coords[2],
       end_coords[0], end_coords[1], end_coords[2],
       sizes[0], sizes[1], sizes[2],

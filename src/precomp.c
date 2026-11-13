@@ -9,7 +9,7 @@
 dc_precomp_vars dc_compute_precomp_vars(int sx, int sy, int sz,
                                         dc_anisotropy_t anisotropy) {
   dc_precomp_vars vars = {0};
-  int n = sx * sy * sz;
+  size_t n = (size_t)sx * sy * sz;
 
   vars.ch1dxx = (float *)malloc(n * sizeof(float));
   if (vars.ch1dxx == NULL) {
@@ -82,7 +82,7 @@ dc_precomp_vars dc_compute_precomp_vars(int sx, int sy, int sz,
     exit(1);
   }
 
-  for (int i = 0; i < n; i++) {
+  for (size_t i = 0; i < n; i++) {
     float sinTheta = sin(anisotropy.theta[i]);
     float cosTheta = cos(anisotropy.theta[i]);
     float sin2Theta = sin(2.0 * anisotropy.theta[i]);
@@ -97,7 +97,7 @@ dc_precomp_vars dc_compute_precomp_vars(int sx, int sy, int sz,
     vars.ch1dxz[i] = sin2Theta * cosPhi;
   }
 
-  for (int i = 0; i < n; i++) {
+  for (size_t i = 0; i < n; i++) {
     vars.v2sz[i] = anisotropy.vsv[i] * anisotropy.vsv[i];
     vars.v2pz[i] = anisotropy.vpz[i] * anisotropy.vpz[i];
     vars.v2px[i] = vars.v2pz[i] * (1.0 + 2.0 * anisotropy.epsilon[i]);
@@ -109,7 +109,7 @@ dc_precomp_vars dc_compute_precomp_vars(int sx, int sy, int sz,
 
 dc_anisotropy_t dc_compute_anisotropy_vars(int sx, int sy, int sz) {
   dc_anisotropy_t anisotropy;
-  int n = sx * sy * sz;
+  size_t n = (size_t)sx * sy * sz;
   anisotropy.vpz = (float *)malloc(sizeof(float) * n);
   if (anisotropy.vpz == NULL) {
     dc_log_error(COORDINATOR, "OOM: could not allocate memory for vpz in "
@@ -153,7 +153,7 @@ dc_anisotropy_t dc_compute_anisotropy_vars(int sx, int sy, int sz) {
     exit(1);
   }
 
-  for (int i = 0; i < n; i++) {
+  for (size_t i = 0; i < n; i++) {
     anisotropy.vpz[i] = 3000.0;
     anisotropy.epsilon[i] = 0.24;
     anisotropy.delta[i] = 0.1;

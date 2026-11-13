@@ -6,20 +6,20 @@
 static inline HOST_DEVICE void
 dc_extract_coordinates(size_t *position_x, size_t *position_y,
                        size_t *position_z, size_t size_x, size_t size_y,
-                       size_t size_z, int index) {
+                       size_t size_z, size_t index) {
   *position_x = index % size_x;
   *position_y = (index / size_x) % size_y;
   *position_z = index / (size_x * size_y);
 }
 
-static inline HOST_DEVICE unsigned int
+static inline HOST_DEVICE size_t
 dc_get_index_for_coordinates(size_t position_x, size_t position_y,
                              size_t position_z, size_t size_x, size_t size_y,
                              size_t size_z) {
   return position_x + position_y * size_x + position_z * size_x * size_y;
 }
 
-static inline HOST_DEVICE unsigned int
+static inline HOST_DEVICE size_t
 dc_get_global_coordinates(const int worker_coordinates[DIMENSIONS],
                           const size_t worker_sizes[DIMENSIONS],
                           const size_t global_sizes[DIMENSIONS],

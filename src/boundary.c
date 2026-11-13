@@ -39,8 +39,8 @@ void randomVelocityBoundaryPartition(int local_sx, int local_sy, int local_sz,
             int local_ix = gx - start_x;
             int local_iy = gy - start_y;
             int local_iz = gz - start_z;
-            int i = dc_get_index_for_coordinates(local_ix, local_iy, local_iz,
-                                                 local_sx, local_sy, local_sz);
+            size_t i = dc_get_index_for_coordinates(local_ix, local_iy, local_iz,
+                                                    local_sx, local_sy, local_sz);
 
             int distz, disty, distx;
             int ivelz, ively, ivelx;
@@ -93,8 +93,8 @@ void randomVelocityBoundaryPartition(int local_sx, int local_sy, int local_sz,
           int local_ix = gx - start_x;
           int local_iy = gy - start_y;
           int local_iz = gz - start_z;
-          int i = dc_get_index_for_coordinates(local_ix, local_iy, local_iz,
-                                               local_sx, local_sy, local_sz);
+          size_t i = dc_get_index_for_coordinates(local_ix, local_iy, local_iz,
+                                                  local_sx, local_sy, local_sz);
           vpz[i] = 0.0f;
           vsv[i] = 0.0f;
         }

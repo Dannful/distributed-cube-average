@@ -1,16 +1,20 @@
-#include <mpi.h>
+#include "io.h"
 
-void MPI_Safe_Recv(void *buffer, size_t count, MPI_Datatype data_type,
-                   unsigned int source, int tag, MPI_Comm channel) {
-  MPI_Status status;
-  int received_total = 0;
-  int data_type_size;
-  MPI_Type_size(data_type, &data_type_size);
-  while (received_total < count) {
-    int received;
-    MPI_Recv((char *)buffer + received_total * data_type_size,
-             count - received_total, data_type, source, tag, channel, &status);
-    MPI_Get_count(&status, data_type, &received);
-    received_total += received;
+#define DC_MAX_CHUNK ((size_t)1 << 30)
+
+void dc_send_floats(const float *buffer, size_t count, int destination,
+                    int tag, MPI_Comm comm) {
+  for (size_t offset = 0; offset < count; offset += DC_MAX_CHUNK) {
+    size_t chunk = count - offset < DC_MAX_CHUNK ? count - offset : DC_MAX_CHUNK;
+    MPI_Send(buffer + offset, (int)chunk, MPI_FLOAT, destination, tag, comm);
+  }
+}
+
+void dc_recv_floats(float *buffer, size_t count, int source, int tag,
+                    MPI_Comm comm) {
+  for (size_t offset = 0; offset < count; offset += DC_MAX_CHUNK) {
+    size_t chunk = count - offset < DC_MAX_CHUNK ? count - offset : DC_MAX_CHUNK;
+    MPI_Recv(buffer + offset, (int)chunk, MPI_FLOAT, source, tag, comm,
+             MPI_STATUS_IGNORE);
   }
 }

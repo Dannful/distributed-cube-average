@@ -5,6 +5,7 @@
 
 #include "coordinator.h"
 #include "indexing.h"
+#include "io.h"
 #include "log.h"
 #include "stdlib.h"
 
@@ -174,10 +175,8 @@ void dc_receive_and_write_results(dc_process_t coordinator_process,
           }
           need_free = 1;
 
-          MPI_Recv(pc, worker_count, MPI_FLOAT, worker_rank, 0, comm,
-                   MPI_STATUS_IGNORE);
-          MPI_Recv(qc, worker_count, MPI_FLOAT, worker_rank, 0, comm,
-                   MPI_STATUS_IGNORE);
+          dc_recv_floats(pc, worker_count, worker_rank, 0, comm);
+          dc_recv_floats(qc, worker_count, worker_rank, 0, comm);
         }
 
         // x is the fastest axis both locally and globally, so each x row of

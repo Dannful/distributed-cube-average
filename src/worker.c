@@ -14,6 +14,7 @@
 #include "coordinator.h"
 #include "device_data.h"
 #include "indexing.h"
+#include "io.h"
 #include "log.h"
 #include "propagate.h"
 #include "sys/time.h"
@@ -247,10 +248,10 @@ void dc_send_data_to_coordinator(dc_process_t process, MPI_Comm comm) {
   return;
 #endif
   MPI_Send(process.sizes, DIMENSIONS, MPI_UNSIGNED_LONG, COORDINATOR, 0, comm);
-  MPI_Send(process.pc, dc_compute_count_from_sizes(process.sizes), MPI_FLOAT,
-           COORDINATOR, 0, comm);
-  MPI_Send(process.qc, dc_compute_count_from_sizes(process.sizes), MPI_FLOAT,
-           COORDINATOR, 0, comm);
+  dc_send_floats(process.pc, dc_compute_count_from_sizes(process.sizes),
+                 COORDINATOR, 0, comm);
+  dc_send_floats(process.qc, dc_compute_count_from_sizes(process.sizes),
+                 COORDINATOR, 0, comm);
 }
 
 double get_time_micros() {
